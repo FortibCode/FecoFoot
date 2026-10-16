@@ -1,0 +1,1 @@
+ALTER TABLE "player_consents" ADD COLUMN "failed_checks" integer DEFAULT 0 NOT NULL;
