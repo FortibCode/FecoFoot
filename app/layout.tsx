@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Oswald, Poppins } from "next/font/google";
 import { connection } from "next/server";
 import "./globals.css";
+import { RevealObserver } from "@/components/reveal-observer";
 
 // next/font auto-héberge la police au build : aucun appel à Google côté visiteur.
 const poppins = Poppins({
@@ -28,7 +29,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   await connection();
   return (
     <html lang="fr" className={`${poppins.variable} ${oswald.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body className="flex min-h-full flex-col font-sans">
+        {children}
+        <RevealObserver />
+      </body>
     </html>
   );
 }

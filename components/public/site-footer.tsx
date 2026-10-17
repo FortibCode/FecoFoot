@@ -64,7 +64,7 @@ export function SiteFooter() {
         className="pointer-events-none absolute top-1/2 -right-16 -z-10 aspect-[1741/1975] h-[135%] -translate-y-1/2 bg-white opacity-[0.05] [mask:url(/fecofoot-mark.svg)_center/contain_no-repeat] sm:-right-8"
       />
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.3fr_2fr] lg:px-8 lg:py-16">
-        <div className="flex flex-col gap-5">
+        <div data-reveal="up" className="flex flex-col gap-5">
           <Link href="/" className="flex items-center gap-4">
             <BrandLogo size={64} decorative />
             <span className="flex flex-col leading-tight">
@@ -97,8 +97,8 @@ export function SiteFooter() {
           </div>
         </div>
         <nav aria-label="Liens utiles" className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-          {COLUMNS.map((c) => (
-            <div key={c.title} className="flex flex-col gap-3">
+          {COLUMNS.map((c, i) => (
+            <div key={c.title} data-reveal="up" style={{ ["--rd" as string]: `${120 + i * 100}ms` }} className="flex flex-col gap-3">
               <p className="font-heading text-base font-semibold uppercase tracking-wide text-white">{c.title}</p>
               <ul className="flex flex-col gap-2">
                 {c.links.map(([href, label]) => (

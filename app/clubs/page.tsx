@@ -28,8 +28,8 @@ export default async function PublicClubsPage() {
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {rows
                   .filter((c) => c.city === city)
-                  .map((c) => (
-                    <li key={c.id}>
+                  .map((c, i) => (
+                    <li key={c.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 8) * 60}ms` }}>
                       <Link
                         href={`/clubs/${c.slug}`}
                         className="group flex h-full flex-col items-center gap-3 rounded-xl border bg-card p-5 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"

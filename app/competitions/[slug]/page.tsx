@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { MatchLine } from "@/components/competitions/match-line";
-import { ScorersList, StandingsTable } from "@/components/competitions/standings-table";
+import { ScorersList } from "@/components/competitions/standings-table";
+import { PaginatedStandings } from "@/components/competitions/paginated-standings";
+import { clubLogos } from "@/lib/club-logos";
 import { PublicShell } from "@/components/public/public-shell";
 import { roundLabel } from "@/lib/competitions";
 import { db } from "@/lib/db";
@@ -28,6 +30,7 @@ export default async function PublicCompetitionPage({ params }: PageProps<"/comp
     competitionTables(c.id),
     matchQuery().where(eq(matches.competitionId, c.id)).orderBy(asc(matches.round), asc(matches.bracketSlot), asc(matches.kickoffAt)),
   ]);
+  const logos = Object.fromEntries(await clubLogos(data?.tables.flatMap((t) => t.rows.map((r) => r.clubId)) ?? []));
   const rounds = [...new Set(allMatches.map((m) => m.match.round))];
   const totalRounds = Math.max(0, ...rounds);
 
@@ -39,7 +42,7 @@ export default async function PublicCompetitionPage({ params }: PageProps<"/comp
             <div className="flex min-w-0 flex-col gap-4">
               <h2 className="text-lg font-bold">Classement</h2>
               {data.tables.map((t) => (
-                <StandingsTable key={t.pool} rows={t.rows} title={t.pool ? `Poule ${t.pool}` : undefined} />
+                <PaginatedStandings key={t.pool} rows={t.rows} title={t.pool ? `Poule ${t.pool}` : undefined} logos={logos} />
               ))}
             </div>
             <div className="flex min-w-0 flex-col gap-4">

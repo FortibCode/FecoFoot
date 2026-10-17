@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
-import { StandingsTable } from "@/components/competitions/standings-table";
+import { PaginatedStandings } from "@/components/competitions/paginated-standings";
 import { Carousel } from "@/components/public/carousel";
 import { NewsMosaic } from "@/components/public/news-mosaic";
 import { PublicShell } from "@/components/public/public-shell";
@@ -11,12 +11,14 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { NATIONAL_TEAMS } from "@/lib/national-teams";
 import type { MatchRow } from "@/lib/queries/competitions";
 import { eliteClubs, homeData } from "@/lib/queries/portal";
+import { competitionTables } from "@/lib/queries/competitions";
 import { clubLogos } from "@/lib/club-logos";
 import { ClubLogo } from "@/components/public/club-logo";
 import { seasonLabel } from "@/lib/licenses";
 import { nationalFixturesOverview } from "@/lib/queries/national";
 import { NationalFixtures } from "@/components/public/national-fixtures";
 import { featuredPhotos, latestPhotos, photoUrl } from "@/lib/photos";
+import { CountUp } from "@/components/count-up";
 import { HeroSlideshow } from "@/components/public/hero-slideshow";
 
 export const metadata: Metadata = {
@@ -61,9 +63,9 @@ function MatchListRow({ row }: { row: MatchRow }) {
   );
 }
 
-function MatchList({ title, rows, empty }: { title: string; rows: MatchRow[]; empty: string }) {
+function MatchList({ title, rows, empty, from = "left" }: { title: string; rows: MatchRow[]; empty: string; from?: "left" | "right" }) {
   return (
-    <div className="flex min-w-0 flex-col">
+    <div data-reveal={from} className="flex min-w-0 flex-col">
       <h3 className="border-b-2 border-foreground pb-2 font-heading text-xl font-bold uppercase">{title}</h3>
       {rows.length === 0 ? (
         <p className="border-b py-4 text-sm text-muted-foreground">{empty}</p>
@@ -82,7 +84,10 @@ function MatchList({ title, rows, empty }: { title: string; rows: MatchRow[]; em
 export default async function HomePage() {
   await connection();
   const [d, featured, gallery, nationalGames, elite] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), nationalFixturesOverview(3), eliteClubs()]);
-  const eliteLogos = await clubLogos(elite?.teams.map((t) => t.id) ?? []);
+  const [eliteLogos, standing] = await Promise.all([
+    clubLogos(elite?.teams.map((t) => t.id) ?? []),
+    elite ? competitionTables(elite.competition.id) : null,
+  ]);
   const slides = featured.map((p) => ({ src: photoUrl(p), caption: p.caption }));
   const cover = slides.length > 0;
   const figures = [
@@ -121,8 +126,8 @@ export default async function HomePage() {
 
       <nav aria-label="Accès rapide" className="absolute top-1/2 left-6 hidden -translate-y-1/2 2xl:block">
         <ul className="flex flex-col gap-4 text-[0.8rem] text-white/80">
-          {quickLinks.map(([href, label]) => (
-            <li key={href}>
+          {quickLinks.map(([href, label], i) => (
+            <li key={href} data-reveal="left" style={{ ["--rd" as string]: `${300 + i * 80}ms` }}>
               <Link href={href} className="border-l-2 border-transparent pl-2 transition-colors hover:border-[var(--flag-yellow)] hover:text-white">
                 {label}
               </Link>
@@ -140,15 +145,15 @@ export default async function HomePage() {
                 ["Soutenir", "les Diables Rouges"],
                 ["Vivre", "le football congolais"],
               ] as const
-            ).map(([verb, rest]) => (
-              <span key={verb} className="block whitespace-nowrap">
+            ).map(([verb, rest], i) => (
+              <span key={verb} data-reveal="left" style={{ ["--rd" as string]: `${150 + i * 140}ms` }} className="block whitespace-nowrap">
                 <span className="font-bold text-[var(--flag-yellow)] uppercase italic">{verb}</span>{" "}
                 <span className="font-normal font-sans text-[0.62em] tracking-tight normal-case">{rest}</span>
               </span>
             ))}
           </h1>
         </div>
-        <div className="self-start md:self-auto">
+        <div data-reveal="right" style={{ ["--rd" as string]: "600ms" }} className="self-start md:self-auto">
           {/* Transparent ; au survol, un fond blanc balaie le bouton de gauche à droite et le texte passe en vert foncé. */}
           <Link
             href="/billetterie"
@@ -169,9 +174,11 @@ export default async function HomePage() {
         aria-label="Chiffres clés"
         className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-4 gap-y-2 px-4 pb-8 text-[0.75rem] whitespace-nowrap text-white/80 sm:px-6 sm:text-[0.8rem] md:flex md:justify-end md:gap-6 lg:px-8 2xl:absolute 2xl:right-6 2xl:bottom-[9%] 2xl:w-auto 2xl:flex-col 2xl:items-end 2xl:gap-3 2xl:p-0"
       >
-        {figures.map(([n, label]) => (
-          <li key={label} className="flex items-baseline gap-2">
-            <span className="font-heading text-base font-bold text-white tabular-nums">{n}</span>
+        {figures.map(([n, label], i) => (
+          <li key={label} data-reveal="up" style={{ ["--rd" as string]: `${750 + i * 90}ms` }} className="flex items-baseline gap-2">
+            <span className="font-heading text-base font-bold text-white tabular-nums">
+              <CountUp value={n} />
+            </span>
             <span>{label}</span>
           </li>
         ))}
@@ -185,7 +192,7 @@ export default async function HomePage() {
       {elite && (
         <section aria-labelledby="elite-title" className="border-b bg-card/80 backdrop-blur-[2px]">
           <Container className="flex flex-col gap-4 py-6 lg:flex-row lg:items-center lg:gap-8">
-            <div className="shrink-0">
+            <div data-reveal="left" className="shrink-0">
               <h2 id="elite-title" className="font-heading text-2xl font-bold uppercase">
                 {elite.competition.name}
               </h2>
@@ -194,8 +201,8 @@ export default async function HomePage() {
               </p>
             </div>
             <ul className="-mx-4 flex snap-x gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 lg:flex-1 lg:justify-between">
-              {elite.teams.map((t) => (
-                <li key={t.id} className="shrink-0 snap-start">
+              {elite.teams.map((t, i) => (
+                <li key={t.id} data-reveal="zoom" style={{ ["--rd" as string]: `${i * 55}ms` }} className="shrink-0 snap-start">
                   <Link
                     href={`/clubs/${t.slug}`}
                     title={t.name}
@@ -230,26 +237,42 @@ export default async function HomePage() {
           />
           <div className="grid gap-8 lg:grid-cols-2">
             <MatchList title="Derniers résultats" rows={d.results} empty="Aucun résultat." />
-            <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé." />
+            <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé." from="right" />
           </div>
-          {d.table && d.table.tables[0] && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-heading text-2xl font-bold uppercase">Classement — {d.table.competition.name}</h3>
-                <Link href={`/competitions/${d.table.competition.slug}`} className="shrink-0 text-sm font-semibold text-primary hover:underline">
-                  Tout voir →
-                </Link>
-              </div>
-              <StandingsTable rows={d.table.tables[0].rows} />
-            </div>
-          )}
         </Container>
       </section>
+
+      {/* Classement du championnat d'élite */}
+      {standing && standing.tables[0] && (
+        <section aria-labelledby="classement-title" className="pb-12 sm:pb-14">
+          <Container className="flex flex-col gap-6">
+            <div data-reveal="up" className="flex flex-wrap items-end justify-between gap-4">
+              <div className="flex flex-col gap-2">
+                <h2 id="classement-title" className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
+                  Classement <span className="text-[var(--flag-green)]">{standing.competition.name}</span>
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Saison {seasonLabel(standing.competition.season)}
+                  {standing.competition.status === "DRAFT" && " · le championnat n'a pas encore commencé : classement à zéro, par ordre alphabétique"}
+                </p>
+              </div>
+              {standing.competition.status !== "DRAFT" && (
+                <PillLink href={`/competitions/${standing.competition.slug}`} variant="green">
+                  Calendrier et statistiques
+                </PillLink>
+              )}
+            </div>
+            {standing.tables.map((t) => (
+              <PaginatedStandings key={t.pool} rows={t.rows} title={t.pool ? `Poule ${t.pool}` : undefined} logos={Object.fromEntries(eliteLogos)} />
+            ))}
+          </Container>
+        </section>
+      )}
 
       {/* Actualités : mosaïque et fil d'infos */}
       <section className="pb-12 sm:pb-14">
         <Container className="flex flex-col gap-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div data-reveal="up" className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex flex-col gap-3">
               <h2 className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
                 Toutes les <span className="text-[var(--flag-green)]">actualités</span>
@@ -286,8 +309,8 @@ export default async function HomePage() {
           <NationalFixtures {...nationalGames} />
           {gallery.length > 0 && (
             <Carousel label="En images" tone="light">
-              {gallery.map((p) => (
-                <li key={p.id} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
+              {gallery.map((p, i) => (
+                <li key={p.id} data-reveal="up" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
                   <Link href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"} className="group relative block overflow-hidden rounded-2xl shadow-sm">
                     {/* eslint-disable-next-line @next/next/no-img-element -- image servie par la route des médias */}
                     <img src={photoUrl(p)} alt={p.caption} loading="lazy" className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
@@ -304,8 +327,8 @@ export default async function HomePage() {
             </Carousel>
           )}
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {NATIONAL_TEAMS.map((t) => (
-              <li key={t.slug}>
+            {NATIONAL_TEAMS.map((t, i) => (
+              <li key={t.slug} data-reveal="up" style={{ ["--rd" as string]: `${i * 70}ms` }}>
                 <Link
                   href={`/equipes-nationales/${t.slug}`}
                   className="group flex items-center justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"

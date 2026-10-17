@@ -32,14 +32,14 @@ const splitVenue = (venue: string | null) => {
 };
 
 /** Prochain match, façon affiche : date en bandeau rouge, journée, affiche, stade et heure. */
-function UpcomingCard({ row }: { row: Row }) {
+function UpcomingCard({ row, index }: { row: Row; index: number }) {
   const { f } = row;
   const venue = splitVenue(f.venue);
   const time = kickoffTime(f.kickoffAt);
   const [home, away] = f.isHome ? ["Congo", f.opponent] : [f.opponent, "Congo"];
   return (
-    <li>
-      <Link href={`/equipes-nationales/${row.teamSlug}`} className="group block overflow-hidden rounded-2xl bg-brand-ink text-white shadow-md transition-shadow hover:shadow-xl">
+    <li data-reveal="left" style={{ ["--rd" as string]: `${index * 120}ms` }}>
+      <Link href={`/equipes-nationales/${row.teamSlug}`} className="group block overflow-hidden rounded-2xl bg-brand-ink transition-transform duration-300 hover:-translate-y-1 text-white shadow-md transition-shadow hover:shadow-xl">
         <div className="flex items-center gap-3">
           <span className="shrink-0 whitespace-nowrap bg-[var(--flag-red)] px-4 py-2 font-heading text-lg font-bold uppercase [clip-path:polygon(0_0,100%_0,calc(100%-0.75rem)_100%,0_100%)] pr-6">
             {formatDayMonth(f.kickoffAt)}
@@ -71,14 +71,14 @@ function UpcomingCard({ row }: { row: Row }) {
 }
 
 /** Résultat : équipes de part et d'autre du score, date et lieu en dessous. */
-function ResultRow({ row }: { row: Row }) {
+function ResultRow({ row, index }: { row: Row; index: number }) {
   const { f } = row;
   const [homeGoals, awayGoals] = f.isHome ? [f.goalsFor, f.goalsAgainst] : [f.goalsAgainst, f.goalsFor];
   const outcome = f.goalsFor! > f.goalsAgainst! ? "V" : f.goalsFor === f.goalsAgainst ? "N" : "D";
   const tone = { V: "text-[var(--flag-green)]", N: "text-foreground", D: "text-[var(--flag-red)]" }[outcome];
   const venue = splitVenue(f.venue);
   return (
-    <li className="border-b py-4 last:border-b-0">
+    <li data-reveal="right" style={{ ["--rd" as string]: `${index * 120}ms` }} className="border-b py-4 last:border-b-0">
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 font-heading text-lg font-bold uppercase sm:text-xl">
         <span className="min-w-0 justify-self-end">
           <Team name={f.isHome ? "Congo" : f.opponent} flagAfter />
@@ -110,8 +110,8 @@ export function NationalFixtures({ played, upcoming }: Awaited<ReturnType<typeof
           <p className="py-4 text-sm text-muted-foreground">Aucun match programmé.</p>
         ) : (
           <ul className="mt-4 flex flex-col gap-4">
-            {upcoming.map((r) => (
-              <UpcomingCard key={r.f.id} row={r} />
+            {upcoming.map((r, i) => (
+              <UpcomingCard key={r.f.id} row={r} index={i} />
             ))}
           </ul>
         )}
@@ -122,8 +122,8 @@ export function NationalFixtures({ played, upcoming }: Awaited<ReturnType<typeof
           <p className="py-4 text-sm text-muted-foreground">Aucun résultat.</p>
         ) : (
           <ul className="rounded-b-xl bg-card/70 px-2">
-            {played.map((r) => (
-              <ResultRow key={r.f.id} row={r} />
+            {played.map((r, i) => (
+              <ResultRow key={r.f.id} row={r} index={i} />
             ))}
           </ul>
         )}

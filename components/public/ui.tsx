@@ -48,7 +48,7 @@ export function SectionHead({
 }) {
   return (
     <div className="grid gap-5 md:grid-cols-2 md:items-end">
-      <div className="flex flex-col gap-3">
+      <div data-reveal="left" className="flex flex-col gap-3">
         <h2 className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
           {title}
           {highlight && (
@@ -60,7 +60,7 @@ export function SectionHead({
         </h2>
       </div>
       {(aside || action) && (
-        <div className="flex flex-col items-start gap-4 md:max-w-sm md:justify-self-end">
+        <div data-reveal="right" className="flex flex-col items-start gap-4 md:max-w-sm md:justify-self-end">
           {aside && <p className={`text-sm ${tone === "dark" ? "text-white/70" : "text-muted-foreground"}`}>{aside}</p>}
           {action}
         </div>

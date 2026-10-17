@@ -19,9 +19,9 @@ function Cover({ a, className = "" }: { a: NewsItem; className?: string }) {
 }
 
 /** Grande vignette : photo pleine, rubrique en étiquette et titre sur un dégradé sombre. */
-function Tile({ a, className = "" }: { a: NewsItem; className?: string }) {
+function Tile({ a, className = "", index = 0 }: { a: NewsItem; className?: string; index?: number }) {
   return (
-    <li className={`min-h-60 ${className}`}>
+    <li data-reveal="up" style={{ ["--rd" as string]: `${index * 110}ms` }} className={`min-h-60 ${className}`}>
       <Link href={`/actualites/${a.slug}`} className="group relative flex h-full overflow-hidden rounded-xl bg-brand-ink shadow-sm">
         <Cover a={a} className="absolute inset-0 size-full transition-transform duration-500 ease-out group-hover:scale-[1.04]" />
         <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgb(0_0_0/0.82)_100%)]" />
@@ -37,7 +37,7 @@ function Tile({ a, className = "" }: { a: NewsItem; className?: string }) {
 /** Fil d'infos : date, rubrique, titre et vignette. */
 function Feed({ items }: { items: NewsItem[] }) {
   return (
-    <aside aria-labelledby="fil-infos" className="flex min-h-0 flex-col overflow-hidden rounded-xl bg-muted lg:h-full">
+    <aside data-reveal="right" style={{ ["--rd" as string]: "200ms" }} aria-labelledby="fil-infos" className="flex min-h-0 flex-col overflow-hidden rounded-xl bg-muted lg:h-full">
       <h3 id="fil-infos" className="px-5 pt-6 pb-2 font-heading text-2xl font-bold tracking-wide uppercase">
         Fil d&apos;infos
       </h3>
@@ -76,7 +76,7 @@ export function NewsMosaic({ items }: { items: NewsItem[] }) {
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-stretch">
       <ul className="grid auto-rows-[15rem] gap-5 sm:grid-cols-3 lg:auto-rows-[17.5rem]">
         {tiles.map((t, i) => (
-          <Tile key={t.id} a={t} className={i === 0 || i === 3 ? "sm:col-span-2" : ""} />
+          <Tile key={t.id} a={t} index={i} className={i === 0 || i === 3 ? "sm:col-span-2" : ""} />
         ))}
       </ul>
       {rest.length > 0 && (
