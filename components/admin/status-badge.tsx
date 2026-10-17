@@ -2,17 +2,35 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const TONES = {
-  ok: "bg-[color-mix(in_oklch,var(--flag-green)_15%,transparent)] text-[color-mix(in_oklch,var(--flag-green)_70%,black)]",
-  wait: "bg-[color-mix(in_oklch,var(--flag-yellow)_35%,transparent)] text-[color-mix(in_oklch,var(--flag-yellow)_30%,black)]",
-  bad: "bg-destructive/10 text-destructive",
-  neutral: "bg-muted text-muted-foreground",
+  ok: "admin-badge admin-badge-ok",
+  wait: "admin-badge admin-badge-wait",
+  bad: "admin-badge admin-badge-bad",
+  neutral: "admin-badge admin-badge-neutral",
 } as const;
 
 export type Tone = keyof typeof TONES;
 
-export function StatusBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
+/** Pastille de statut arrondie avec point coloré. */
+export function StatusBadge({
+  tone,
+  children,
+}: {
+  tone: Tone;
+  children: ReactNode;
+}) {
   return (
-    <span className={cn("inline-block rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide", TONES[tone])}>
+    <span className={cn(TONES[tone])}>
+      <span
+        aria-hidden
+        style={{
+          display: "inline-block",
+          width: 5,
+          height: 5,
+          borderRadius: "50%",
+          background: "currentColor",
+          flexShrink: 0,
+        }}
+      />
       {children}
     </span>
   );

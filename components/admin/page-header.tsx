@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
 
+/**
+ * En-tête de page standardisée pour l'espace admin.
+ * Design premium avec eyebrow, titre Oswald, description et zone d'actions.
+ */
 export function PageHeader({
   eyebrow,
   title,
@@ -12,32 +16,43 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="admin-page-header">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--flag-green)]">{eyebrow}</p>
-        <h1 className="mt-0.5 text-3xl font-bold md:text-4xl">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        <p className="admin-page-header-eyebrow">{eyebrow}</p>
+        <h1 className="admin-page-header-title">{title}</h1>
+        {description && (
+          <p className="admin-page-header-desc">{description}</p>
+        )}
       </div>
-      {actions && <div className="flex gap-2">{actions}</div>}
+      {actions && (
+        <div className="admin-page-header-actions">{actions}</div>
+      )}
     </div>
   );
 }
 
-/** Tableau lisible sur téléphone : défilement horizontal limité au tableau, pas à la page. */
-export function DataTable({ head, children }: { head: string[]; children: ReactNode }) {
+/**
+ * Tableau de données premium — défilement horizontal sur mobile,
+ * en-tête épinglé, rangées avec hover, bords arrondis.
+ */
+export function DataTable({
+  head,
+  children,
+}: {
+  head: string[];
+  children: ReactNode;
+}) {
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="border-b bg-muted text-xs uppercase tracking-wider text-muted-foreground">
+    <div className="admin-table-wrap">
+      <table className="admin-table">
+        <thead>
           <tr>
             {head.map((h) => (
-              <th key={h} className="px-3 py-2 font-semibold">
-                {h}
-              </th>
+              <th key={h}>{h}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y">{children}</tbody>
+        <tbody>{children}</tbody>
       </table>
     </div>
   );
