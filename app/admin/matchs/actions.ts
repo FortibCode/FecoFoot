@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { competitions, matchEvents, matches, matchLineups, matchOfficials, players, referees } from "@/lib/db/schema";
 import { isUniqueViolation } from "@/lib/queries/players";
 import { canEditMatchSheet, eligiblePlayers, recomputeMatch, refereeOf } from "@/lib/queries/competitions";
+import { suspendedPlayers } from "@/lib/queries/discipline";
 import { designationError, matchDay, OFFICIAL_ROLES } from "@/lib/referees";
 
 const matchPath = (id: number) => `/admin/matchs/${id}`;
@@ -155,6 +156,10 @@ export async function saveLineup(matchId: number, clubId: number, _state: Action
   const eligible = new Set((await eligiblePlayers(clubId, m.competition.season)).map((p) => p.id));
   const error = lineupError(entries, { eligible, kickoffAt: m.match.kickoffAt });
   if (error) return { error };
+  // Discipline (M18) : un joueur suspendu ne peut pas être aligné.
+  const suspended = await suspendedPlayers(clubId, m.competition.id);
+  const blocked = entries.filter((e) => suspended.has(e.playerId));
+  if (blocked.length > 0) return { error: `${blocked.length} joueur(s) suspendu(s) ne peuvent pas figurer sur la feuille de match.` };
 
   await db.transaction(async (tx) => {
     await tx.delete(matchLineups).where(and(eq(matchLineups.matchId, matchId), eq(matchLineups.clubId, clubId)));

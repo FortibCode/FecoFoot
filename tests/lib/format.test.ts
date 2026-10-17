@@ -44,3 +44,12 @@ describe("Champs facultatifs de formulaire", () => {
     expect(blankToNull("2027-06-30")).toBe("2027-06-30");
   });
 });
+
+describe("Drapeaux des adversaires", () => {
+  it("retrouve le drapeau sans tenir compte des accents ni de la casse", async () => {
+    const { flagUrl } = await import("@/lib/flags");
+    expect(flagUrl("Namibie")).toBe("/flags/na.svg");
+    expect(flagUrl(" CAMEROUN ")).toBe("/flags/cm.svg");
+    expect(flagUrl("Atlantide")).toBeNull();
+  });
+});

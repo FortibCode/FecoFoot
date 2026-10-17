@@ -28,6 +28,16 @@ export async function getFile(key: string): Promise<Buffer> {
   return readFile(resolveKey(key));
 }
 
+/** Comme getFile, mais null si le fichier n'existe pas (base et stockage désynchronisés) : la route répond 404. */
+export async function getFileOrNull(key: string): Promise<Buffer | null> {
+  try {
+    return await getFile(key);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw e;
+  }
+}
+
 export async function deleteFile(key: string): Promise<void> {
   await rm(resolveKey(key), { force: true });
 }

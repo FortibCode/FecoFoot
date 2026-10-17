@@ -17,6 +17,7 @@ import { DOCUMENT_TYPES, LICENSE_REQUIRED_DOCUMENTS } from "@/lib/documents";
 import { hasDocuments } from "@/lib/queries/documents";
 import { loadLicenseFor, validConsentExists } from "@/lib/queries/players";
 import { applyLicenseAction } from "../actions";
+import { payLicenseFee } from "../payment-actions";
 import { ActionForm } from "@/components/admin/action-form";
 
 export const metadata: Metadata = { title: "Licence — FECOFOOT" };
@@ -35,6 +36,7 @@ export default async function LicensePage({ params }: PageProps<"/admin/licences
     hasDocuments("player", player.id, LICENSE_REQUIRED_DOCUMENTS),
   ]);
   const canDecide = can(user.role, "licenses.validate") && status !== "EXPIRED";
+  const canPayOnline = status === "PENDING" && license.feeAmount > 0;
   const act = (a: Parameters<typeof applyLicenseAction>[1]) => applyLicenseAction.bind(null, license.id, a);
 
   const checks = [
@@ -98,6 +100,18 @@ export default async function LicensePage({ params }: PageProps<"/admin/licences
               </li>
             ))}
           </ul>
+
+          {canPayOnline && (
+            <div className="mt-2 flex flex-col gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wider">Payer par Mobile Money</h2>
+              <ActionForm
+                action={payLicenseFee.bind(null, license.id)}
+                label={`Payer ${formatFcfa(license.feeAmount)}`}
+                variant="default"
+                field={{ name: "phone", label: "Numéro Airtel Money ou MTN MoMo", required: true }}
+              />
+            </div>
+          )}
 
           {canDecide && (
             <div className="mt-2 flex flex-col gap-3">

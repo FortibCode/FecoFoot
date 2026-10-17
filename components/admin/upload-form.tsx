@@ -12,7 +12,8 @@ export function UploadForm({
   label,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
-  type: DocumentType;
+  /** Type de pièce (documents des joueurs et clubs) ; absent pour un simple visuel. */
+  type?: DocumentType;
   accept: string;
   label: string;
 }) {
@@ -20,7 +21,7 @@ export function UploadForm({
 
   return (
     <form {...formProps} className="flex flex-col gap-1">
-      <input type="hidden" name="type" value={type} />
+      {type && <input type="hidden" name="type" value={type} />}
       <div className="flex items-center gap-2">
         <input
           type="file"

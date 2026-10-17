@@ -16,6 +16,7 @@ describe("Matrice des droits (§3.3)", () => {
     ["ticketing.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "TICKETING"]],
     ["refereeing.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "REFEREEING"]],
     ["players.read", ["SUPER_ADMIN", "FEDERATION_ADMIN", "LEAGUE", "CLUB", "DTN"]],
+    ["discipline.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "DISCIPLINE"]],
   ];
 
   it.each(cases)("%s est réservé à %j", (permission, allowed) => {

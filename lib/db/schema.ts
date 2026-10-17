@@ -21,6 +21,12 @@ import { TRANSFER_STATUSES, TRANSFER_TYPES } from "../transfers";
 import { COMPETITION_STATUSES, COMPETITION_TYPES, EVENT_TYPES, GENDERS, MATCH_STATUSES } from "../competitions";
 import { OFFICIAL_ROLES, REFEREE_GRADES } from "../referees";
 import { FIXTURE_STATUSES, NATIONAL_TEAM_CODES, SELECTION_STATUSES } from "../national-teams";
+import { ID_DOCUMENT_TYPES, MEMBERSHIP_TIERS } from "../supporters";
+import { PAYMENT_METHODS, PAYMENT_PURPOSES, PAYMENT_STATUSES } from "../payments-rules";
+import { EVENT_KINDS, ORDER_CHANNELS, ORDER_STATUSES, SALES_STATUSES, TICKET_STATUSES } from "../ticketing";
+import { ACCREDITATION_STATUSES, PRESS_ROLES, PRESS_ZONES } from "../accreditations";
+import { ARTICLE_CATEGORIES } from "../articles";
+import { CASE_STATUSES, SANCTION_TYPES } from "../discipline";
 import { CATEGORIES, CONSENT_STATUSES, LICENSE_STATUSES, LICENSE_TYPES, POSITIONS } from "../licenses";
 
 // ─── Sécurité ────────────────────────────────────────────────────────────────
@@ -431,6 +437,8 @@ export const competitions = pgTable(
     pointsWin: integer("points_win").notNull().default(3),
     pointsDraw: integer("points_draw").notNull().default(1),
     pointsLoss: integer("points_loss").notNull().default(0),
+    // Cartons jaunes entraînant une suspension automatique (M18).
+    yellowCardThreshold: integer("yellow_card_threshold").notNull().default(3),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("competitions_slug_uq").on(t.slug), index("competitions_season_idx").on(t.season)],
@@ -668,6 +676,404 @@ export const nationalFixtures = pgTable(
   (t) => [index("national_fixtures_team_idx").on(t.teamId, t.kickoffAt)],
 );
 
+// ─── Paiements Mobile Money (M16) ────────────────────────────────────────────
+
+export const paymentMethodEnum = pgEnum("payment_method", PAYMENT_METHODS);
+export const paymentStatusEnum = pgEnum("payment_status", PAYMENT_STATUSES);
+export const paymentPurposeEnum = pgEnum("payment_purpose", PAYMENT_PURPOSES);
+
+/** Encaissements (adhésions, billets, droits de licence) : une ligne par demande de paiement. */
+export const payments = pgTable(
+  "payments",
+  {
+    id: serial("id").primaryKey(),
+    // Référence transmise à l'opérateur et affichée au payeur.
+    reference: varchar("reference", { length: 32 }).notNull(),
+    purpose: paymentPurposeEnum("purpose").notNull(),
+    // Objet payé (adhésion, commande…), selon `purpose`.
+    targetId: integer("target_id").notNull(),
+    method: paymentMethodEnum("method").notNull(),
+    phone: varchar("phone", { length: 16 }).notNull(),
+    // Supporter payeur (paiement en ligne) ; null pour un encaissement au guichet.
+    supporterId: integer("supporter_id"),
+    // Compte de l'espace fédéral à l'origine du paiement (droits de licence payés par un club).
+    userId: integer("user_id"),
+    // Montant en FCFA, sans décimale (RG-17).
+    amount: integer("amount").notNull(),
+    status: paymentStatusEnum("status").notNull().default("PENDING"),
+    providerRef: varchar("provider_ref", { length: 64 }),
+    failureReason: text("failure_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("payments_reference_uq").on(t.reference),
+    index("payments_target_idx").on(t.purpose, t.targetId),
+    index("payments_supporter_idx").on(t.supporterId),
+  ],
+);
+
+// ─── Supporters : Fan ID et club des supporters (M11) ────────────────────────
+
+export const fanIdSeq = pgSequence("fan_id_seq", { startWith: 1 });
+export const idDocumentTypeEnum = pgEnum("id_document_type", ID_DOCUMENT_TYPES);
+export const membershipTierEnum = pgEnum("membership_tier", MEMBERSHIP_TIERS);
+export const membershipStatusEnum = pgEnum("membership_status", ["PENDING", "ACTIVE", "CANCELLED"]);
+
+export const supporters = pgTable(
+  "supporters",
+  {
+    id: serial("id").primaryKey(),
+    fanId: varchar("fan_id", { length: 16 }).notNull(),
+    lastName: varchar("last_name", { length: 80 }).notNull(),
+    firstName: varchar("first_name", { length: 80 }).notNull(),
+    birthDate: date("birth_date", { mode: "date" }).notNull(),
+    // Téléphone Mobile Money au format +242…, identifiant de connexion (EF-SUP-01).
+    phone: varchar("phone", { length: 16 }).notNull(),
+    email: varchar("email", { length: 255 }),
+    passwordHash: text("password_hash").notNull(),
+    idDocumentType: idDocumentTypeEnum("id_document_type").notNull(),
+    idDocumentNumber: varchar("id_document_number", { length: 40 }).notNull(),
+    // Photo d'identité (exigée avant le premier achat en ligne) et pièce vérifiée au guichet (EF-SUP-08).
+    photoKey: varchar("photo_key", { length: 120 }),
+    photoType: varchar("photo_type", { length: 32 }),
+    idVerifiedAt: timestamp("id_verified_at", { withTimezone: true }),
+    consentAt: timestamp("consent_at", { withTimezone: true }).notNull(),
+    // Interdiction de stade (EF-SUP-07, RG-14).
+    banned: boolean("banned").notNull().default(false),
+    banReason: text("ban_reason"),
+    bannedAt: timestamp("banned_at", { withTimezone: true }),
+    bannedBy: integer("banned_by").references(() => users.id),
+    failedLoginCount: integer("failed_login_count").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    sessionVersion: integer("session_version").notNull().default(1),
+    // Créé au guichet par un agent (EF-BIL-08) plutôt qu'en ligne.
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("supporters_fan_id_uq").on(t.fanId),
+    uniqueIndex("supporters_phone_uq").on(t.phone),
+    uniqueIndex("supporters_id_document_uq").on(t.idDocumentType, t.idDocumentNumber),
+    index("supporters_name_idx").on(t.lastName, t.firstName),
+  ],
+);
+
+/** Formules d'adhésion au club des supporters, par saison (prix fixés par la billetterie). */
+export const membershipPlans = pgTable(
+  "membership_plans",
+  {
+    id: serial("id").primaryKey(),
+    season: integer("season").notNull(),
+    tier: membershipTierEnum("tier").notNull(),
+    price: integer("price").notNull(),
+    open: boolean("open").notNull().default(true),
+  },
+  (t) => [uniqueIndex("membership_plans_uq").on(t.season, t.tier)],
+);
+
+export const memberships = pgTable(
+  "memberships",
+  {
+    id: serial("id").primaryKey(),
+    supporterId: integer("supporter_id")
+      .notNull()
+      .references(() => supporters.id),
+    season: integer("season").notNull(),
+    tier: membershipTierEnum("tier").notNull(),
+    price: integer("price").notNull(),
+    status: membershipStatusEnum("status").notNull().default("PENDING"),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Une seule adhésion active par saison.
+    uniqueIndex("memberships_active_uq")
+      .on(t.supporterId, t.season)
+      .where(sql`${t.status} = 'ACTIVE'`),
+    index("memberships_supporter_idx").on(t.supporterId),
+  ],
+);
+
+/** Registre des points de fidélité (RG-15) : chaque point est tracé avec son motif. */
+export const supporterPoints = pgTable(
+  "supporter_points",
+  {
+    id: serial("id").primaryKey(),
+    supporterId: integer("supporter_id")
+      .notNull()
+      .references(() => supporters.id),
+    points: integer("points").notNull(),
+    reason: varchar("reason", { length: 32 }).notNull(),
+    // Objet à l'origine des points (adhésion, match fréquenté…) : pas de double attribution.
+    refId: integer("ref_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("supporter_points_uq").on(t.supporterId, t.reason, t.refId)],
+);
+
+// ─── Billetterie (M10) et contrôle d'accès (M12) ─────────────────────────────
+
+export const salesStatusEnum = pgEnum("sales_status", SALES_STATUSES);
+export const eventKindEnum = pgEnum("ticket_event_kind", EVENT_KINDS);
+export const orderChannelEnum = pgEnum("order_channel", ORDER_CHANNELS);
+export const orderStatusEnum = pgEnum("order_status", ORDER_STATUSES);
+export const ticketStatusEnum = pgEnum("ticket_status", TICKET_STATUSES);
+export const ticketNumberSeq = pgSequence("ticket_number_seq", { startWith: 1 });
+
+export const ticketEvents = pgTable(
+  "ticket_events",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 180 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    kind: eventKindEnum("kind").notNull(),
+    venue: varchar("venue", { length: 160 }).notNull(),
+    kickoffAt: timestamp("kickoff_at", { withTimezone: true }).notNull(),
+    salesStatus: salesStatusEnum("sales_status").notNull().default("DRAFT"),
+    // Plafond par Fan ID (RG-10) et points de présence (RG-15), paramétrables par match.
+    maxTicketsPerFan: integer("max_tickets_per_fan").notNull().default(4),
+    attendancePoints: integer("attendance_points").notNull().default(1),
+    // Débit d'entrées par porte au-delà duquel la porte est signalée saturée (EF-CTL-07).
+    gateFlowLimit: integer("gate_flow_limit").notNull().default(30),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("ticket_events_slug_uq").on(t.slug), index("ticket_events_kickoff_idx").on(t.kickoffAt)],
+);
+
+/** Tribunes : prix public, prix membre, capacité, porte d'accès (EF-BIL-02). */
+export const ticketCategories = pgTable(
+  "ticket_categories",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => ticketEvents.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 80 }).notNull(),
+    gate: varchar("gate", { length: 40 }).notNull(),
+    capacity: integer("capacity").notNull(),
+    publicPrice: integer("public_price").notNull(),
+    memberPrice: integer("member_price").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [index("ticket_categories_event_idx").on(t.eventId)],
+);
+
+export const ticketOrders = pgTable(
+  "ticket_orders",
+  {
+    id: serial("id").primaryKey(),
+    reference: varchar("reference", { length: 24 }).notNull(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => ticketEvents.id),
+    // L'acheteur a toujours un Fan ID, y compris au guichet (EF-BIL-08).
+    supporterId: integer("supporter_id")
+      .notNull()
+      .references(() => supporters.id),
+    channel: orderChannelEnum("channel").notNull(),
+    status: orderStatusEnum("status").notNull().default("PENDING"),
+    total: integer("total").notNull(),
+    // Réservation des places pendant le paiement (EF-BIL-06).
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    // Agent du guichet (EF-BIL-08, clôture de caisse EF-BIL-12).
+    soldBy: integer("sold_by").references(() => users.id),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    refundedBy: integer("refunded_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ticket_orders_reference_uq").on(t.reference),
+    index("ticket_orders_event_idx").on(t.eventId, t.status),
+    index("ticket_orders_supporter_idx").on(t.supporterId, t.eventId),
+  ],
+);
+
+export const tickets = pgTable(
+  "tickets",
+  {
+    id: serial("id").primaryKey(),
+    number: varchar("number", { length: 16 }).notNull(),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => ticketOrders.id),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => ticketEvents.id),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => ticketCategories.id),
+    // Billet nominatif (EF-BIL-04) : le 1er au nom de l'acheteur, les suivants à des porteurs nommés.
+    holderName: varchar("holder_name", { length: 160 }).notNull(),
+    holderSupporterId: integer("holder_supporter_id").references(() => supporters.id),
+    price: integer("price").notNull(),
+    // Jeton du QR code présenté à l'entrée.
+    token: varchar("token", { length: 64 }).notNull(),
+    status: ticketStatusEnum("status").notNull().default("RESERVED"),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    usedGate: varchar("used_gate", { length: 40 }),
+    scannedBy: integer("scanned_by").references(() => users.id),
+  },
+  (t) => [
+    uniqueIndex("tickets_number_uq").on(t.number),
+    uniqueIndex("tickets_token_uq").on(t.token),
+    index("tickets_category_status_idx").on(t.categoryId, t.status),
+    index("tickets_event_status_idx").on(t.eventId, t.status),
+    index("tickets_order_idx").on(t.orderId),
+  ],
+);
+
+/** Contrôles refusés, tracés (EF-AUD-01 : « scans refusés »). */
+export const scanRefusals = pgTable(
+  "scan_refusals",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => ticketEvents.id, { onDelete: "cascade" }),
+    reason: varchar("reason", { length: 24 }).notNull(),
+    ticketId: integer("ticket_id"),
+    gate: varchar("gate", { length: 40 }),
+    scannedBy: integer("scanned_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("scan_refusals_event_idx").on(t.eventId)],
+);
+
+// ─── Accréditations médias (M13) ─────────────────────────────────────────────
+
+export const accreditationNumberSeq = pgSequence("accreditation_number_seq", { startWith: 1 });
+export const pressRoleEnum = pgEnum("press_role", PRESS_ROLES);
+export const pressZoneEnum = pgEnum("press_zone", PRESS_ZONES);
+export const accreditationStatusEnum = pgEnum("accreditation_status", ACCREDITATION_STATUSES);
+
+export const accreditations = pgTable(
+  "accreditations",
+  {
+    id: serial("id").primaryKey(),
+    number: varchar("number", { length: 16 }).notNull(),
+    // Le match (événement du stade) concerné : un badge n'est valable que pour lui (RG-16).
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => ticketEvents.id),
+    lastName: varchar("last_name", { length: 80 }).notNull(),
+    firstName: varchar("first_name", { length: 80 }).notNull(),
+    phone: varchar("phone", { length: 16 }).notNull(),
+    email: varchar("email", { length: 255 }),
+    outlet: varchar("outlet", { length: 160 }).notNull(),
+    role: pressRoleEnum("role").notNull(),
+    pressCardNumber: varchar("press_card_number", { length: 40 }).notNull(),
+    requestedZones: pressZoneEnum("requested_zones").array().notNull(),
+    grantedZones: pressZoneEnum("granted_zones").array(),
+    status: accreditationStatusEnum("status").notNull().default("PENDING"),
+    decisionReason: text("decision_reason"),
+    decidedBy: integer("decided_by").references(() => users.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    // Lien de suivi remis au demandeur (empreinte seule) et jeton du QR code du badge.
+    trackingHash: varchar("tracking_hash", { length: 64 }).notNull(),
+    badgeToken: varchar("badge_token", { length: 64 }).notNull(),
+    entries: integer("entries").notNull().default(0),
+    lastEntryAt: timestamp("last_entry_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("accreditations_number_uq").on(t.number),
+    // Une demande par téléphone et par match (EF-MED-02).
+    uniqueIndex("accreditations_event_phone_uq").on(t.eventId, t.phone),
+    uniqueIndex("accreditations_tracking_uq").on(t.trackingHash),
+    uniqueIndex("accreditations_badge_uq").on(t.badgeToken),
+    index("accreditations_event_status_idx").on(t.eventId, t.status),
+  ],
+);
+
+/** Quotas par zone et par match (EF-MED-05). */
+export const accreditationQuotas = pgTable(
+  "accreditation_quotas",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => ticketEvents.id, { onDelete: "cascade" }),
+    zone: pressZoneEnum("zone").notNull(),
+    quota: integer("quota").notNull(),
+  },
+  (t) => [uniqueIndex("accreditation_quotas_uq").on(t.eventId, t.zone)],
+);
+
+// ─── Actualités et communiqués (M14) ─────────────────────────────────────────
+
+export const articleCategoryEnum = pgEnum("article_category", ARTICLE_CATEGORIES);
+export const articleStatusEnum = pgEnum("article_status", ["DRAFT", "PUBLISHED"]);
+
+export const articles = pgTable(
+  "articles",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 200 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    // Chapô : résumé affiché dans les listes et pour le partage sur les réseaux sociaux.
+    summary: varchar("summary", { length: 400 }).notNull(),
+    // Texte enrichi simple (lib/articles.ts).
+    body: text("body").notNull(),
+    category: articleCategoryEnum("category").notNull(),
+    status: articleStatusEnum("status").notNull().default("DRAFT"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    // Visuel de couverture (stockage des fichiers), servi publiquement une fois l'article publié.
+    coverKey: varchar("cover_key", { length: 200 }),
+    coverType: varchar("cover_type", { length: 32 }),
+    authorId: integer("author_id").references(() => users.id),
+    // Article repris de l'ancien site fecofoot.cg : adresse d'origine, pour ne jamais l'importer deux fois.
+    sourceUrl: varchar("source_url", { length: 500 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("articles_slug_uq").on(t.slug),
+    uniqueIndex("articles_source_uq").on(t.sourceUrl),
+    index("articles_published_idx").on(t.status, t.publishedAt),
+  ],
+);
+
+// ─── Discipline (M18) ────────────────────────────────────────────────────────
+
+export const disciplineCaseSeq = pgSequence("discipline_case_seq", { startWith: 1 });
+export const caseStatusEnum = pgEnum("discipline_case_status", CASE_STATUSES);
+export const sanctionTypeEnum = pgEnum("sanction_type", SANCTION_TYPES);
+
+/** Dossiers de la commission de discipline : faits, décision, sanction, publication (EF-DIS-01). */
+export const disciplineCases = pgTable(
+  "discipline_cases",
+  {
+    id: serial("id").primaryKey(),
+    number: varchar("number", { length: 20 }).notNull(),
+    competitionId: integer("competition_id").references(() => competitions.id),
+    matchId: integer("match_id").references(() => matches.id),
+    playerId: integer("player_id").references(() => players.id),
+    clubId: integer("club_id").references(() => clubs.id),
+    facts: text("facts").notNull(),
+    hearingAt: timestamp("hearing_at", { withTimezone: true }),
+    status: caseStatusEnum("status").notNull().default("OPEN"),
+    decision: text("decision"),
+    sanctionType: sanctionTypeEnum("sanction_type"),
+    suspensionMatches: integer("suspension_matches"),
+    suspensionUntil: date("suspension_until", { mode: "date" }),
+    // Montant en FCFA (RG-17).
+    fineAmount: integer("fine_amount"),
+    pointsDeducted: integer("points_deducted"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: integer("decided_by").references(() => users.id),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("discipline_cases_number_uq").on(t.number),
+    index("discipline_cases_player_idx").on(t.playerId),
+    index("discipline_cases_status_idx").on(t.status),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type League = typeof leagues.$inferSelect;
 export type Club = typeof clubs.$inferSelect;
@@ -679,3 +1085,29 @@ export type Transfer = typeof transfers.$inferSelect;
 export type Competition = typeof competitions.$inferSelect;
 export type Match = typeof matches.$inferSelect;
 export type Referee = typeof referees.$inferSelect;
+export type Supporter = typeof supporters.$inferSelect;
+export type Payment = typeof payments.$inferSelect;
+
+// ─── Photothèque (M14) ───────────────────────────────────────────────────────
+
+/** Photos officielles (sélections, matchs, entraînements) affichées sur le portail. */
+export const photos = pgTable(
+  "photos",
+  {
+    id: serial("id").primaryKey(),
+    // Sélection nationale concernée ; null pour une photo générale.
+    teamId: integer("team_id").references(() => nationalTeams.id),
+    caption: varchar("caption", { length: 200 }).notNull().default(""),
+    credit: varchar("credit", { length: 120 }).notNull().default("Équipe nationale du Congo"),
+    storageKey: varchar("storage_key", { length: 200 }).notNull(),
+    mimeType: varchar("mime_type", { length: 32 }).notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    published: boolean("published").notNull().default(true),
+    // Mise en avant dans le bandeau de la page d'accueil (la plus récente l'emporte).
+    featured: boolean("featured").notNull().default(false),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("photos_team_idx").on(t.teamId, t.published), index("photos_featured_idx").on(t.featured, t.published)],
+);

@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { documents } from "@/lib/db/schema";
 import { canViewDocument } from "@/lib/queries/documents";
-import { getFile } from "@/lib/storage";
+import { getFileOrNull } from "@/lib/storage";
 
 /** Consultation d'une pièce : réservée aux personnes ayant accès au joueur ou au club concerné. */
 export async function GET(_request: Request, ctx: RouteContext<"/admin/documents/[id]">) {
@@ -15,7 +15,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/documents
   // Même réponse pour « inexistant » et « interdit » : on ne révèle pas l'existence d'une pièce.
   if (!doc || !(await canViewDocument(user, doc))) return new Response("Introuvable", { status: 404 });
 
-  const bytes = await getFile(doc.storageKey);
+  const bytes = await getFileOrNull(doc.storageKey);
+  if (!bytes) return new Response("Introuvable", { status: 404 });
   return new Response(new Uint8Array(bytes), {
     headers: {
       "Content-Type": doc.contentType,

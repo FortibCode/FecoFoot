@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { admin, button, createClub, createUser, e2eEmail, formAlert, login, logout, RUN } from "./helpers";
 
 /** Transfert définitif : la ligue instruit, la fédération approuve, la licence de la saison est close (M06, RG-06). */

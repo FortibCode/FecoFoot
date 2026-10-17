@@ -40,6 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+!.env.production.example
 
 # playwright
 /test-results/
@@ -47,3 +48,6 @@ next-env.d.ts
 
 # fichiers téléversés (stockage local de développement)
 /uploads/
+
+# sauvegardes locales
+/backups/

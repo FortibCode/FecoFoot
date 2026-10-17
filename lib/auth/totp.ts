@@ -83,7 +83,9 @@ export function otpauthUri(secret: string, account: string, issuer = "FECOFOOT")
  * Profils pour lesquels la double authentification est obligatoire (EF-AUT-05 : profils fédéraux
  * et billetterie). Réglable par TWO_FACTOR_REQUIRED_ROLES (liste séparée par des virgules, vide = aucun).
  */
-export function twoFactorRequired(role: string, setting = process.env.TWO_FACTOR_REQUIRED_ROLES): boolean {
-  const roles = (setting ?? "SUPER_ADMIN,FEDERATION_ADMIN,TICKETING").split(",").map((r) => r.trim()).filter(Boolean);
+export const DEFAULT_TWO_FACTOR_ROLES = "SUPER_ADMIN,FEDERATION_ADMIN,TICKETING";
+
+export function twoFactorRequired(role: string, setting = process.env.TWO_FACTOR_REQUIRED_ROLES ?? DEFAULT_TWO_FACTOR_ROLES): boolean {
+  const roles = setting.split(",").map((r) => r.trim()).filter(Boolean);
   return roles.includes(role);
 }

@@ -10,6 +10,7 @@ import { matches, matchLineups } from "@/lib/db/schema";
 import { formatDateTime, isPast } from "@/lib/format";
 import { POSITION_LABELS } from "@/lib/licenses";
 import { eligiblePlayers, matchQuery } from "@/lib/queries/competitions";
+import { suspendedPlayers } from "@/lib/queries/discipline";
 import { saveLineup } from "../../../actions";
 import { LineupForm } from "./LineupForm";
 
@@ -26,9 +27,10 @@ export default async function LineupPage({ params }: PageProps<"/admin/matchs/[i
   const own = can(user.role, "lineups.submit") && user.clubId === clubId;
   if (!own && !can(user.role, "competitions.manage")) redirect("/admin/acces-refuse");
 
-  const [eligible, current] = await Promise.all([
+  const [eligible, current, suspended] = await Promise.all([
     eligiblePlayers(clubId, row.competition.season),
     db.select().from(matchLineups).where(and(eq(matchLineups.matchId, matchId), eq(matchLineups.clubId, clubId))),
+    suspendedPlayers(clubId, row.competition.id),
   ]);
   const byPlayer = new Map(current.map((l) => [l.playerId, l]));
   const team = row.match.homeClubId === clubId ? row.home : row.away;
@@ -57,6 +59,7 @@ export default async function LineupPage({ params }: PageProps<"/admin/matchs/[i
               selected: byPlayer.has(pl.id),
               starter: byPlayer.get(pl.id)?.starter ?? false,
               shirtNumber: byPlayer.get(pl.id)?.shirtNumber ?? null,
+              suspended: suspended.get(pl.id) ?? null,
             }))}
         />
       )}

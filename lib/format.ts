@@ -16,6 +16,23 @@ const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, day: "2-digit",
 export const formatDateTime = (d: Date | null | undefined) => (d ? dateTimeFmt.format(d) : "—");
 export const formatDate = (d: Date | null | undefined) => (d ? dateFmt.format(d) : "—");
 
+const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+const dayMonthFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, day: "numeric", month: "long" });
+const longDateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, day: "numeric", month: "long", year: "numeric" });
+
+/** Heure à Brazzaville (« 20:00 »), ou null si l'heure n'est pas connue (saisie à minuit). */
+export function kickoffTime(d: Date): string | null {
+  const t = timeFmt.format(d);
+  return t === "00:00" ? null : t.replace(":", "h");
+}
+/** « 13 novembre ». */
+export const formatDayMonth = (d: Date) => dayMonthFmt.format(d);
+/** « 29 septembre 2026 », suivi de l'heure si elle est connue. */
+export function formatMatchDate(d: Date): string {
+  const t = kickoffTime(d);
+  return t ? `${longDateFmt.format(d)} · ${t}` : longDateFmt.format(d);
+}
+
 /** Montant entier en francs CFA, sans décimale : 25 000 FCFA. */
 export function formatFcfa(amount: number): string {
   return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(amount))} FCFA`;

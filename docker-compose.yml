@@ -1,0 +1,71 @@
+# Déploiement FECOFOOT : base PostgreSQL 16, migrations, application, sauvegardes quotidiennes.
+# Variables : fichier .env.production (modèle : .env.production.example). Voir DEPLOIEMENT.md.
+# Le HTTPS est assuré par un proxy inverse placé devant (Caddy, Nginx…) — ENF-09.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fecofoot
+      POSTGRES_USER: fecofoot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?à définir dans .env.production}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fecofoot -d fecofoot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build: { context: ., target: migrator }
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgres://fecofoot:${POSTGRES_PASSWORD}@db:5432/fecofoot
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  app:
+    build: { context: ., target: runner }
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgres://fecofoot:${POSTGRES_PASSWORD}@db:5432/fecofoot
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # Sauvegarde quotidienne à 02:00 (heure de Brazzaville), conservée 30 jours (ENF-06).
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://fecofoot:${POSTGRES_PASSWORD}@db:5432/fecofoot
+      BACKUP_DIR: /backups
+      UPLOAD_DIR: /data/uploads
+      BACKUP_RETENTION_DAYS: "30"
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-1825}
+      TZ: Africa/Brazzaville
+    volumes:
+      - ./ops:/ops:ro
+      - uploads:/data/uploads:ro
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        while true; do
+          sleep $$(( ( $$(date -d 'tomorrow 02:00' +%s) - $$(date +%s) ) % 86400 ))
+          /ops/backup.sh /backups || echo "ÉCHEC de la sauvegarde $$(date)" >&2
+          sleep 60
+        done
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  db-data:
+  uploads:

@@ -4,9 +4,10 @@ import { notFound } from "next/navigation";
 import { PublicShell } from "@/components/public/public-shell";
 import { db } from "@/lib/db";
 import { nationalTeams } from "@/lib/db/schema";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatMatchDate } from "@/lib/format";
 import { POSITION_LABELS } from "@/lib/licenses";
 import { calledPlayers, teamPage } from "@/lib/queries/national";
+import { photoUrl, teamPhotos } from "@/lib/photos";
 
 async function load(slug: string) {
   const [t] = await db.select().from(nationalTeams).where(eq(nationalTeams.slug, slug)).limit(1);
@@ -24,7 +25,7 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
   if (!data) notFound();
   const { team, staff, fixtures, selections } = data;
   const latest = selections[0];
-  const list = latest ? await calledPlayers(latest.id) : [];
+  const [list, gallery] = await Promise.all([latest ? calledPlayers(latest.id) : [], teamPhotos(team.id)]);
 
   return (
     <PublicShell eyebrow="Équipes nationales" title={team.name} wide>
@@ -71,7 +72,7 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
               {fixtures.map((f) => (
                 <li key={f.id} className="px-3 py-2">
                   <p className="text-xs text-muted-foreground">
-                    {formatDateTime(f.kickoffAt)}
+                    {formatMatchDate(f.kickoffAt)}
                     {f.competition && ` · ${f.competition}`}
                   </p>
                   <p className="font-medium">
@@ -88,6 +89,28 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
           </section>
         </div>
       </div>
+
+      {gallery.length > 0 && (
+        <section id="photos" aria-labelledby="photos-title" className="mt-12 flex scroll-mt-6 flex-col gap-4">
+          <h2 id="photos-title" className="text-2xl font-bold uppercase">
+            En images <span className="text-base font-normal normal-case text-muted-foreground">· {gallery.length} photo(s)</span>
+          </h2>
+          {/* Mosaïque : chaque photo garde ses proportions (portrait ou paysage). */}
+          <ul className="columns-2 gap-3 sm:columns-3 [&>li]:mb-3">
+            {gallery.map((p) => (
+              <li key={p.id} className="break-inside-avoid">
+                <figure className="overflow-hidden rounded-xl border bg-card">
+                  <a href={photoUrl(p)} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- image servie par la route des médias */}
+                    <img src={photoUrl(p)} alt={p.caption} width={p.width} height={p.height} loading="lazy" className="h-auto w-full" />
+                  </a>
+                  {p.caption && <figcaption className="px-3 py-2 text-xs text-muted-foreground">{p.caption} · © {p.credit}</figcaption>}
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </PublicShell>
   );
 }

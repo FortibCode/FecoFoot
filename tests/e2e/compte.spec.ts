@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { extractLink, latestNotification } from "./db";
 import { admin, button, createUser, e2eEmail, formAlert, formStatus, login, logout } from "./helpers";
 

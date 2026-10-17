@@ -14,6 +14,10 @@ const PUBLIC_ACTIONS = new Set([
   "requestPasswordReset", // mot de passe oublié
   "resetPassword", // lien de réinitialisation
   "answerConsent", // accord en ligne du joueur / tuteur (lien personnel)
+  "registerSupporter", // création d'un Fan ID en ligne
+  "loginSupporter",
+  "logoutSupporter",
+  "requestAccreditation", // demande d'accréditation d'un journaliste (sans compte)
 ]);
 
 function serverActionFiles(dir: string): string[] {
@@ -44,8 +48,8 @@ describe("Actions serveur : contrôle d'accès systématique (ENF-11)", () => {
       const [body, name] = match;
       it(`${name} contrôle l'accès`, () => {
         if (PUBLIC_ACTIONS.has(name)) return;
-        expect(body, `${name} doit appeler requireUser / requirePermission / requireAnyPermission`).toMatch(
-          /require(User|Permission|AnyPermission)\(/,
+        expect(body, `${name} doit appeler requireUser / requirePermission / requireAnyPermission / requireSupporter`).toMatch(
+          /require(User|Permission|AnyPermission|Supporter)\(/,
         );
       });
     }

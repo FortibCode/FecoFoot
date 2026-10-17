@@ -1,0 +1,86 @@
+# Intégration continue (cahier des charges §8.2) : à chaque push et demande de fusion,
+# vérification des types, lint, tests unitaires, construction, puis parcours de bout en bout
+# sur une base PostgreSQL éphémère.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Valeurs de test uniquement : aucune donnée réelle, aucun secret de production.
+  DATABASE_URL: postgres://fecofoot:fecofoot@localhost:5432/fecofoot_ci
+  AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only-0123456789
+  APP_URL: http://localhost:3000
+  NOTIFY_MODE: log
+  TWO_FACTOR_REQUIRED_ROLES: ""
+  SEED_ADMIN_EMAIL: admin@fecofoot.cg
+  SEED_ADMIN_NAME: Administrateur CI
+  SEED_ADMIN_PASSWORD: CiAdminPassword2026
+
+jobs:
+  checks:
+    name: Types, lint, tests unitaires, construction
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:run
+      - run: npm run build
+
+  e2e:
+    name: Parcours de bout en bout (Playwright)
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fecofoot
+          POSTGRES_PASSWORD: fecofoot
+          POSTGRES_DB: fecofoot_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fecofoot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run build
+      - run: npm run test:e2e
+      # Sauvegarde puis restauration de la base dans une base temporaire (ENF-06), à chaque exécution.
+      - name: Sauvegarde et test de restauration
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16
+          export PATH=/usr/lib/postgresql/16/bin:$PATH
+          ops/backup.sh "$RUNNER_TEMP/backups"
+          ops/restore-test.sh "$RUNNER_TEMP/backups"
+      - name: Traces des échecs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

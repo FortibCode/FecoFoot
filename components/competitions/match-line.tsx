@@ -12,14 +12,14 @@ export function MatchLine({ row, href, byeLabel = "exempt" }: { row: MatchRow; h
     <>
       <span className="col-span-3 text-xs text-muted-foreground sm:col-span-1">{m.kickoffAt ? formatDateTime(m.kickoffAt) : "Date à fixer"}</span>
       <span className="min-w-0 truncate text-right font-medium">{name(home) ?? "À déterminer"}</span>
-      <span className="w-16 text-center font-bold tabular-nums">
+      <span className={`min-w-16 text-center font-bold tabular-nums ${played ? "rounded-md bg-brand-ink px-2 py-1 font-heading text-base text-white" : ""}`}>
         {home && !away && m.bracketSlot !== null ? (
           <span className="text-xs font-normal text-muted-foreground">{byeLabel}</span>
         ) : played ? (
           <>
             {m.homeScore ?? 0} – {m.awayScore ?? 0}
             {m.homePenalties !== null && m.awayPenalties !== null && (
-              <span className="block text-[0.65rem] font-normal text-muted-foreground">
+              <span className="block font-sans text-[0.65rem] font-normal text-white/70">
                 t.a.b. {m.homePenalties}–{m.awayPenalties}
               </span>
             )}
@@ -36,7 +36,7 @@ export function MatchLine({ row, href, byeLabel = "exempt" }: { row: MatchRow; h
   // Téléphone : date au-dessus, noms tronqués plutôt que de déborder sur la ligne voisine.
   const cls = "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 px-3 py-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)_auto_minmax(0,1fr)]";
   return href ? (
-    <Link href={href} className={`${cls} hover:bg-muted`}>
+    <Link href={href} className={`${cls} transition-colors hover:bg-accent`}>
       {content}
     </Link>
   ) : (

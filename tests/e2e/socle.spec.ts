@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { expect, test } from "./fixtures";
 import {
   admin,
   button,
@@ -33,6 +34,16 @@ test("connexion : accès protégé, mauvais mot de passe refusé, connexion et j
   await page.goto("/admin/journal?action=LOGIN_FAILED");
   await expect(page.locator("main tbody tr").first()).toContainText("LOGIN_FAILED");
   await expectNoHorizontalScroll(page);
+
+  // Export Excel du journal filtré (EF-AUD-02), lui-même tracé.
+  const today = new Date().toISOString().slice(0, 10);
+  await page.goto(`/admin/journal?action=LOGIN_FAILED&from=${today}&to=${today}`);
+  const [file] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Exporter (Excel)" }).click()]);
+  expect(file.suggestedFilename()).toMatch(/^journal-audit-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  const bytes = await readFile((await file.path())!);
+  expect(bytes.subarray(0, 2).toString()).toBe("PK"); // classeur Excel (zip)
+  await page.goto("/admin/journal?action=AUDIT_EXPORTED");
+  await expect(page.locator("main tbody tr").first()).toContainText("LOGIN_FAILED");
 });
 
 test("ligues : les 12 ligues sont listées et modifiables", async ({ page }) => {

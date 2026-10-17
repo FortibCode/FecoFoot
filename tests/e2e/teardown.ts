@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { rm } from "node:fs/promises";
+import { rm, rmdir } from "node:fs/promises";
 import path from "node:path";
 import postgres from "postgres";
 
@@ -16,6 +16,10 @@ export default async function teardown() {
   const keys: string[] = [];
   try {
     await sql.begin(async (tx) => {
+      // Discipline : dossiers liés aux données de test.
+      await tx`delete from discipline_cases where competition_id in (select id from competitions where name like 'E2E %')
+        or club_id in (select id from clubs where name like 'E2E %')
+        or player_id in (select id from players where club_id in (select id from clubs where name like 'E2E %'))`;
       // Lot 2 : compétitions (matchs, événements, compositions, désignations en cascade), arbitres, sélections.
       await tx`delete from competitions where name like 'E2E %'`;
       const e2eReferees = tx`select id from referees where last_name like 'E2E%'`;
@@ -26,6 +30,32 @@ export default async function teardown() {
       await tx`delete from national_staff where full_name like 'E2E %'`;
       await tx`delete from national_fixtures where opponent like 'E2E %'`;
 
+      // Actualités de test (et leurs visuels).
+      const covers = await tx<{ cover_key: string | null }[]>`delete from articles where title like 'E2E %' returning cover_key`;
+      keys.push(...covers.map((c) => c.cover_key).filter((k): k is string => k !== null));
+
+      // Photothèque : photos de test (et leurs fichiers).
+      const pics = await tx<{ storage_key: string }[]>`delete from photos where caption like 'E2E %' returning storage_key`;
+      keys.push(...pics.map((p) => p.storage_key));
+
+      // Lot 3 : billetterie de test (billets, commandes, paiements), puis supporters de test.
+      const events = tx`select id from ticket_events where title like 'E2E %'`;
+      const orders = tx`select id from ticket_orders where event_id in (${events})`;
+      await tx`delete from payments where purpose = 'TICKET_ORDER' and target_id in (${orders})`;
+      await tx`delete from notifications where recipient in (select phone from accreditations where event_id in (${events}))`;
+      await tx`delete from accreditations where event_id in (${events})`;
+      await tx`delete from tickets where event_id in (${events})`;
+      await tx`delete from ticket_orders where event_id in (${events})`;
+      await tx`delete from ticket_events where id in (${events})`;
+      // Lot 3 : supporters de test (paiements, adhésions, points).
+      const fans = tx`select id from supporters where last_name like 'E2E%'`;
+      await tx`delete from payments where supporter_id in (${fans})`;
+      await tx`delete from supporter_points where supporter_id in (${fans})`;
+      await tx`delete from memberships where supporter_id in (${fans})`;
+      await tx`update supporters set banned_by = null where id in (${fans})`;
+      const fanPhotos = await tx<{ photo_key: string | null }[]>`delete from supporters where last_name like 'E2E%' returning photo_key`;
+      keys.push(...fanPhotos.map((f) => f.photo_key).filter((k): k is string => k !== null));
+
       const clubs = tx`select id from clubs where name like 'E2E %'`;
       const players = tx`select id from players where club_id in (${clubs})`;
       const docs = await tx<{ storage_key: string }[]>`
@@ -33,6 +63,7 @@ export default async function teardown() {
         where (owner_type = 'club' and owner_id in (${clubs})) or (owner_type = 'player' and owner_id in (${players}))
         returning storage_key`;
       keys.push(...docs.map((d) => d.storage_key));
+      await tx`delete from payments where purpose = 'LICENSE_FEE' and target_id in (select id from licenses where club_id in (${clubs}))`;
       await tx`delete from transfers where from_club_id in (${clubs}) or to_club_id in (${clubs}) or player_id in (${players})`;
       await tx`delete from player_consents where club_id in (${clubs}) or player_id in (${players})`;
       await tx`delete from licenses where club_id in (${clubs}) or player_id in (${players})`;
@@ -51,6 +82,8 @@ export default async function teardown() {
     });
     const root = path.resolve(process.env.UPLOAD_DIR ?? "uploads");
     await Promise.all(keys.map((k) => rm(path.join(root, k), { force: true })));
+    // Dossiers devenus vides (un par joueur, club, article…) : supprimés ; rmdir échoue sans dommage s'il reste un fichier.
+    await Promise.all([...new Set(keys.map((k) => path.dirname(path.join(root, k))))].map((d) => rmdir(d).catch(() => {})));
   } finally {
     await sql.end();
   }

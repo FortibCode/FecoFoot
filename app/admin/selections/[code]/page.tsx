@@ -8,17 +8,21 @@ import { requirePermission } from "@/lib/auth/guard";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { SELECTION_STATUS_LABELS } from "@/lib/national-teams";
 import { teamPage } from "@/lib/queries/national";
+import { can } from "@/lib/auth/roles";
+import { photoUrl, teamPhotos } from "@/lib/photos";
 import { addFixture, addStaff, createSelection, removeStaff, setFixtureResult } from "../actions";
 import { FixtureForm, FixtureResultForm, SelectionCreateForm, StaffForm } from "../SelectionForms";
 
 export const metadata: Metadata = { title: "Sélection nationale — FECOFOOT" };
 
 export default async function NationalTeamPage({ params }: PageProps<"/admin/selections/[code]">) {
-  await requirePermission("national_teams.manage");
+  const user = await requirePermission("national_teams.manage");
   const { code } = await params;
   const data = await teamPage(code, { publishedOnly: false });
   if (!data) notFound();
   const { team, staff, fixtures, selections } = data;
+  const gallery = await teamPhotos(team.id);
+  const canManagePhotos = can(user.role, "communication.manage");
 
   return (
     <>
@@ -84,6 +88,30 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
             {fixtures.length === 0 && <li className="px-3 py-2 text-muted-foreground">Aucun match.</li>}
           </ul>
           <FixtureForm action={addFixture.bind(null, team.code)} />
+        </section>
+        <section className="flex flex-col gap-3" aria-labelledby="photos-title">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="photos-title" className="font-semibold">
+              Photos publiées <span className="font-normal text-muted-foreground">({gallery.length})</span>
+            </h2>
+            {canManagePhotos && (
+              <Link href={`/admin/photos?equipe=${team.slug}`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+                Gérer dans la photothèque
+              </Link>
+            )}
+          </div>
+          {gallery.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune photo publiée pour cette sélection.</p>
+          ) : (
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {gallery.slice(0, 12).map((p) => (
+                <li key={p.id}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- image servie par la route des médias */}
+                  <img src={photoUrl(p)} alt={p.caption} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
         <p className="text-xs text-muted-foreground">Dernière mise à jour : {formatDate(new Date())}</p>
       </div>

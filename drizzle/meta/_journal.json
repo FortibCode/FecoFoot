@@ -57,6 +57,90 @@
       "when": 1790685730754,
       "tag": "0007_lot2",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792109785169,
+      "tag": "0008_supporters_paiements",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792109830664,
+      "tag": "0009_paiements_payeur",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792110237072,
+      "tag": "0010_billetterie",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792110269270,
+      "tag": "0011_points_par_supporter",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792112287379,
+      "tag": "0012_accreditations",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792176034251,
+      "tag": "0013_actualites",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792178762150,
+      "tag": "0014_discipline",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792179104421,
+      "tag": "0015_paiement_par_compte",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792179458276,
+      "tag": "0016_photo_supporter",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792179595844,
+      "tag": "0017_debit_porte",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792203960688,
+      "tag": "0018_phototheque",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792215330367,
+      "tag": "0019_actualites_import",
+      "breakpoints": true
     }
   ]
 }

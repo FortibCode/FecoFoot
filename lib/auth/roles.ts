@@ -15,6 +15,8 @@ export const ROLES = [
   "REFEREEING",
   // Arbitres et commissaires : espace personnel (EF-ARB-04), feuille de match au stade (EF-CMP-09).
   "REFEREE",
+  // Commission de discipline (M18).
+  "DISCIPLINE",
 ] as const;
 
 export type Role = (typeof ROLES)[number];
@@ -29,6 +31,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   TICKETING: "Billetterie & accès stade",
   REFEREEING: "Direction de l'arbitrage",
   REFEREE: "Arbitre / commissaire",
+  DISCIPLINE: "Commission de discipline",
 };
 
 export const PERMISSIONS = [
@@ -51,6 +54,7 @@ export const PERMISSIONS = [
   "refereeing.manage",
   "referee.self",
   "lineups.submit",
+  "discipline.manage",
   "users.manage",
   "audit.read",
 ] as const;
@@ -73,6 +77,7 @@ const ADMIN_COMMON: Permission[] = [
   "communication.manage",
   "ticketing.manage",
   "refereeing.manage",
+  "discipline.manage",
   "audit.read",
 ];
 
@@ -95,6 +100,7 @@ const MATRIX: Record<Role, readonly Permission[]> = {
   TICKETING: ["dashboard.view", "ticketing.manage"],
   REFEREEING: ["dashboard.view", "refereeing.manage"],
   REFEREE: ["dashboard.view", "referee.self"],
+  DISCIPLINE: ["dashboard.view", "discipline.manage"],
 };
 
 export function can(role: Role, permission: Permission): boolean {

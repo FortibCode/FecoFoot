@@ -7,7 +7,7 @@ import type { ActionState } from "@/lib/action-state";
 import { MAX_SUBSTITUTES, STARTERS } from "@/lib/competitions";
 import { useActionForm } from "@/lib/use-action-form";
 
-type Row = { id: number; name: string; position: string; selected: boolean; starter: boolean; shirtNumber: number | null };
+type Row = { id: number; name: string; position: string; selected: boolean; starter: boolean; shirtNumber: number | null; suspended: string | null };
 
 export function LineupForm({ action, rows }: { action: (s: ActionState, f: FormData) => Promise<ActionState>; rows: Row[] }) {
   const { state, pending, formProps } = useActionForm(action);
@@ -30,10 +30,12 @@ export function LineupForm({ action, rows }: { action: (s: ActionState, f: FormD
             <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
               <span>
                 <strong>{r.name}</strong> <span className="text-xs text-muted-foreground">{r.position}</span>
+                {r.suspended && <span className="ml-2 rounded bg-destructive/10 px-1.5 text-xs font-semibold text-destructive">Suspendu — {r.suspended}</span>}
               </span>
               <span className="flex items-center gap-2">
                 <select
                   aria-label={`Rôle de ${r.name}`}
+                  disabled={Boolean(r.suspended)}
                   value={v}
                   onChange={(e) => setSel((prev) => new Map(prev).set(r.id, e.target.value))}
                   className="h-9 rounded-md border px-2"

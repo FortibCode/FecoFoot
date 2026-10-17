@@ -32,7 +32,7 @@ export default async function PublicCompetitionPage({ params }: PageProps<"/comp
   const totalRounds = Math.max(0, ...rounds);
 
   return (
-    <PublicShell eyebrow={`${seasonLabel(c.season)} · ${CATEGORY_LABELS[c.category]}`} title={c.name} wide>
+    <PublicShell eyebrow={`${seasonLabel(c.season)} · ${CATEGORY_LABELS[c.category]}`} subtitle={`${seasonLabel(c.season)} · ${CATEGORY_LABELS[c.category]}`} title={c.name} wide>
       <div className="flex flex-col gap-8">
         {c.type === "LEAGUE" && data && (
           <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">

@@ -1,0 +1,1 @@
+ALTER TABLE "ticket_events" ADD COLUMN "gate_flow_limit" integer DEFAULT 30 NOT NULL;

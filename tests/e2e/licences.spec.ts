@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { latestNotification } from "./db";
 import { admin, button, createClub, createUser, e2eEmail, expectNoHorizontalScroll, formAlert, formStatus, login, logout, RUN } from "./helpers";
 
@@ -88,6 +88,20 @@ test("licence d'un joueur mineur : de l'enregistrement à la vérification publi
   expect(licenseNumber).toBeTruthy();
   await expect(button(page, "Enregistrer l'encaissement")).toHaveCount(0); // un club ne valide pas
 
+  // ── Le club paie les droits par Mobile Money (EF-LIC-11, simulation)
+  await page.fill('input[name="phone"]', "04 123 45 67");
+  await page.getByRole("button", { name: /^Payer 5.000 FCFA$/ }).click();
+  await expect(formAlert(page)).toContainText("Airtel Money (05) ou MTN MoMo (06)");
+  await page.fill('input[name="phone"]', "06 123 45 67");
+  await page.getByRole("button", { name: /^Payer 5.000 FCFA$/ }).click();
+  await expect(page).toHaveURL(/\/paiement\/PAY-LIC-/);
+  await expect(page.locator("main")).toContainText("MTN MoMo");
+  await button(page, "Confirmer le paiement").click();
+  await expect(page).toHaveURL(licenseUrl);
+  await expect(page.locator("main")).toContainText("Droits encaissés");
+  await expect(page.locator("main")).toContainText(/réf\. PAY-LIC-/);
+  await expect(page.getByRole("button", { name: /^Payer 5.000 FCFA$/ })).toHaveCount(0);
+
   // ── Accord : la demande part au représentant légal
   await page.goto(playerUrl);
   await button(page, "Envoyer la demande d'accord").click();
@@ -101,11 +115,11 @@ test("licence d'un joueur mineur : de l'enregistrement à la vérification publi
   await expect(formStatus(page)).toContainText("représentant légal");
   await logout(page);
 
-  // ── La fédération encaisse, la validation est bloquée sans accord
+  // ── Droits déjà encaissés par Mobile Money : la validation reste bloquée sans accord
   await login(page, admin());
   await page.goto(licenseUrl);
-  await button(page, "Enregistrer l'encaissement").click();
   await expect(page.locator("main")).toContainText("Droits encaissés");
+  await expect(button(page, "Enregistrer l'encaissement")).toHaveCount(0);
   await button(page, "Valider la licence").click();
   await expect(formAlert(page)).toContainText("accord");
 

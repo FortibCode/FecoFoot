@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
 import { desc, ne } from "drizzle-orm";
 import { PublicShell } from "@/components/public/public-shell";
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default async function PublicCompetitionsPage() {
+  // Liste vivante : calculée à chaque visite, jamais figée à la construction.
+  await connection();
   const rows = await db.select().from(competitions).where(ne(competitions.status, "DRAFT")).orderBy(desc(competitions.season), competitions.name);
   return (
     <PublicShell eyebrow="Compétitions" title="Compétitions" wide>

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { seasonOf } from "../../lib/licenses";
 import { withDb } from "./db";
 import { admin, button, createClub, createUser, e2eEmail, login, logout, RUN } from "./helpers";

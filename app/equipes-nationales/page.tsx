@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { PublicShell } from "@/components/public/public-shell";
@@ -8,6 +9,8 @@ import { nationalTeams } from "@/lib/db/schema";
 export const metadata: Metadata = { title: "Équipes nationales — FECOFOOT", description: "Les sélections nationales du Congo : staff, convocations, calendrier et résultats." };
 
 export default async function PublicNationalTeamsPage() {
+  // Liste vivante : calculée à chaque visite, jamais figée à la construction.
+  await connection();
   const teams = await db.select().from(nationalTeams).orderBy(asc(nationalTeams.id));
   return (
     <PublicShell eyebrow="Équipes nationales" title="Les Diables Rouges" wide>

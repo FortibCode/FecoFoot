@@ -1,29 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, desc, eq, type SQL } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { auditLogs, users } from "@/lib/db/schema";
 import { formatDateTime } from "@/lib/format";
+import { auditFilters, auditQueryString, auditWhere } from "@/lib/queries/audit";
 
 export const metadata: Metadata = { title: "Journal d'audit — FECOFOOT" };
 
 const PAGE_SIZE = 50;
 
-const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
-
 export default async function AuditPage({ searchParams }: PageProps<"/admin/journal">) {
   await requirePermission("audit.read");
   const sp = await searchParams;
-  const action = one(sp.action);
-  const entity = one(sp.entity);
-  const page = Math.max(1, Number(one(sp.page)) || 1);
-
-  const filters: SQL[] = [];
-  if (action) filters.push(eq(auditLogs.action, action));
-  if (entity) filters.push(eq(auditLogs.entity, entity));
-  const where = filters.length ? and(...filters) : undefined;
+  const filters = auditFilters((k) => sp[k]);
+  const { action, entity, from, to } = filters;
+  const page = Math.max(1, Number(sp.page) || 1);
+  const where = auditWhere(filters);
 
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -47,18 +42,27 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/jour
     db.select({ total: count() }).from(auditLogs).where(where),
   ]);
 
+  const days = Number(process.env.AUDIT_RETENTION_DAYS) || 0;
+  const retention = days > 0 ? `conservation ${days} jours (EF-AUD-02)` : "conservation illimitée";
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageHref = (p: number) => {
-    const q = new URLSearchParams();
-    if (action) q.set("action", action);
-    if (entity) q.set("entity", entity);
+    const q = auditQueryString(filters);
     q.set("page", String(p));
     return `/admin/journal?${q}`;
   };
 
   return (
     <>
-      <PageHeader eyebrow="Administration" title="Journal d'audit" description={`${total} opération(s) enregistrée(s)`} />
+      <PageHeader
+        eyebrow="Administration"
+        title="Journal d'audit"
+        description={`${total} opération(s) enregistrée(s) · ${retention}`}
+        actions={
+          <a href={`/admin/journal/export?${auditQueryString(filters)}`} className="rounded-md border px-4 py-2 text-sm font-semibold hover:bg-muted">
+            Exporter (Excel)
+          </a>
+        }
+      />
 
       <form className="mb-4 flex flex-wrap items-end gap-2 text-sm">
         <label className="flex flex-col gap-1">
@@ -68,6 +72,14 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/jour
         <label className="flex flex-col gap-1">
           Objet
           <input name="entity" defaultValue={entity} placeholder="ex. user, club" className="h-9 rounded-md border px-2" />
+        </label>
+        <label className="flex flex-col gap-1">
+          Du
+          <input type="date" name="from" defaultValue={from} className="h-9 rounded-md border px-2" />
+        </label>
+        <label className="flex flex-col gap-1">
+          Au
+          <input type="date" name="to" defaultValue={to} className="h-9 rounded-md border px-2" />
         </label>
         <button type="submit" className="h-9 rounded-md border px-3 hover:bg-muted">
           Filtrer

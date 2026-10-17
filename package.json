@@ -16,7 +16,12 @@
     "db:migrate": "tsx scripts/migrate.mts",
     "db:seed": "tsx scripts/seed.mts",
     "db:studio": "drizzle-kit studio",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:load": "tsx --conditions=react-server scripts/load-test.mts",
+    "photos:import": "tsx --conditions=react-server scripts/import-photos.mts",
+    "clubs:import": "tsx --conditions=react-server scripts/import-clubs.mts",
+    "actualites:import": "tsx --conditions=react-server scripts/import-actualites.mts",
+    "start:standalone": "cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && node .next/standalone/server.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

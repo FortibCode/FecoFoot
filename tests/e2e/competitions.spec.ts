@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { seasonOf } from "../../lib/licenses";
 import { extractLink, latestNotification, seedLicensedPlayers } from "./db";
 import { admin, button, createClub, createUser, e2eEmail, expectNoHorizontalScroll, formAlert, formStatus, login, logout, RUN } from "./helpers";
@@ -170,6 +170,9 @@ test("championnat : du calendrier au classement public", async ({ page, browser 
   const slugLink = await page.getByRole("link", { name: "Page publique" }).getAttribute("href");
 
   const visitor = await (await browser.newContext()).newPage();
+  // La liste publique montre la nouvelle compétition (page calculée à chaque visite, y compris en production).
+  await visitor.goto("/competitions");
+  await expect(visitor.getByRole("link", { name: new RegExp(compName) })).toBeVisible();
   await visitor.goto(slugLink!);
   await expect(visitor.locator("main table tbody tr").first()).toContainText(clubs[0]);
   await expect(visitor.locator("main")).toContainText("Meilleurs buteurs");

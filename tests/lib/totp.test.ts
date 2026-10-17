@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { base32Decode, base32Encode, hotp, otpauthUri, totp, totpStep, twoFactorRequired, verifyTotp } from "@/lib/auth/totp";
+import { base32Decode, base32Encode, DEFAULT_TWO_FACTOR_ROLES, hotp, otpauthUri, totp, totpStep, twoFactorRequired, verifyTotp } from "@/lib/auth/totp";
 
 // Vecteurs de test officiels : RFC 4226 (annexe D) et RFC 6238 (annexe B), secret « 12345678901234567890 ».
 const RFC_SECRET = base32Encode(new TextEncoder().encode("12345678901234567890"));
@@ -40,9 +40,10 @@ describe("Double authentification TOTP (EF-AUT-05)", () => {
   });
 
   it("obligatoire pour les profils fédéraux et la billetterie par défaut", () => {
-    expect(twoFactorRequired("SUPER_ADMIN", undefined)).toBe(true);
-    expect(twoFactorRequired("TICKETING", undefined)).toBe(true);
-    expect(twoFactorRequired("CLUB", undefined)).toBe(false);
+    // Indépendant de l'environnement de la machine : on passe la valeur par défaut explicitement.
+    expect(twoFactorRequired("SUPER_ADMIN", DEFAULT_TWO_FACTOR_ROLES)).toBe(true);
+    expect(twoFactorRequired("TICKETING", DEFAULT_TWO_FACTOR_ROLES)).toBe(true);
+    expect(twoFactorRequired("CLUB", DEFAULT_TWO_FACTOR_ROLES)).toBe(false);
     expect(twoFactorRequired("SUPER_ADMIN", "")).toBe(false);
   });
 

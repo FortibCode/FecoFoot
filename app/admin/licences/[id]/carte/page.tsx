@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandLogo } from "@/components/brand-logo";
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/admin/print-button";
 import { requireAnyPermission } from "@/lib/auth/guard";
@@ -42,9 +43,12 @@ export default async function LicenseCardPage({ params }: PageProps<"/admin/lice
         <div className="w-[3mm] shrink-0 bg-[linear-gradient(180deg,var(--flag-green)_33%,var(--flag-yellow)_33%_66%,var(--flag-red)_66%)]" />
         <div className="flex flex-1 flex-col p-[3mm] text-[2.3mm] leading-tight">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="flex items-center gap-[1.5mm]">
+              <BrandLogo size={30} decorative className="size-[8mm]" />
+              <div>
               <p className="text-[3.2mm] font-extrabold">FECOFOOT</p>
               <p className="text-[1.6mm] uppercase tracking-wider">Fédération Congolaise de Football</p>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-[1.6mm] uppercase">Licence {LICENSE_TYPE_LABELS[license.type].toLowerCase()}</p>

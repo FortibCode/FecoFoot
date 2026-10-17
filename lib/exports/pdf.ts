@@ -1,4 +1,6 @@
 import "server-only";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import PDFDocument from "pdfkit";
 
 /**
@@ -12,6 +14,20 @@ const GREEN = "#009543";
 const YELLOW = "#FBDE4A";
 const RED = "#DC241F";
 const MARGIN = 40;
+const LOGO_SIZE = 44;
+
+// Écusson lu à l'exécution dans public/ (copié à côté du serveur en production) ; absent : en-tête sans logo.
+let logo: Buffer | null | undefined;
+function logoBytes(): Buffer | null {
+  if (logo === undefined) {
+    try {
+      logo = readFileSync(path.join(/* turbopackIgnore: true */ process.cwd(), "public", "logo-fecofoot.png"));
+    } catch {
+      logo = null;
+    }
+  }
+  return logo;
+}
 
 export function newDocument(opts: { landscape?: boolean } = {}) {
   return new PDFDocument({ size: "A4", layout: opts.landscape ? "landscape" : "portrait", margin: MARGIN, bufferPages: true });
@@ -23,10 +39,16 @@ export function header(doc: PDFKit.PDFDocument, title: string, subtitle?: string
   doc.rect(MARGIN, MARGIN, third, 4).fill(GREEN);
   doc.rect(MARGIN + third, MARGIN, third, 4).fill(YELLOW);
   doc.rect(MARGIN + 2 * third, MARGIN, third, 4).fill(RED);
-  doc.fillColor("#000").font("Helvetica-Bold").fontSize(9).text("FÉDÉRATION CONGOLAISE DE FOOTBALL", MARGIN, MARGIN + 12, { characterSpacing: 1 });
-  doc.font("Helvetica-Bold").fontSize(16).text(title, MARGIN, doc.y + 4);
-  if (subtitle) doc.font("Helvetica").fontSize(10).fillColor("#444").text(subtitle);
-  doc.fillColor("#000").moveDown(1);
+  const img = logoBytes();
+  const x = img ? MARGIN + LOGO_SIZE + 10 : MARGIN;
+  const top = MARGIN + 12;
+  if (img) doc.image(img, MARGIN, top, { width: LOGO_SIZE, height: LOGO_SIZE });
+  doc.fillColor("#000").font("Helvetica-Bold").fontSize(9).text("FÉDÉRATION CONGOLAISE DE FOOTBALL", x, top, { characterSpacing: 1 });
+  doc.font("Helvetica-Bold").fontSize(16).text(title, x, doc.y + 4);
+  if (subtitle) doc.font("Helvetica").fontSize(10).fillColor("#444").text(subtitle, x);
+  // Le contenu reprend à la marge, sous le logo s'il est plus haut que le texte.
+  doc.fillColor("#000").text("", MARGIN, Math.max(doc.y, img ? top + LOGO_SIZE : 0));
+  doc.moveDown(1);
 }
 
 export function table(doc: PDFKit.PDFDocument, columns: Column[], rows: (string | number | null)[][]) {
