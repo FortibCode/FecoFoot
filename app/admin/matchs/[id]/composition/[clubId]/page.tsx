@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
@@ -9,7 +10,7 @@ import { db } from "@/lib/db";
 import { matches, matchLineups } from "@/lib/db/schema";
 import { formatDateTime, isPast } from "@/lib/format";
 import { POSITION_LABELS } from "@/lib/licenses";
-import { eligiblePlayers, matchQuery } from "@/lib/queries/competitions";
+import { canManageMatch, eligiblePlayers, matchQuery } from "@/lib/queries/competitions";
 import { suspendedPlayers } from "@/lib/queries/discipline";
 import { saveLineup } from "../../../actions";
 import { LineupForm } from "./LineupForm";
@@ -25,7 +26,7 @@ export default async function LineupPage({ params }: PageProps<"/admin/matchs/[i
   const [row] = await matchQuery().where(eq(matches.id, matchId)).limit(1);
   if (!row || (row.match.homeClubId !== clubId && row.match.awayClubId !== clubId)) notFound();
   const own = can(user.role, "lineups.submit") && user.clubId === clubId;
-  if (!own && !can(user.role, "competitions.manage")) redirect("/admin/acces-refuse");
+  if (!own && !(await canManageMatch(user, matchId))) redirect("/admin/acces-refuse");
 
   const [eligible, current, suspended] = await Promise.all([
     eligiblePlayers(clubId, row.competition.season),
@@ -46,7 +47,7 @@ export default async function LineupPage({ params }: PageProps<"/admin/matchs/[i
       {locked ? (
         <p className="text-sm text-muted-foreground">Le match a commencé : la composition ne peut plus être modifiée.</p>
       ) : eligible.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Aucun joueur avec une licence validée pour cette saison.</p>
+        <EmptyState icon="users" title="Aucun joueur qualifié">Seuls les joueurs ayant une licence validée pour la saison peuvent figurer sur la feuille de match.</EmptyState>
       ) : (
         <LineupForm
           action={saveLineup.bind(null, matchId, clubId)}

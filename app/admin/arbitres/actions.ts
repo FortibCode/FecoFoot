@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guard";
 import { sendPasswordLink } from "@/lib/auth/reset-link";
 import { db } from "@/lib/db";
+import { blockedMessage, deleteRefereeRecord, refereeBlockers } from "@/lib/deletion";
 import { referees, users } from "@/lib/db/schema";
 import { REFEREE_GRADES } from "@/lib/referees";
 import { randomToken } from "@/lib/tokens";
@@ -76,4 +77,15 @@ export async function openRefereeAccess(refereeId: number): Promise<ActionState>
   await logAudit({ userId: admin.id, action: "REFEREE_ACCESS", entity: "referee", entityId: refereeId, details: { userId: account.id } });
   revalidatePath(`/admin/arbitres/${refereeId}`);
   return { success: `Accès ouvert : un lien pour choisir son mot de passe a été envoyé à ${email}.` };
+}
+
+/** Suppression d'un officiel jamais désigné (sinon : le désactiver). */
+export async function deleteReferee(refereeId: number): Promise<ActionState> {
+  const user = await requirePermission("refereeing.manage");
+  const reasons = await refereeBlockers(refereeId);
+  if (reasons.length) return { error: `${blockedMessage("L'officiel", reasons)} Désactivez-le plutôt depuis sa fiche.` };
+  await deleteRefereeRecord(refereeId);
+  await logAudit({ userId: user.id, action: "DELETE", entity: "referee", entityId: refereeId });
+  revalidatePath("/admin/arbitres");
+  return { success: "Officiel supprimé." };
 }

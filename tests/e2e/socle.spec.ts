@@ -46,22 +46,26 @@ test("connexion : accès protégé, mauvais mot de passe refusé, connexion et j
   await expect(page.locator("main tbody tr").first()).toContainText("LOGIN_FAILED");
 });
 
-test("ligues : les 12 ligues sont listées et modifiables", async ({ page }) => {
+test("ligues : listées par 5 et modifiables", async ({ page }) => {
   await login(page, admin());
   await page.goto("/admin/ligues");
-  const leagues = page.locator("main li");
-  await expect(leagues).toHaveCount(12);
+  const leagues = page.getByTestId("league-row");
+  // Pagination par 5 : la première page et le total des ligues.
+  await expect(leagues).toHaveCount(5);
+  await expect(page.getByTestId("table-pager")).toContainText(/1–5 sur \d+/);
 
-  const first = leagues.first();
-  const president = first.locator('input[name="president"]');
+  // Modification dans la fiche de la ligue.
+  await leagues.first().getByRole("link", { name: /^Modifier / }).click();
+  await expect(page).toHaveURL(/\/admin\/ligues\/\d+#modifier$/);
+  const president = page.locator('input[name="president"]');
   const original = await president.inputValue();
   await president.fill(`Président E2E ${RUN}`);
-  await first.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(first.locator('[role="status"]')).toContainText("Ligue mise à jour");
+  await button(page, "Enregistrer la ligue").click();
+  await expect(formStatus(page)).toContainText("Ligue mise à jour");
   // Remise en état
   await president.fill(original);
-  await first.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(first.locator('[role="status"]')).toBeVisible();
+  await button(page, "Enregistrer la ligue").click();
+  await expect(formStatus(page)).toBeVisible();
 });
 
 test("clubs et comptes : affiliation, dirigeants, périmètre d'une ligue", async ({ page }) => {
@@ -84,7 +88,7 @@ test("clubs et comptes : affiliation, dirigeants, périmètre d'une ligue", asyn
     fullName: "Ligue BZV E2E",
     email: e2eEmail("ligue"),
     role: "LEAGUE",
-    league: "Ligue de Brazzaville",
+    league: "Ligue départementale de Brazzaville",
   });
   await logout(page);
 

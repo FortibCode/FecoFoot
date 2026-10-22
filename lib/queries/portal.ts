@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { articles, clubs, competitions, competitionTeams, licenses, matches, nationalTeams, selections, ticketEvents } from "@/lib/db/schema";
 import { seasonOf } from "@/lib/licenses";
@@ -10,7 +10,8 @@ export async function homeData() {
   const now = new Date();
   const season = seasonOf();
   const [results, upcoming, onSale, news, latestSelection, [{ clubsCount }], [{ licensesCount }], main] = await Promise.all([
-    matchQuery().where(eq(matches.status, "FINISHED")).orderBy(desc(matches.kickoffAt)).limit(6),
+    // Résultats officiels uniquement (validés par l'organisateur).
+    matchQuery().where(and(eq(matches.status, "FINISHED"), isNotNull(matches.validatedAt))).orderBy(desc(matches.kickoffAt)).limit(6),
     matchQuery()
       .where(and(eq(matches.status, "SCHEDULED"), gte(matches.kickoffAt, now), isNotNull(matches.homeClubId), isNotNull(matches.awayClubId)))
       .orderBy(asc(matches.kickoffAt))
@@ -31,12 +32,20 @@ export async function homeData() {
       .limit(1),
     db.select({ clubsCount: count() }).from(clubs).where(eq(clubs.status, "AFFILIATED")),
     db.select({ licensesCount: count() }).from(licenses).where(and(eq(licenses.season, season), eq(licenses.status, "VALIDATED"))),
-    // Championnat mis en avant : le championnat senior masculin en cours qui compte le plus d'équipes.
+    // Championnat mis en avant : le championnat national senior masculin en cours qui compte le plus d'équipes.
     db
       .select({ id: competitions.id, n: count(competitionTeams.id) })
       .from(competitions)
       .leftJoin(competitionTeams, eq(competitionTeams.competitionId, competitions.id))
-      .where(and(eq(competitions.type, "LEAGUE"), or(eq(competitions.status, "ONGOING"), eq(competitions.status, "FINISHED")), eq(competitions.category, "SENIOR"), eq(competitions.gender, "M")))
+      .where(
+        and(
+          eq(competitions.type, "LEAGUE"),
+          isNull(competitions.leagueId),
+          or(eq(competitions.status, "ONGOING"), eq(competitions.status, "FINISHED")),
+          eq(competitions.category, "SENIOR"),
+          eq(competitions.gender, "M"),
+        ),
+      )
       .groupBy(competitions.id)
       .orderBy(desc(competitions.season), desc(count(competitionTeams.id)))
       .limit(1),
@@ -46,15 +55,16 @@ export async function homeData() {
 }
 
 /**
- * Clubs du championnat d'élite (Ligue 1) : le championnat senior masculin le plus récent, brouillon compris
+ * Clubs du championnat d'élite (Ligue 1 National) : le championnat national senior masculin le plus récent, brouillon compris
  * (les clubs engagés sont connus avant la publication du calendrier).
  */
 export async function eliteClubs() {
   const [comp] = await db
     .select({ id: competitions.id, name: competitions.name, slug: competitions.slug, season: competitions.season, status: competitions.status })
     .from(competitions)
-    .where(and(eq(competitions.type, "LEAGUE"), eq(competitions.category, "SENIOR"), eq(competitions.gender, "M")))
-    .orderBy(desc(competitions.season), desc(competitions.id))
+    .where(and(eq(competitions.type, "LEAGUE"), isNull(competitions.leagueId), eq(competitions.category, "SENIOR"), eq(competitions.gender, "M")))
+    // À saison égale, la première division (« Ligue 1 ») avant la deuxième.
+    .orderBy(desc(competitions.season), asc(competitions.name), desc(competitions.id))
     .limit(1);
   if (!comp) return null;
   const teams = await db

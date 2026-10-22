@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { FormMessage, TextField } from "@/components/ui/field";
 import { CATEGORY_LABELS, type Category } from "@/lib/licenses";
@@ -37,7 +38,7 @@ export function RenewalForm({ action, rows }: { action: (s: RenewalState, f: For
     return (
       <div className="flex flex-col gap-4">
         {report}
-        <p className="text-sm text-muted-foreground">Aucun joueur à renouveler pour ce club.</p>
+        <EmptyState icon="check" title="Aucun joueur à renouveler" compact>Tous les licenciés de la saison passée de ce club sont déjà renouvelés.</EmptyState>
       </div>
     );
   }

@@ -10,6 +10,7 @@ import { ARTICLE_CATEGORIES } from "@/lib/articles";
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
+import { deleteArticleRecord } from "@/lib/deletion";
 import { articles } from "@/lib/db/schema";
 import { MAX_FILE_SIZE, MIME, sniffKind } from "@/lib/documents";
 import { slugify } from "@/lib/format";
@@ -105,4 +106,14 @@ export async function syncFromOldSite(): Promise<ActionState> {
   revalidatePublic();
   if (report.failed.length) return { error: `${report.imported} article(s) importé(s), ${report.failed.length} en échec : ${report.failed.slice(0, 3).join(" ; ")}` };
   return { success: report.imported ? `${report.imported} nouvel(s) article(s) importé(s) depuis fecofoot.cg.` : "Déjà à jour : aucun nouvel article sur fecofoot.cg." };
+}
+
+/** Suppression définitive d'un article (et de son visuel). Pour le masquer seulement : « Retirer du portail ». */
+export async function deleteArticle(articleId: number): Promise<ActionState> {
+  const user = await requirePermission("communication.manage");
+  if (!(await deleteArticleRecord(articleId))) return { error: "Article introuvable." };
+  await logAudit({ userId: user.id, action: "DELETE", entity: "article", entityId: articleId });
+  revalidatePath("/admin/actualites");
+  revalidatePublic();
+  return { success: "Article supprimé." };
 }

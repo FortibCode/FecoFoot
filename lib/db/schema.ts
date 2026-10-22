@@ -18,7 +18,7 @@ import { ROLES } from "../auth/roles";
 import { CLUB_STATUSES } from "../clubs";
 import { DOCUMENT_TYPE_KEYS } from "../documents";
 import { TRANSFER_STATUSES, TRANSFER_TYPES } from "../transfers";
-import { COMPETITION_STATUSES, COMPETITION_TYPES, EVENT_TYPES, GENDERS, MATCH_STATUSES } from "../competitions";
+import { COMPETITION_CATEGORIES, COMPETITION_STATUSES, COMPETITION_TYPES, DEFAULT_TIEBREAKERS, EVENT_TYPES, GENDERS, MATCH_STATUSES, TEAM_OUTCOMES } from "../competitions";
 import { OFFICIAL_ROLES, REFEREE_GRADES } from "../referees";
 import { FIXTURE_STATUSES, NATIONAL_TEAM_CODES, SELECTION_STATUSES } from "../national-teams";
 import { ID_DOCUMENT_TYPES, MEMBERSHIP_TIERS } from "../supporters";
@@ -135,10 +135,18 @@ export const leagues = pgTable(
     id: serial("id").primaryKey(),
     code: varchar("code", { length: 8 }).notNull(),
     name: varchar("name", { length: 120 }).notNull(),
+    // Département administratif couvert par la ligue (une ligue ↔ un département).
+    department: varchar("department", { length: 80 }),
+    description: text("description"),
     president: varchar("president", { length: 160 }),
     email: varchar("email", { length: 255 }),
     phone: varchar("phone", { length: 32 }),
+    logoKey: varchar("logo_key", { length: 255 }),
+    logoType: varchar("logo_type", { length: 64 }),
+    // Désactivée : masquée du portail et fermée aux nouveaux clubs, historique conservé.
+    active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("leagues_code_uq").on(t.code)],
 );
@@ -157,9 +165,8 @@ export const clubs = pgTable(
     name: varchar("name", { length: 160 }).notNull(),
     shortName: varchar("short_name", { length: 16 }),
     slug: varchar("slug", { length: 180 }).notNull(),
-    leagueId: integer("league_id")
-      .notNull()
-      .references(() => leagues.id),
+    // Ligue départementale de rattachement ; null : club rattaché directement à la fédération (division nationale).
+    leagueId: integer("league_id").references(() => leagues.id),
     city: varchar("city", { length: 120 }).notNull(),
     stadium: varchar("stadium", { length: 160 }),
     colors: varchar("colors", { length: 80 }),
@@ -221,6 +228,8 @@ export const players = pgTable(
     guardianPhone: varchar("guardian_phone", { length: 32 }),
     guardianEmail: varchar("guardian_email", { length: 255 }),
     clubId: integer("club_id").references(() => clubs.id),
+    // Compte de l'espace personnel du joueur (consultation de ses propres données).
+    userId: integer("user_id").references(() => users.id),
     // Contrôle anti-doublon (EF-LIC-02) : nom + prénom normalisés + date de naissance.
     identityKey: varchar("identity_key", { length: 200 }).notNull(),
     createdBy: integer("created_by").references(() => users.id),
@@ -230,6 +239,7 @@ export const players = pgTable(
   (t) => [
     uniqueIndex("players_federal_id_uq").on(t.federalId),
     uniqueIndex("players_identity_uq").on(t.identityKey),
+    uniqueIndex("players_user_uq").on(t.userId),
     index("players_club_idx").on(t.clubId),
     index("players_name_idx").on(t.lastName, t.firstName),
   ],
@@ -419,6 +429,73 @@ export const competitionStatusEnum = pgEnum("competition_status", COMPETITION_ST
 export const competitionGenderEnum = pgEnum("competition_gender", GENDERS);
 export const matchStatusEnum = pgEnum("match_status", MATCH_STATUSES);
 export const matchEventTypeEnum = pgEnum("match_event_type", EVENT_TYPES);
+export const competitionCategoryEnum = pgEnum("competition_category", COMPETITION_CATEGORIES);
+
+export const teamOutcomeEnum = pgEnum("team_outcome", TEAM_OUTCOMES);
+
+/**
+ * Championnats nationaux (Ligue 1, Ligue 2…) : la structure permanente, distincte des ligues
+ * départementales. Chaque saison est une compétition rattachée (`competitions.championshipId`).
+ */
+export const championships = pgTable(
+  "championships",
+  {
+    id: serial("id").primaryKey(),
+    code: varchar("code", { length: 32 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    // Niveau : 1 = première division ; sert aux montées et descentes entre championnats.
+    tier: integer("tier").notNull(),
+    description: text("description"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("championships_code_uq").on(t.code)],
+);
+
+export const officialStatusEnum = pgEnum("official_status", ["ACTIVE", "ENDED"]);
+
+/**
+ * Responsables des championnats nationaux et leurs mandats. `championshipId` null : responsable de
+ * la structure commune aux championnats nationaux. Un mandat clos reste dans l'historique.
+ */
+export const championshipOfficials = pgTable(
+  "championship_officials",
+  {
+    id: serial("id").primaryKey(),
+    championshipId: integer("championship_id").references(() => championships.id),
+    fullName: varchar("full_name", { length: 160 }).notNull(),
+    position: varchar("position", { length: 120 }).notNull(),
+    email: varchar("email", { length: 255 }),
+    phone: varchar("phone", { length: 32 }),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date"),
+    status: officialStatusEnum("status").notNull().default("ACTIVE"),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("championship_officials_idx").on(t.championshipId, t.status)],
+);
+
+/** Documents officiels et règlements d'un championnat (PDF), pour une saison ou permanents (`season` null). */
+export const championshipDocuments = pgTable(
+  "championship_documents",
+  {
+    id: serial("id").primaryKey(),
+    championshipId: integer("championship_id")
+      .notNull()
+      .references(() => championships.id),
+    season: integer("season"),
+    title: varchar("title", { length: 200 }).notNull(),
+    storageKey: varchar("storage_key", { length: 255 }).notNull(),
+    contentType: varchar("content_type", { length: 64 }).notNull(),
+    size: integer("size").notNull(),
+    published: boolean("published").notNull().default(true),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("championship_documents_idx").on(t.championshipId, t.season)],
+);
 
 export const competitions = pgTable(
   "competitions",
@@ -427,8 +504,15 @@ export const competitions = pgTable(
     name: varchar("name", { length: 160 }).notNull(),
     slug: varchar("slug", { length: 180 }).notNull(),
     season: integer("season").notNull(),
-    category: categoryEnum("category").notNull(),
+    category: competitionCategoryEnum("category").notNull(),
     gender: competitionGenderEnum("gender").notNull().default("M"),
+    // Ligue organisatrice (championnat départemental) ; null : compétition nationale.
+    leagueId: integer("league_id").references(() => leagues.id),
+    // Saison d'un championnat national (Ligue 1, Ligue 2) ; null : compétition indépendante.
+    championshipId: integer("championship_id").references(() => championships.id),
+    // Montées et descentes de la saison (par poule), selon le règlement : 0 = aucune.
+    promotionSpots: integer("promotion_spots").notNull().default(0),
+    relegationSpots: integer("relegation_spots").notNull().default(0),
     type: competitionTypeEnum("type").notNull(),
     status: competitionStatusEnum("status").notNull().default("DRAFT"),
     // Championnat : aller-retour ou aller simple (EF-CMP-03).
@@ -439,9 +523,20 @@ export const competitions = pgTable(
     pointsLoss: integer("points_loss").notNull().default(0),
     // Cartons jaunes entraînant une suspension automatique (M18).
     yellowCardThreshold: integer("yellow_card_threshold").notNull().default(3),
+    // Critères de départage à égalité de points, dans l'ordre (règlement de la compétition).
+    tiebreakers: text("tiebreakers")
+      .array()
+      .notNull()
+      .default(sql`'{${sql.raw(DEFAULT_TIEBREAKERS.join(","))}}'::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("competitions_slug_uq").on(t.slug), index("competitions_season_idx").on(t.season)],
+  (t) => [
+    uniqueIndex("competitions_slug_uq").on(t.slug),
+    index("competitions_season_idx").on(t.season),
+    index("competitions_league_idx").on(t.leagueId),
+    // Une seule édition d'un championnat par saison.
+    uniqueIndex("competitions_championship_season_uq").on(t.championshipId, t.season),
+  ],
 );
 
 export const competitionTeams = pgTable(
@@ -461,6 +556,9 @@ export const competitionTeams = pgTable(
     penaltyReason: text("penalty_reason"),
     // Ordre du tirage au sort (coupes).
     drawOrder: integer("draw_order"),
+    // Statut sportif dans la saison (champion, promu, maintenu, relégué…), fixé par l'organisateur.
+    outcome: teamOutcomeEnum("outcome"),
+    registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("competition_teams_uq").on(t.competitionId, t.clubId)],
 );
@@ -490,6 +588,9 @@ export const matches = pgTable(
     awayPenalties: integer("away_penalties"),
     attendance: integer("attendance"),
     report: text("report"),
+    // Résultat officiel : seul un résultat validé compte au classement et s'affiche comme définitif.
+    validatedAt: timestamp("validated_at", { withTimezone: true }),
+    validatedBy: integer("validated_by").references(() => users.id),
     updatedBy: integer("updated_by").references(() => users.id),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -514,6 +615,8 @@ export const matchEvents = pgTable(
       .notNull()
       .references(() => clubs.id),
     playerId: integer("player_id").references(() => players.id),
+    // Remplacement : `playerId` sort, `playerInId` entre.
+    playerInId: integer("player_in_id").references(() => players.id),
     createdBy: integer("created_by").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

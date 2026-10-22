@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -39,7 +40,9 @@ export default async function RefereePage({ params }: PageProps<"/admin/arbitres
     <>
       <PageHeader eyebrow="Arbitrage" title={`${ref.lastName} ${ref.firstName}`} />
       <div className="flex flex-col gap-10">
+        <div id="modifier">
         <RefereeForm action={updateReferee.bind(null, id)} leagues={allLeagues} initial={ref} submitLabel="Enregistrer" />
+        </div>
 
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Espace personnel</h2>
@@ -53,7 +56,7 @@ export default async function RefereePage({ params }: PageProps<"/admin/arbitres
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Désignations</h2>
           {designations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune désignation.</p>
+            <EmptyState icon="whistle" title="Aucune désignation" compact />
           ) : (
             <ul className="flex flex-col divide-y rounded-lg border text-sm">
               {designations.map(({ o, kickoffAt, home, away }) => (

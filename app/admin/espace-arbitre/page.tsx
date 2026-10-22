@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { PageHeader } from "@/components/admin/page-header";
@@ -33,7 +34,7 @@ export default async function RefereeSpacePage() {
     <>
       <PageHeader eyebrow="Mon espace arbitre" title={`${ref.firstName} ${ref.lastName}`} description={REFEREE_GRADE_LABELS[ref.grade]} />
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Aucune désignation pour le moment.</p>
+        <EmptyState icon="whistle" title="Aucune désignation pour le moment">Vos prochaines désignations apparaîtront ici dès que la direction de l’arbitrage les aura publiées.</EmptyState>
       ) : (
         <ul className="flex flex-col gap-4">
           {rows.map(({ o, match, competition, home, away }) => (

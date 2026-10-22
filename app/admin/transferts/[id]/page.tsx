@@ -93,7 +93,7 @@ export default async function TransferPage({ params }: PageProps<"/admin/transfe
             <ActionForm action={act("cancel")} label="Annuler la demande" field={{ name: "text", label: "Motif de l'annulation", required: true }} />
           )}
           {t.status === "APPROVED" && (
-            <Link href={`/admin/transferts/${t.id}/certificat`} className="w-fit rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+            <Link href={`/admin/transferts/${t.id}/certificat`} className="admin-btn admin-btn-primary">
               Certificat de sortie
             </Link>
           )}

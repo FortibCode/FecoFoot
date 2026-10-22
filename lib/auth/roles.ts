@@ -17,6 +17,10 @@ export const ROLES = [
   "REFEREE",
   // Commission de discipline (M18).
   "DISCIPLINE",
+  // Gestion des compétitions nationales et départementales, sans les autres modules fédéraux.
+  "COMPETITION_MANAGER",
+  // Joueur licencié : consultation de ses propres données (licences, transferts, matchs).
+  "PLAYER",
 ] as const;
 
 export type Role = (typeof ROLES)[number];
@@ -32,11 +36,15 @@ export const ROLE_LABELS: Record<Role, string> = {
   REFEREEING: "Direction de l'arbitrage",
   REFEREE: "Arbitre / commissaire",
   DISCIPLINE: "Commission de discipline",
+  COMPETITION_MANAGER: "Gestion des compétitions",
+  PLAYER: "Joueur / joueuse",
 };
 
 export const PERMISSIONS = [
   "dashboard.view",
   "leagues.manage",
+  // Fiche de sa propre ligue (responsable départemental).
+  "leagues.own",
   "clubs.manage",
   "clubs.affiliate",
   "clubs.read",
@@ -51,8 +59,12 @@ export const PERMISSIONS = [
   "national_teams.manage",
   "communication.manage",
   "ticketing.manage",
+  // Trésorerie : suivi des paiements Mobile Money et des encaissements (M16).
+  "payments.manage",
   "refereeing.manage",
   "referee.self",
+  // Espace personnel du joueur : uniquement ses propres données.
+  "player.self",
   "lineups.submit",
   "discipline.manage",
   "users.manage",
@@ -76,6 +88,7 @@ const ADMIN_COMMON: Permission[] = [
   "national_teams.manage",
   "communication.manage",
   "ticketing.manage",
+  "payments.manage",
   "refereeing.manage",
   "discipline.manage",
   "audit.read",
@@ -84,8 +97,11 @@ const ADMIN_COMMON: Permission[] = [
 const MATRIX: Record<Role, readonly Permission[]> = {
   SUPER_ADMIN: [...ADMIN_COMMON, "users.manage"],
   FEDERATION_ADMIN: ADMIN_COMMON,
+  // Compétitions : uniquement celles de sa ligue (canAccessCompetition).
   LEAGUE: [
     "dashboard.view",
+    "leagues.own",
+    "competitions.manage",
     "clubs.manage",
     "clubs.read",
     "players.manage",
@@ -97,10 +113,12 @@ const MATRIX: Record<Role, readonly Permission[]> = {
   CLUB: ["dashboard.view", "clubs.read", "players.manage", "players.read", "licenses.request", "transfers.release", "lineups.submit"],
   DTN: ["dashboard.view", "players.read", "national_teams.manage"],
   COMMUNICATION: ["dashboard.view", "communication.manage"],
-  TICKETING: ["dashboard.view", "ticketing.manage"],
+  TICKETING: ["dashboard.view", "ticketing.manage", "payments.manage"],
   REFEREEING: ["dashboard.view", "refereeing.manage"],
   REFEREE: ["dashboard.view", "referee.self"],
   DISCIPLINE: ["dashboard.view", "discipline.manage"],
+  COMPETITION_MANAGER: ["dashboard.view", "competitions.manage", "clubs.read"],
+  PLAYER: ["dashboard.view", "player.self"],
 };
 
 export function can(role: Role, permission: Permission): boolean {
@@ -119,14 +137,30 @@ export type ScopedUser = { role: Role; leagueId: number | null; clubId: number |
  * territoire, un club ne voit que sa propre fiche. Les autres profils
  * autorisés sur le module voient tout.
  */
-export function canAccessClub(user: ScopedUser, club: { id: number; leagueId: number }): boolean {
+export function canAccessClub(user: ScopedUser, club: { id: number; leagueId: number | null }): boolean {
   if (user.role === "LEAGUE") return user.leagueId !== null && user.leagueId === club.leagueId;
   if (user.role === "CLUB") return user.clubId !== null && user.clubId === club.id;
   return can(user.role, "clubs.read");
 }
 
+/**
+ * Périmètre des compétitions : une ligue ne gère que les compétitions départementales qu'elle organise ;
+ * la fédération et la gestion des compétitions gèrent aussi les compétitions nationales.
+ */
+export function canAccessCompetition(user: ScopedUser, competition: { leagueId: number | null }): boolean {
+  if (!can(user.role, "competitions.manage")) return false;
+  if (user.role === "LEAGUE") return user.leagueId !== null && competition.leagueId === user.leagueId;
+  return true;
+}
+
+/** Fiche d'une ligue : toutes pour la fédération, la sienne pour un responsable départemental. */
+export function canManageLeague(user: ScopedUser, leagueId: number): boolean {
+  if (can(user.role, "leagues.manage")) return true;
+  return user.role === "LEAGUE" && can(user.role, "leagues.own") && user.leagueId === leagueId;
+}
+
 /** Profils créés par un module dédié, pas par la gestion des comptes (l'accès arbitre naît de sa fiche). */
-export const ROLES_MANAGED_ELSEWHERE: Role[] = ["REFEREE"];
+export const ROLES_MANAGED_ELSEWHERE: Role[] = ["REFEREE", "PLAYER"];
 
 /** Vérifie la cohérence rôle ↔ périmètre à la création d'un compte. */
 export function scopeError(user: ScopedUser): string | null {

@@ -1,4 +1,4 @@
-import type { StandingRow } from "@/lib/competitions";
+import { standingZone, type StandingRow } from "@/lib/competitions";
 
 type Row = StandingRow & { name: string; shortName: string | null };
 
@@ -28,6 +28,7 @@ export function StandingsTable({
   animate = false,
   slice,
   enter = "left",
+  zones,
 }: {
   rows: Row[];
   title?: string;
@@ -37,6 +38,8 @@ export function StandingsTable({
   slice?: { start: number; end: number };
   /** Sens d'entrée des lignes (changement de page). */
   enter?: "left" | "right";
+  /** Places de montée et de descente de la saison : liseré vert / rouge et légende. */
+  zones?: { promotion: number; relegation: number };
 }) {
   const { ordered: all, started, maxPoints } = orderStandings(rows);
   const offset = slice?.start ?? 0;
@@ -74,6 +77,7 @@ export function StandingsTable({
           {ordered.map((r, idx) => {
             const i = offset + idx;
             const leader = started && i === 0;
+            const zone = started && zones ? standingZone(i + 1, all.length, zones) : null;
             return (
               <tr
                 key={r.clubId}
@@ -81,7 +85,13 @@ export function StandingsTable({
                 className={`group transition-colors hover:bg-accent/70 ${leader ? "bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)]" : "even:bg-muted/40"}`}
               >
                 <td className="relative px-2 py-2.5 text-center font-semibold">
-                  {leader && <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-[var(--flag-yellow)]" />}
+                  {(leader || zone) && (
+                    <span
+                      aria-hidden
+                      className={`absolute inset-y-0 left-0 w-1 ${zone === "promotion" ? "bg-[var(--flag-green)]" : zone === "relegation" ? "bg-destructive" : "bg-[var(--flag-yellow)]"}`}
+                    />
+                  )}
+                  {zone && <span className="sr-only">{zone === "promotion" ? "Zone de montée" : "Zone de descente"}</span>}
                   <span className={`inline-flex size-7 items-center justify-center rounded-md font-heading text-base ${leader ? "bg-[var(--flag-yellow)] text-brand-ink" : ""}`}>
                     {i + 1}
                   </span>
@@ -136,6 +146,20 @@ export function StandingsTable({
             ))}
         </tbody>
       </table>
+      {zones && (zones.promotion > 0 || zones.relegation > 0) && (
+        <p className="flex flex-wrap gap-4 border-t px-3 py-2 text-xs text-muted-foreground">
+          {zones.promotion > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className="h-3 w-1 bg-[var(--flag-green)]" /> Montée ({zones.promotion})
+            </span>
+          )}
+          {zones.relegation > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className="h-3 w-1 bg-destructive" /> Descente ({zones.relegation})
+            </span>
+          )}
+        </p>
+      )}
     </div>
   );
 }

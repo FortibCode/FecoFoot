@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import { asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { DocumentsPanel } from "@/components/admin/documents-panel";
@@ -25,7 +26,7 @@ export default async function ClubPage({ params }: PageProps<"/admin/clubs/[id]"
   const [row] = await db
     .select({ club: clubs, league: leagues.name })
     .from(clubs)
-    .innerJoin(leagues, eq(clubs.leagueId, leagues.id))
+    .leftJoin(leagues, eq(clubs.leagueId, leagues.id))
     .where(eq(clubs.id, id))
     .limit(1);
   if (!row) notFound();
@@ -45,7 +46,7 @@ export default async function ClubPage({ params }: PageProps<"/admin/clubs/[id]"
       <PageHeader
         eyebrow={`Organisation · ${club.affiliationNumber}`}
         title={club.name}
-        description={`${row.league} · ${club.city} · ${CLUB_STATUS_LABELS[club.status]} · créé le ${formatDate(club.createdAt)}`}
+        description={`${row.league ?? "Fédération — division nationale"} · ${club.city} · ${CLUB_STATUS_LABELS[club.status]} · créé le ${formatDate(club.createdAt)}`}
       />
 
       <div className="flex flex-col gap-10">
@@ -56,7 +57,7 @@ export default async function ClubPage({ params }: PageProps<"/admin/clubs/[id]"
           </section>
         )}
 
-        <section className="flex flex-col gap-3">
+        <section id="modifier" className="flex flex-col gap-3">
           <h2 className="font-semibold">Informations</h2>
           {canEdit ? (
             <ClubForm action={updateClub.bind(null, club.id)} leagues={leagueChoices} initial={club} submitLabel="Enregistrer" />
@@ -89,7 +90,7 @@ export default async function ClubPage({ params }: PageProps<"/admin/clubs/[id]"
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Dirigeants et encadrement</h2>
           {officials.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucun dirigeant enregistré.</p>
+            <EmptyState icon="users" title="Aucun dirigeant enregistré" compact>Ajoutez le président, le secrétaire général et l’encadrement avec le formulaire ci-dessous.</EmptyState>
           ) : (
             <ul className="divide-y rounded-lg border">
               {officials.map((o) => (

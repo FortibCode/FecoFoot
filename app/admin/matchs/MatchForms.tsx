@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FormMessage, SelectField, TextField } from "@/components/ui/field";
 import type { ActionState } from "@/lib/action-state";
@@ -30,10 +31,23 @@ export function SheetForm({
   action,
   values,
   cup,
+  scoreFromGoals,
+  teams,
 }: {
   action: Action;
-  values: { status: string; attendance: number | null; report: string | null; homePenalties: number | null; awayPenalties: number | null };
+  values: {
+    status: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    attendance: number | null;
+    report: string | null;
+    homePenalties: number | null;
+    awayPenalties: number | null;
+  };
   cup: boolean;
+  /** Score calculé à partir des buts saisis : les champs de score sont alors en lecture seule. */
+  scoreFromGoals: boolean;
+  teams: [string, string];
 }) {
   const { state, pending, formProps } = useActionForm(action);
   return (
@@ -46,6 +60,18 @@ export function SheetForm({
         ))}
       </SelectField>
       <TextField label="Affluence" name="attendance" type="number" inputMode="numeric" min={0} defaultValue={values.attendance ?? ""} />
+      <TextField
+        label={`Score — ${teams[0]}`}
+        name="homeScore"
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={99}
+        defaultValue={values.homeScore ?? ""}
+        readOnly={scoreFromGoals}
+        hint={scoreFromGoals ? "Calculé à partir des buts saisis" : "À saisir si les buteurs ne sont pas connus"}
+      />
+      <TextField label={`Score — ${teams[1]}`} name="awayScore" type="number" inputMode="numeric" min={0} max={99} defaultValue={values.awayScore ?? ""} readOnly={scoreFromGoals} />
       {cup && (
         <>
           <TextField label="Tirs au but — domicile" name="homePenalties" type="number" inputMode="numeric" min={0} defaultValue={values.homePenalties ?? ""} />
@@ -68,10 +94,23 @@ export function SheetForm({
 
 export function EventForm({ action, players }: { action: Action; players: PlayerOption[] }) {
   const { state, pending, formProps } = useActionForm(action, { resetOnSuccess: true });
+  const [type, setType] = useState("GOAL");
   const teams = [...new Set(players.map((p) => p.team))];
+  const playerOptions = teams.map((team) => (
+    <optgroup key={team} label={team}>
+      {players
+        .filter((p) => p.team === team)
+        .map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+    </optgroup>
+  ));
+  const substitution = type === "SUBSTITUTION";
   return (
-    <form {...formProps} className="grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-[1fr_6rem_1.5fr_auto] sm:items-end">
-      <SelectField label="Événement" name="type" defaultValue="GOAL">
+    <form {...formProps} className="grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-[1fr_6rem_1.5fr_auto] sm:items-end">
+      <SelectField label="Événement" name="type" value={type} onChange={(e) => setType(e.target.value)}>
         {EVENT_TYPES.map((t) => (
           <option key={t} value={t}>
             {EVENT_TYPE_LABELS[t]}
@@ -79,20 +118,16 @@ export function EventForm({ action, players }: { action: Action; players: Player
         ))}
       </SelectField>
       <TextField label="Minute" name="minute" type="number" inputMode="numeric" min={1} max={130} required />
-      <SelectField label="Joueur" name="playerId" required defaultValue="" className="col-span-2 sm:col-span-1">
+      <SelectField label={substitution ? "Joueur sortant" : "Joueur"} name="playerId" required defaultValue="" className="col-span-2 sm:col-span-1">
         <option value="">— Choisir —</option>
-        {teams.map((team) => (
-          <optgroup key={team} label={team}>
-            {players
-              .filter((p) => p.team === team)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-          </optgroup>
-        ))}
+        {playerOptions}
       </SelectField>
+      {substitution && (
+        <SelectField label="Joueur entrant" name="playerInId" required defaultValue="" className="col-span-2 sm:col-start-3">
+          <option value="">— Choisir —</option>
+          {playerOptions}
+        </SelectField>
+      )}
       <Button type="submit" variant="outline" disabled={pending} className="col-span-2 h-11 sm:col-span-1 sm:h-10">
         Ajouter
       </Button>

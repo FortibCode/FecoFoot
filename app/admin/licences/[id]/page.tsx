@@ -54,7 +54,7 @@ export default async function LicensePage({ params }: PageProps<"/admin/licences
         description={`Déposée le ${formatDateTime(license.createdAt)}`}
         actions={
           status === "VALIDATED" && (
-            <Link href={`/admin/licences/${license.id}/carte`} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+            <Link href={`/admin/licences/${license.id}/carte`} className="admin-btn admin-btn-primary">
               Carte de licence
             </Link>
           )

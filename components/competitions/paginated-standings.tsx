@@ -17,7 +17,17 @@ const subscribeReducedMotion = (cb: () => void) => {
  * Le défilement s'arrête au survol, au focus clavier, si l'onglet est masqué ou si l'appareil
  * demande moins d'animations ; boutons précédent / suivant et numéros de page.
  */
-export function PaginatedStandings({ rows, logos, title }: { rows: StandingsRow[]; logos?: Record<number, string>; title?: string }) {
+export function PaginatedStandings({
+  rows,
+  logos,
+  title,
+  zones,
+}: {
+  rows: StandingsRow[];
+  logos?: Record<number, string>;
+  title?: string;
+  zones?: { promotion: number; relegation: number };
+}) {
   const pages = Math.max(1, Math.ceil(orderStandings(rows).ordered.length / PAGE_SIZE));
   const [page, setPage] = useState(0);
   const [dir, setDir] = useState<"left" | "right">("left");
@@ -54,7 +64,7 @@ export function PaginatedStandings({ rows, logos, title }: { rows: StandingsRow[
       }}
     >
       {/* key : les lignes de la nouvelle page sont recréées et entrent en glissant. */}
-      <StandingsTable key={page} rows={rows} logos={logos} title={title} animate slice={{ start, end: start + PAGE_SIZE }} enter={dir} />
+      <StandingsTable key={page} rows={rows} logos={logos} title={title} animate slice={{ start, end: start + PAGE_SIZE }} enter={dir} zones={zones} />
       {pages > 1 && (
         <nav aria-label="Pages du classement" className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <p className="text-muted-foreground" aria-live="polite">

@@ -13,7 +13,7 @@ import { putFile } from "../lib/storage";
 
 /**
  * Import en lot de clubs affiliés avec leur logo : npm run clubs:import -- <dossier>
- * <dossier>/clubs.json : [{ name, shortName?, city, league (code de ligue), foundedYear?, logo? (fichier du dossier) }].
+ * <dossier>/clubs.json : [{ name, shortName?, city, league (code de ligue, ou « NATIONAL » : rattaché à la fédération), foundedYear?, logo? (fichier du dossier) }].
  * Un club déjà présent (même nom) n'est pas recréé ; son logo est ajouté s'il n'en a pas. Tout se modifie ensuite
  * dans Administration › Clubs.
  */
@@ -25,8 +25,9 @@ const entries: Entry[] = JSON.parse(await readFile(path.join(dir, "clubs.json"),
 const leagueIds = new Map((await db.select({ id: leagues.id, code: leagues.code }).from(leagues)).map((l) => [l.code, l.id]));
 
 for (const e of entries) {
-  const leagueId = leagueIds.get(e.league);
-  if (!leagueId) {
+  // Division nationale (Ligue 1 / Ligue 2 National) : club rattaché directement à la fédération.
+  const leagueId = e.league === "NATIONAL" ? null : leagueIds.get(e.league);
+  if (leagueId === undefined) {
     console.error(`✗ ${e.name} : ligue inconnue ${e.league}`);
     continue;
   }

@@ -34,6 +34,9 @@ export default async function teardown() {
       const covers = await tx<{ cover_key: string | null }[]>`delete from articles where title like 'E2E %' returning cover_key`;
       keys.push(...covers.map((c) => c.cover_key).filter((k): k is string => k !== null));
 
+      // Trésorerie : paiements de test.
+      await tx`delete from payments where reference like 'PAY-%-E2E%'`;
+
       // Photothèque : photos de test (et leurs fichiers).
       const pics = await tx<{ storage_key: string }[]>`delete from photos where caption like 'E2E %' returning storage_key`;
       keys.push(...pics.map((p) => p.storage_key));

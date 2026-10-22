@@ -7,15 +7,17 @@ import { blankToNull, type ActionState } from "@/lib/action-state";
 import { logAudit } from "@/lib/audit";
 import { requirePermission, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
-import { EVENT_TYPES, lineupError, MATCH_STATUSES, type LineupEntry } from "@/lib/competitions";
+import { canReschedule, EVENT_TYPES, GOAL_EVENTS, lineupError, MATCH_STATUSES, scoreFromEvents, type LineupEntry } from "@/lib/competitions";
 import { db } from "@/lib/db";
 import { competitions, matchEvents, matches, matchLineups, matchOfficials, players, referees } from "@/lib/db/schema";
 import { isUniqueViolation } from "@/lib/queries/players";
-import { canEditMatchSheet, eligiblePlayers, recomputeMatch, refereeOf } from "@/lib/queries/competitions";
+import { canEditMatchSheet, canManageMatch, eligiblePlayers, recomputeMatch, refereeOf } from "@/lib/queries/competitions";
 import { suspendedPlayers } from "@/lib/queries/discipline";
 import { designationError, matchDay, OFFICIAL_ROLES } from "@/lib/referees";
 
 const matchPath = (id: number) => `/admin/matchs/${id}`;
+const OUT_OF_SCOPE: ActionState = { error: "Ce match n'est pas dans votre périmètre." };
+const VALIDATED: ActionState = { error: "Résultat validé : seul l'organisateur de la compétition peut le corriger." };
 
 async function loadMatch(matchId: number) {
   const [m] = await db
@@ -31,21 +33,31 @@ function revalidateMatch(matchId: number, competitionId: number) {
   revalidatePath(matchPath(matchId));
   revalidatePath(`/admin/competitions/${competitionId}`);
   revalidatePath("/competitions", "layout");
+  revalidatePath("/matchs", "layout");
+  revalidatePath("/ligues", "layout");
 }
 
-/** Programmation : date, heure, stade (fédération). Les désignations suivent la nouvelle date (RG-08). */
+/** Programmation : date, heure, stade (organisateur), avant le coup d'envoi. Les désignations suivent la nouvelle date (RG-08). */
 export async function scheduleMatch(matchId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requirePermission("competitions.manage");
+  if (!(await canManageMatch(user, matchId))) return OUT_OF_SCOPE;
   const m = await loadMatch(matchId);
   if (!m) return { error: "Match introuvable." };
+  if (!canReschedule(m.match.status)) return { error: "Le match a commencé ou est terminé : sa programmation ne peut plus changer." };
   const raw = String(formData.get("kickoffAt") ?? "");
   // Saisie « AAAA-MM-JJTHH:MM » en heure de Brazzaville (UTC+1).
   const kickoffAt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw) ? new Date(`${raw}:00+01:00`) : null;
+  if (raw && (!kickoffAt || Number.isNaN(kickoffAt.getTime()))) return { error: "Date et heure invalides." };
+  if (kickoffAt && (kickoffAt.getUTCFullYear() < m.competition.season - 1 || kickoffAt.getUTCFullYear() > m.competition.season + 2)) {
+    return { error: "La date ne correspond pas à la saison de la compétition." };
+  }
   const venue = z.preprocess(blankToNull, z.string().trim().max(160).nullable()).parse(formData.get("venue"));
+  // Un match reporté puis reprogrammé redevient « programmé ».
+  const status = m.match.status === "POSTPONED" && kickoffAt ? "SCHEDULED" : m.match.status;
 
   try {
     await db.transaction(async (tx) => {
-      await tx.update(matches).set({ kickoffAt, venue, updatedBy: user.id, updatedAt: new Date() }).where(eq(matches.id, matchId));
+      await tx.update(matches).set({ kickoffAt, venue, status, updatedBy: user.id, updatedAt: new Date() }).where(eq(matches.id, matchId));
       if (kickoffAt) await tx.update(matchOfficials).set({ matchDay: matchDay(kickoffAt) }).where(eq(matchOfficials.matchId, matchId));
     });
   } catch (e) {
@@ -54,22 +66,40 @@ export async function scheduleMatch(matchId: number, _state: ActionState, formDa
     }
     throw e;
   }
-  await logAudit({ userId: user.id, action: "SCHEDULE", entity: "match", entityId: matchId, details: { kickoffAt, venue } });
+  await logAudit({
+    userId: user.id,
+    action: "SCHEDULE",
+    entity: "match",
+    entityId: matchId,
+    details: { before: { kickoffAt: m.match.kickoffAt, venue: m.match.venue }, after: { kickoffAt, venue } },
+  });
   revalidateMatch(matchId, m.match.competitionId);
   return { success: "Programmation enregistrée." };
 }
 
-/** Feuille de match : statut, affluence, rapport, tirs au but (EF-CMP-04). Fédération ou commissaire désigné (EF-CMP-09). */
+const score = z.preprocess(blankToNull, z.coerce.number().int().min(0, { error: "Score invalide." }).max(99, { error: "Score invalide." }).nullable());
+
+/**
+ * Feuille de match : statut, score, affluence, rapport, tirs au but (EF-CMP-04).
+ * Organisateur de la compétition ou commissaire désigné (EF-CMP-09).
+ * Résultat officiel : un match terminé saisi par l'organisateur est validé d'office ; saisi par le
+ * commissaire, il attend la validation de l'organisateur et ne compte pas encore au classement.
+ * Un résultat validé ne peut plus être modifié que par l'organisateur (correction tracée au journal).
+ */
 export async function updateMatchSheet(matchId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
   if (!(await canEditMatchSheet(user, matchId))) return { error: "Vous n'êtes pas autorisé à modifier cette feuille de match." };
   const m = await loadMatch(matchId);
   if (!m) return { error: "Match introuvable." };
   if (!m.match.homeClubId || !m.match.awayClubId) return { error: "Les deux équipes ne sont pas encore connues." };
+  const organiser = await canManageMatch(user, matchId);
+  if (m.match.validatedAt && !organiser) return VALIDATED;
 
   const parsed = z
     .object({
       status: z.enum(MATCH_STATUSES),
+      homeScore: score,
+      awayScore: score,
       attendance: z.preprocess(blankToNull, z.coerce.number().int().min(0).max(200_000).nullable()),
       report: z.preprocess(blankToNull, z.string().trim().max(5000).nullable()),
       homePenalties: z.preprocess(blankToNull, z.coerce.number().int().min(0).max(50).nullable()),
@@ -77,50 +107,106 @@ export async function updateMatchSheet(matchId: number, _state: ActionState, for
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
-  const d = parsed.data;
+  const { homeScore, awayScore, ...d } = parsed.data;
+  if ((homeScore === null) !== (awayScore === null)) return { error: "Saisissez le score des deux équipes." };
 
+  // Score saisi directement (buteurs inconnus) : refusé s'il contredit les buts déjà saisis.
+  const events = await db.select().from(matchEvents).where(eq(matchEvents.matchId, matchId));
+  const goals = events.filter((e) => GOAL_EVENTS.includes(e.type));
+  if (homeScore !== null && goals.length > 0) {
+    const computed = scoreFromEvents(events, m.match.homeClubId, m.match.awayClubId);
+    if (computed.home !== homeScore || computed.away !== awayScore) {
+      return { error: `Le score est calculé à partir des buts saisis (${computed.home} – ${computed.away}) : corrigez les buts.` };
+    }
+  }
+  if (d.status === "FINISHED" && goals.length === 0 && homeScore === null) return { error: "Saisissez le score final ou les buts du match." };
+
+  const finished = d.status === "FINISHED";
+  const validatedAt = finished && organiser ? (m.match.validatedAt ?? new Date()) : null;
   await db
     .update(matches)
-    .set({ ...d, updatedBy: user.id, updatedAt: new Date() })
+    .set({
+      ...d,
+      ...(homeScore !== null && goals.length === 0 && { homeScore, awayScore }),
+      validatedAt,
+      validatedBy: validatedAt ? (m.match.validatedBy ?? user.id) : null,
+      updatedBy: user.id,
+      updatedAt: new Date(),
+    })
     .where(eq(matches.id, matchId));
   await recomputeMatch(matchId);
+  const [after] = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);
 
   // Coupe terminée sur un nul sans tirs au but : pas de vainqueur, on le signale.
-  if (m.competition.type === "CUP" && d.status === "FINISHED") {
-    const [after] = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);
+  if (m.competition.type === "CUP" && finished) {
     if (after.homeScore === after.awayScore && (d.homePenalties === null || d.awayPenalties === null || d.homePenalties === d.awayPenalties)) {
       return { error: "Match nul en coupe : saisissez le résultat des tirs au but pour désigner le qualifié." };
     }
   }
-  await logAudit({ userId: user.id, action: "MATCH_SHEET", entity: "match", entityId: matchId, details: { status: d.status } });
+  const correction = m.match.validatedAt !== null && (m.match.homeScore !== after.homeScore || m.match.awayScore !== after.awayScore || m.match.status !== after.status);
+  await logAudit({
+    userId: user.id,
+    action: correction ? "RESULT_CORRECTION" : "MATCH_SHEET",
+    entity: "match",
+    entityId: matchId,
+    details: {
+      before: { status: m.match.status, score: [m.match.homeScore, m.match.awayScore] },
+      after: { status: after.status, score: [after.homeScore, after.awayScore] },
+      validated: Boolean(after.validatedAt),
+    },
+  });
   revalidateMatch(matchId, m.match.competitionId);
+  if (finished && !organiser) return { success: "Feuille de match enregistrée. Le résultat sera officiel après validation par l'organisateur." };
   return { success: "Feuille de match enregistrée." };
 }
 
-/** Buts, penalties, buts contre son camp, cartons, avec minute et joueur (EF-CMP-05). */
+/** Validation officielle d'un résultat saisi par le commissaire : il compte alors au classement et s'affiche comme définitif. */
+export async function validateResult(matchId: number): Promise<ActionState> {
+  const user = await requirePermission("competitions.manage");
+  if (!(await canManageMatch(user, matchId))) return OUT_OF_SCOPE;
+  const m = await loadMatch(matchId);
+  if (!m) return { error: "Match introuvable." };
+  if (m.match.status !== "FINISHED" || m.match.homeScore === null || m.match.awayScore === null) return { error: "Seul un match terminé avec son score peut être validé." };
+  if (m.match.validatedAt) return { success: "Résultat déjà validé." };
+  await db.update(matches).set({ validatedAt: new Date(), validatedBy: user.id }).where(eq(matches.id, matchId));
+  await logAudit({ userId: user.id, action: "RESULT_VALIDATED", entity: "match", entityId: matchId, details: { score: [m.match.homeScore, m.match.awayScore] } });
+  revalidateMatch(matchId, m.match.competitionId);
+  return { success: "Résultat validé : il compte désormais au classement." };
+}
+
+/** Buts, penalties, buts contre son camp, cartons, remplacements, avec minute et joueur (EF-CMP-05). */
 export async function addMatchEvent(matchId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
   if (!(await canEditMatchSheet(user, matchId))) return { error: "Vous n'êtes pas autorisé à modifier cette feuille de match." };
   const m = await loadMatch(matchId);
   if (!m?.match.homeClubId || !m.match.awayClubId) return { error: "Les deux équipes ne sont pas encore connues." };
+  if (m.match.validatedAt && !(await canManageMatch(user, matchId))) return VALIDATED;
 
   const parsed = z
     .object({
       type: z.enum(EVENT_TYPES),
       minute: z.coerce.number({ error: "Minute requise." }).int().min(1, { error: "Minute entre 1 et 130." }).max(130, { error: "Minute entre 1 et 130." }),
       playerId: z.coerce.number({ error: "Joueur requis." }).int().positive({ error: "Joueur requis." }),
+      playerInId: z.preprocess(blankToNull, z.coerce.number().int().positive().nullable()),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+  const e = parsed.data;
+  if (e.type === "SUBSTITUTION" && (e.playerInId === null || e.playerInId === e.playerId)) return { error: "Remplacement : choisissez le joueur entrant." };
+  const playerInId = e.type === "SUBSTITUTION" ? e.playerInId : null;
 
-  // Le joueur doit appartenir à l'une des deux équipes.
-  const [player] = await db.select({ clubId: players.clubId }).from(players).where(eq(players.id, parsed.data.playerId)).limit(1);
-  if (!player?.clubId || ![m.match.homeClubId, m.match.awayClubId].includes(player.clubId)) {
+  // Le joueur doit appartenir à l'une des deux équipes ; le remplaçant, à la même équipe.
+  const ids = [e.playerId, ...(playerInId ? [playerInId] : [])];
+  const found = await db.select({ id: players.id, clubId: players.clubId }).from(players).where(inArray(players.id, ids));
+  const clubOf = (id: number) => found.find((p) => p.id === id)?.clubId ?? null;
+  const clubId = clubOf(e.playerId);
+  if (!clubId || ![m.match.homeClubId, m.match.awayClubId].includes(clubId)) {
     return { error: "Ce joueur n'appartient à aucune des deux équipes." };
   }
-  await db.insert(matchEvents).values({ matchId, ...parsed.data, clubId: player.clubId, createdBy: user.id });
+  if (playerInId && clubOf(playerInId) !== clubId) return { error: "Le joueur entrant doit être de la même équipe." };
+  await db.insert(matchEvents).values({ matchId, type: e.type, minute: e.minute, playerId: e.playerId, playerInId, clubId, createdBy: user.id });
   await recomputeMatch(matchId);
-  await logAudit({ userId: user.id, action: "MATCH_EVENT", entity: "match", entityId: matchId, details: parsed.data });
+  await logAudit({ userId: user.id, action: "MATCH_EVENT", entity: "match", entityId: matchId, details: { ...e, playerInId } });
   revalidateMatch(matchId, m.match.competitionId);
   return { success: "Événement ajouté." };
 }
@@ -130,6 +216,7 @@ export async function deleteMatchEvent(matchId: number, eventId: number): Promis
   if (!(await canEditMatchSheet(user, matchId))) return;
   const m = await loadMatch(matchId);
   if (!m) return;
+  if (m.match.validatedAt && !(await canManageMatch(user, matchId))) return;
   await db.delete(matchEvents).where(and(eq(matchEvents.id, eventId), eq(matchEvents.matchId, matchId)));
   await recomputeMatch(matchId);
   await logAudit({ userId: user.id, action: "MATCH_EVENT_DELETE", entity: "match", entityId: matchId, details: { eventId } });
@@ -141,7 +228,7 @@ export async function deleteMatchEvent(matchId: number, eventId: number): Promis
 export async function saveLineup(matchId: number, clubId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
   const own = can(user.role, "lineups.submit") && user.clubId === clubId;
-  if (!own && !can(user.role, "competitions.manage")) return { error: "Seul le club peut déposer sa composition." };
+  if (!own && !(await canManageMatch(user, matchId))) return { error: "Seul le club peut déposer sa composition." };
   const m = await loadMatch(matchId);
   if (!m || (m.match.homeClubId !== clubId && m.match.awayClubId !== clubId)) return { error: "Ce club ne joue pas ce match." };
 

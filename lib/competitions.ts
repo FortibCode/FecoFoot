@@ -19,19 +19,82 @@ export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
 };
 
 export const GENDERS = ["M", "F"] as const;
+
+/**
+ * Catégories des compétitions : celles des licences, plus les U23 (compétitions espoirs).
+ * Une compétition U23 accueille des licenciés U20 et seniors : la catégorie ne filtre pas les engagements.
+ */
+export const COMPETITION_CATEGORIES = ["U13", "U15", "U17", "U20", "U23", "SENIOR", "VETERAN"] as const;
+export type CompetitionCategory = (typeof COMPETITION_CATEGORIES)[number];
+export const COMPETITION_CATEGORY_LABELS: Record<CompetitionCategory, string> = {
+  U13: "Moins de 13 ans",
+  U15: "Moins de 15 ans",
+  U17: "Moins de 17 ans",
+  U20: "Moins de 20 ans",
+  U23: "Moins de 23 ans",
+  SENIOR: "Senior",
+  VETERAN: "Vétéran (35 ans et plus)",
+};
+
+/**
+ * Statut sportif d'un club à l'issue d'une saison (fixé par l'organisateur selon le règlement) :
+ * il prépare la saison suivante (maintenus et promus reconduits, relégués vers la division inférieure).
+ */
+export const TEAM_OUTCOMES = ["CHAMPION", "PROMOTED", "MAINTAINED", "RELEGATED", "WITHDRAWN", "EXCLUDED"] as const;
+export type TeamOutcome = (typeof TEAM_OUTCOMES)[number];
+export const TEAM_OUTCOME_LABELS: Record<TeamOutcome, string> = {
+  CHAMPION: "Champion",
+  PROMOTED: "Promu",
+  MAINTAINED: "Maintenu",
+  RELEGATED: "Relégué",
+  WITHDRAWN: "Forfait général",
+  EXCLUDED: "Exclu",
+};
+
+/**
+ * Clubs proposés pour la saison suivante d'un championnat de niveau `tier` (1 = Ligue 1) :
+ * ses clubs non relégués ni promus ni sortis, plus les promus du niveau inférieur et les relégués du niveau supérieur.
+ * Proposition seulement : l'organisateur ajuste les engagements selon le règlement.
+ */
+export function nextSeasonClubs(current: { clubId: number; outcome: TeamOutcome | null }[], lower: { clubId: number; outcome: TeamOutcome | null }[], upper: { clubId: number; outcome: TeamOutcome | null }[]): number[] {
+  const leaving = new Set<TeamOutcome>(["PROMOTED", "RELEGATED", "WITHDRAWN", "EXCLUDED"]);
+  const stay = current.filter((t) => !t.outcome || !leaving.has(t.outcome)).map((t) => t.clubId);
+  const up = lower.filter((t) => t.outcome === "PROMOTED").map((t) => t.clubId);
+  const down = upper.filter((t) => t.outcome === "RELEGATED").map((t) => t.clubId);
+  return [...new Set([...stay, ...up, ...down])];
+}
+
+/** Zone d'un rang (1 = premier) au classement : montée en tête, descente en bas, selon la saison. */
+export function standingZone(rank: number, size: number, spots: { promotion: number; relegation: number }): "promotion" | "relegation" | null {
+  if (spots.promotion > 0 && rank <= spots.promotion) return "promotion";
+  if (spots.relegation > 0 && rank > size - spots.relegation) return "relegation";
+  return null;
+}
+
+/** Portée d'une compétition : nationale (fédération) ou départementale (une ligue). */
+export const scopeLabel = (league: { name: string } | null) => league?.name ?? "Compétition nationale";
 export const COMPETITION_GENDER_LABELS = { M: "Masculin", F: "Féminin" } as const;
 
-export const MATCH_STATUSES = ["SCHEDULED", "LIVE", "FINISHED", "POSTPONED", "CANCELLED"] as const;
+export const MATCH_STATUSES = ["SCHEDULED", "LIVE", "HALF_TIME", "FINISHED", "POSTPONED", "SUSPENDED", "CANCELLED"] as const;
 export type MatchStatus = (typeof MATCH_STATUSES)[number];
 export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
   SCHEDULED: "Programmé",
   LIVE: "En cours",
+  HALF_TIME: "Mi-temps",
   FINISHED: "Terminé",
   POSTPONED: "Reporté",
+  SUSPENDED: "Suspendu",
   CANCELLED: "Annulé",
 };
 
-export const EVENT_TYPES = ["GOAL", "PENALTY_GOAL", "OWN_GOAL", "YELLOW_CARD", "RED_CARD"] as const;
+/** En cours de jeu (saisie officielle depuis la feuille de match) : score affiché « en direct ». */
+export const isLive = (status: MatchStatus) => status === "LIVE" || status === "HALF_TIME";
+/** Un score existe : match en cours ou terminé. */
+export const hasScore = (status: MatchStatus) => isLive(status) || status === "FINISHED";
+/** Date, heure, stade et équipes ne se modifient plus une fois le match commencé (reporté : reprogrammable). */
+export const canReschedule = (status: MatchStatus) => status === "SCHEDULED" || status === "POSTPONED";
+
+export const EVENT_TYPES = ["GOAL", "PENALTY_GOAL", "OWN_GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   GOAL: "But",
@@ -39,7 +102,9 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   OWN_GOAL: "But contre son camp",
   YELLOW_CARD: "Carton jaune",
   RED_CARD: "Carton rouge",
+  SUBSTITUTION: "Remplacement",
 };
+export const GOAL_EVENTS: readonly EventType[] = ["GOAL", "PENALTY_GOAL", "OWN_GOAL"];
 
 // ─── Calendrier « toutes rondes » (EF-CMP-03) ────────────────────────────────
 
@@ -118,12 +183,72 @@ export type StandingRow = {
 
 type FinishedMatch = { homeClubId: number; awayClubId: number; homeScore: number; awayScore: number; kickoffAt: Date | null };
 
-/** Classement : points, puis différence de buts, puis buts marqués (RG-07) ; pénalités de points déduites. */
+/**
+ * Critères de départage à égalité de points, appliqués dans l'ordre choisi pour la compétition.
+ * Les critères « confrontations directes » ne comptent que les matchs entre les équipes encore à égalité.
+ */
+export const TIEBREAKERS = ["GOAL_DIFF", "GOALS_FOR", "WINS", "H2H_POINTS", "H2H_GOAL_DIFF", "H2H_GOALS_FOR"] as const;
+export type Tiebreaker = (typeof TIEBREAKERS)[number];
+export const TIEBREAKER_LABELS: Record<Tiebreaker, string> = {
+  GOAL_DIFF: "Différence de buts générale",
+  GOALS_FOR: "Buts marqués",
+  WINS: "Nombre de victoires",
+  H2H_POINTS: "Points en confrontations directes",
+  H2H_GOAL_DIFF: "Différence de buts en confrontations directes",
+  H2H_GOALS_FOR: "Buts marqués en confrontations directes",
+};
+/** Règle par défaut de la plateforme (RG-07) : points, différence de buts, buts marqués. */
+export const DEFAULT_TIEBREAKERS: Tiebreaker[] = ["GOAL_DIFF", "GOALS_FOR"];
+
+/** Liste de critères valide : connus, sans doublon ; vide → règle par défaut. */
+export function parseTiebreakers(values: unknown[]): Tiebreaker[] {
+  const list = values.filter((v): v is Tiebreaker => TIEBREAKERS.includes(v as Tiebreaker));
+  const unique = [...new Set(list)];
+  return unique.length ? unique : [...DEFAULT_TIEBREAKERS];
+}
+
+/** Mini-classement entre les seules équipes `ids` : points, différence et buts marqués. */
+function headToHead(ids: Set<number>, matches: FinishedMatch[], rule: PointsRule) {
+  const t = new Map([...ids].map((id) => [id, { points: 0, diff: 0, goals: 0 }]));
+  for (const m of matches) {
+    if (!ids.has(m.homeClubId) || !ids.has(m.awayClubId)) continue;
+    for (const [id, gf, ga] of [
+      [m.homeClubId, m.homeScore, m.awayScore],
+      [m.awayClubId, m.awayScore, m.homeScore],
+    ] as const) {
+      const r = t.get(id)!;
+      r.points += gf > ga ? rule.win : gf === ga ? rule.draw : rule.loss;
+      r.diff += gf - ga;
+      r.goals += gf;
+    }
+  }
+  return t;
+}
+
+/** Ordonne un groupe à égalité en appliquant les critères un par un (chaque critère recalculé sur le sous-groupe restant). */
+function breakTies(group: StandingRow[], criteria: Tiebreaker[], matches: FinishedMatch[], rule: PointsRule): StandingRow[] {
+  if (group.length < 2 || criteria.length === 0) return [...group].sort((a, b) => a.clubId - b.clubId);
+  const [c, ...rest] = criteria;
+  let value: (r: StandingRow) => number;
+  if (c.startsWith("H2H_")) {
+    const h = headToHead(new Set(group.map((r) => r.clubId)), matches, rule);
+    const key = c === "H2H_POINTS" ? "points" : c === "H2H_GOAL_DIFF" ? "diff" : "goals";
+    value = (r) => h.get(r.clubId)![key];
+  } else {
+    value = c === "GOAL_DIFF" ? (r) => r.goalDiff : c === "GOALS_FOR" ? (r) => r.goalsFor : (r) => r.won;
+  }
+  const buckets = new Map<number, StandingRow[]>();
+  for (const r of group) buckets.set(value(r), [...(buckets.get(value(r)) ?? []), r]);
+  return [...buckets.entries()].sort((a, b) => b[0] - a[0]).flatMap(([, rows]) => breakTies(rows, rest, matches, rule));
+}
+
+/** Classement : points, puis les critères de départage de la compétition (RG-07) ; pénalités de points déduites. */
 export function standings(
   teamIds: number[],
   matches: FinishedMatch[],
   rule: PointsRule,
   penalties: Map<number, number> = new Map(),
+  tiebreakers: Tiebreaker[] = DEFAULT_TIEBREAKERS,
 ): StandingRow[] {
   const rows = new Map<number, StandingRow>(
     teamIds.map((id) => [
@@ -156,7 +281,9 @@ export function standings(
     r.goalDiff = r.goalsFor - r.goalsAgainst;
     r.points = r.won * rule.win + r.drawn * rule.draw + r.lost * rule.loss - r.penalty;
   }
-  return [...rows.values()].sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor);
+  const byPoints = new Map<number, StandingRow[]>();
+  for (const r of rows.values()) byPoints.set(r.points, [...(byPoints.get(r.points) ?? []), r]);
+  return [...byPoints.entries()].sort((a, b) => b[0] - a[0]).flatMap(([, group]) => breakTies(group, tiebreakers, ordered, rule));
 }
 
 /** Meilleurs buteurs : buts et penalties, sans les buts contre son camp. */

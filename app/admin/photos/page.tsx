@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { asc, desc, eq, isNull, type SQL } from "drizzle-orm";
 import { PageHeader } from "@/components/admin/page-header";
@@ -47,7 +48,7 @@ export default async function AdminPhotosPage({ searchParams }: PageProps<"/admi
         </nav>
 
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aucune photo.</p>
+          <EmptyState icon="photo" title="Aucune photo">Ajoutez des photos avec le formulaire ci-dessus ; elles pourront être publiées sur le portail et mises à la une.</EmptyState>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {rows.map((p) => (

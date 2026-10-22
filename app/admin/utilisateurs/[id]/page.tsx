@@ -38,6 +38,7 @@ export default async function UserPage({ params }: PageProps<"/admin/utilisateur
       />
 
       <div className="flex flex-col gap-10">
+        <div id="modifier">
         <UserForm
           action={updateUser.bind(null, user.id)}
           leagues={leagues}
@@ -45,6 +46,7 @@ export default async function UserPage({ params }: PageProps<"/admin/utilisateur
           initial={user}
           submitLabel="Enregistrer"
         />
+        </div>
 
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Accès</h2>

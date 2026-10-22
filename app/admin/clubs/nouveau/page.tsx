@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { requirePermission } from "@/lib/auth/guard";
-import { leagueOptions } from "@/lib/queries/reference";
+import { activeLeagueOptions } from "@/lib/queries/reference";
 import { createClub } from "../actions";
 import { ClubForm } from "../ClubForms";
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Nouveau club — FECOFOOT" };
 
 export default async function NewClubPage() {
   const user = await requirePermission("clubs.manage");
-  const all = await leagueOptions();
+  const all = await activeLeagueOptions();
   const leagues = user.role === "LEAGUE" ? all.filter((l) => l.id === user.leagueId) : all;
 
   return (

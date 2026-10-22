@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -46,14 +47,16 @@ export default async function AdminArticlePage({ params }: PageProps<"/admin/act
             // eslint-disable-next-line @next/next/no-img-element -- visuel servi par la route des médias
             <img src={cover} alt="" className="aspect-video w-full max-w-md rounded-lg border object-cover" />
           ) : (
-            <p className="text-sm text-muted-foreground">Aucun visuel.</p>
+            <EmptyState icon="photo" title="Aucun visuel" compact />
           )}
           <UploadForm action={uploadCover.bind(null, id)} accept="image/jpeg,image/png,image/webp" label={cover ? "Remplacer" : "Ajouter"} />
         </section>
 
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Contenu</h2>
+          <div id="modifier">
           <ArticleForm action={updateArticle.bind(null, id)} initial={a} submitLabel="Enregistrer" />
+          </div>
         </section>
 
         <section className="flex flex-col gap-3 border-t pt-6">

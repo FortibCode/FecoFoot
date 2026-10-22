@@ -1,6 +1,7 @@
 import "server-only";
-import { and, eq, gte, lt, type SQL } from "drizzle-orm";
-import { auditLogs } from "@/lib/db/schema";
+import { and, desc, eq, gte, lt, type SQL } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { auditLogs, users } from "@/lib/db/schema";
 
 export type AuditFilters = { action?: string; entity?: string; from?: string; to?: string };
 
@@ -26,4 +27,15 @@ export function auditQueryString(f: AuditFilters): URLSearchParams {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(f)) if (v) q.set(k, v);
   return q;
+}
+
+/** Historique des opérations sur un objet (feuille de match, compétition, ligue), du plus récent au plus ancien. */
+export async function entityHistory(entity: string, entityId: number, limit = 30) {
+  return db
+    .select({ id: auditLogs.id, action: auditLogs.action, details: auditLogs.details, createdAt: auditLogs.createdAt, user: users.fullName })
+    .from(auditLogs)
+    .leftJoin(users, eq(auditLogs.userId, users.id))
+    .where(and(eq(auditLogs.entity, entity), eq(auditLogs.entityId, String(entityId))))
+    .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+    .limit(limit);
 }

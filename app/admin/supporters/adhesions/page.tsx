@@ -22,7 +22,7 @@ export default async function MembershipPlansPage() {
         title={`Adhésions ${seasonLabel(season)}`}
         description={`Club des supporters : tarifs annuels. Formule jeune : moins de ${YOUTH_MAX_AGE + 1} ans au 1er juillet.`}
       />
-      <div className="flex max-w-2xl flex-col gap-3">
+      <div className="plan-cards">
         {MEMBERSHIP_TIERS.map((tier) => {
           const plan = plans.find((p) => p.tier === tier);
           return <PlanForm key={tier} action={saveMembershipPlan.bind(null, season)} tier={tier} price={plan?.price ?? null} open={plan?.open ?? true} />;

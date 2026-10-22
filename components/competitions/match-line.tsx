@@ -1,16 +1,30 @@
 import Link from "next/link";
-import { MATCH_STATUS_LABELS } from "@/lib/competitions";
+import { hasScore, isLive, MATCH_STATUS_LABELS } from "@/lib/competitions";
 import { formatDateTime } from "@/lib/format";
 import type { MatchRow } from "@/lib/queries/competitions";
 
-/** Une ligne de calendrier : date, équipes, score ou statut. */
-export function MatchLine({ row, href, byeLabel = "exempt" }: { row: MatchRow; href?: string; byeLabel?: string }) {
+/**
+ * Une ligne de calendrier : date, équipes, score ou statut.
+ * `official` (portail) : un score terminé n'est affiché qu'une fois validé par l'organisateur ;
+ * un match en cours n'est « en direct » que sur saisie officielle de la feuille de match.
+ */
+export function MatchLine({ row, href, byeLabel = "exempt", official = false }: { row: MatchRow; href?: string; byeLabel?: string; official?: boolean }) {
   const { match: m, home, away } = row;
-  const played = m.status === "FINISHED" || m.status === "LIVE";
+  const awaiting = official && m.status === "FINISHED" && !m.validatedAt;
+  const played = hasScore(m.status) && !awaiting;
+  const live = isLive(m.status);
   const name = (c: typeof home) => c?.shortName ?? c?.name;
   const content = (
     <>
-      <span className="col-span-3 text-xs text-muted-foreground sm:col-span-1">{m.kickoffAt ? formatDateTime(m.kickoffAt) : "Date à fixer"}</span>
+      <span className="col-span-3 text-xs text-muted-foreground sm:col-span-1">
+        {live ? (
+          <span className="font-semibold text-[var(--flag-red,#dc241f)]">● {MATCH_STATUS_LABELS[m.status]}</span>
+        ) : m.kickoffAt ? (
+          formatDateTime(m.kickoffAt)
+        ) : (
+          "Date à fixer"
+        )}
+      </span>
       <span className="min-w-0 truncate text-right font-medium">{name(home) ?? "À déterminer"}</span>
       <span className={`min-w-16 text-center font-bold tabular-nums ${played ? "rounded-md bg-brand-ink px-2 py-1 font-heading text-base text-white" : ""}`}>
         {home && !away && m.bracketSlot !== null ? (
@@ -24,6 +38,8 @@ export function MatchLine({ row, href, byeLabel = "exempt" }: { row: MatchRow; h
               </span>
             )}
           </>
+        ) : awaiting ? (
+          <span className="text-xs font-normal text-muted-foreground">Résultat en attente</span>
         ) : m.status === "SCHEDULED" ? (
           <span className="text-xs font-normal text-muted-foreground">–</span>
         ) : (

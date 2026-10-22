@@ -10,7 +10,8 @@ import { requirePermission, type CurrentUser } from "@/lib/auth/guard";
 import { canAccessClub } from "@/lib/auth/roles";
 import { CLUB_STATUSES, formatAffiliationNumber } from "@/lib/clubs";
 import { db } from "@/lib/db";
-import { clubAffiliationSeq, clubOfficials, clubs } from "@/lib/db/schema";
+import { blockedMessage, clubBlockers, deleteClubRecord } from "@/lib/deletion";
+import { clubAffiliationSeq, clubOfficials, clubs, leagues } from "@/lib/db/schema";
 import { slugify } from "@/lib/format";
 import { nextVal } from "@/lib/sequences";
 
@@ -19,7 +20,8 @@ const optText = (max: number) => z.preprocess(blankToNull, z.string().trim().max
 const ClubSchema = z.object({
   name: z.string().trim().min(2, { error: "Nom du club requis." }).max(160),
   shortName: optText(16),
-  leagueId: z.coerce.number({ error: "Ligue requise." }).int().positive({ error: "Ligue requise." }),
+  // « national » : club rattaché directement à la fédération (division nationale).
+  leagueId: z.preprocess((v) => (v === "national" ? null : v), z.coerce.number({ error: "Rattachement requis." }).int().positive({ error: "Rattachement requis." }).nullable()),
   city: z.string().trim().min(2, { error: "Ville requise." }).max(120),
   stadium: optText(160),
   colors: optText(80),
@@ -32,8 +34,14 @@ const ClubSchema = z.object({
 });
 
 /** Une ligue ne peut créer ou rattacher un club qu'à son propre territoire. */
-function leagueAllowed(user: CurrentUser, leagueId: number) {
+function leagueAllowed(user: CurrentUser, leagueId: number | null) {
   return user.role !== "LEAGUE" || user.leagueId === leagueId;
+}
+
+async function leagueActive(leagueId: number | null) {
+  if (leagueId === null) return true;
+  const [l] = await db.select({ active: leagues.active }).from(leagues).where(eq(leagues.id, leagueId)).limit(1);
+  return Boolean(l?.active);
 }
 
 async function loadClubFor(user: CurrentUser, clubId: number) {
@@ -57,6 +65,7 @@ export async function createClub(_state: ActionState, formData: FormData): Promi
   const parsed = ClubSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (!leagueAllowed(user, parsed.data.leagueId)) return { error: "Vous ne pouvez créer un club que dans votre ligue." };
+  if (!(await leagueActive(parsed.data.leagueId))) return { error: "Cette ligue est désactivée : elle ne reçoit plus de nouveaux clubs." };
 
   const [created] = await db
     .insert(clubs)
@@ -84,6 +93,7 @@ export async function updateClub(clubId: number, _state: ActionState, formData: 
   const parsed = ClubSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (!leagueAllowed(user, parsed.data.leagueId)) return { error: "Vous ne pouvez pas rattacher ce club à une autre ligue." };
+  if (parsed.data.leagueId !== club.leagueId && !(await leagueActive(parsed.data.leagueId))) return { error: "Cette ligue est désactivée : elle ne reçoit plus de nouveaux clubs." };
 
   const slug = parsed.data.name === club.name ? club.slug : await uniqueSlug(parsed.data.name, club.id);
   await db
@@ -149,4 +159,18 @@ export async function removeOfficial(clubId: number, officialId: number): Promis
   await db.delete(clubOfficials).where(and(eq(clubOfficials.id, officialId), eq(clubOfficials.clubId, club.id)));
   await logAudit({ userId: user.id, action: "DELETE", entity: "club_official", entityId: officialId, details: { clubId: club.id } });
   revalidatePath(`/admin/clubs/${club.id}`);
+}
+
+/** Suppression d'un club créé par erreur : refusée dès qu'il a des joueurs, licences, transferts, matchs… */
+export async function deleteClub(clubId: number): Promise<ActionState> {
+  const user = await requirePermission("clubs.manage");
+  const [club] = await db.select().from(clubs).where(eq(clubs.id, clubId)).limit(1);
+  if (!club) return { error: "Club introuvable." };
+  if (!canAccessClub(user, club)) return { error: "Ce club n'est pas dans votre périmètre." };
+  const reasons = await clubBlockers(clubId);
+  if (reasons.length) return { error: blockedMessage("Le club", reasons) };
+  await deleteClubRecord(clubId);
+  await logAudit({ userId: user.id, action: "DELETE", entity: "club", entityId: clubId, details: { name: club.name, affiliationNumber: club.affiliationNumber } });
+  revalidatePath("/admin/clubs");
+  return { success: `Club « ${club.name} » supprimé.` };
 }

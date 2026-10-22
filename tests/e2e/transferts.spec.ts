@@ -11,7 +11,7 @@ test("transfert : instruction par la ligue, approbation fédérale, clôture de 
   await login(page, admin());
   await createClub(page, clubA, { affiliate: true });
   await createClub(page, clubB, { affiliate: true });
-  const league = await createUser(page, { fullName: "Ligue Transferts E2E", email: e2eEmail("ligue-trf"), role: "LEAGUE", league: "Ligue de Brazzaville" });
+  const league = await createUser(page, { fullName: "Ligue Transferts E2E", email: e2eEmail("ligue-trf"), role: "LEAGUE", league: "Ligue départementale de Brazzaville" });
   const releasingClub = await createUser(page, { fullName: "Club Départ E2E", email: e2eEmail("club-depart"), role: "CLUB", club: clubA });
 
   // Fenêtre de transfert ouverte aujourd'hui (EF-TRF-04).

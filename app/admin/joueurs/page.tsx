@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
+import { RowActions } from "@/components/admin/row-actions";
+import { deletePlayer } from "./actions";
+import { StatCards } from "@/components/admin/stat-cards";
 import Link from "next/link";
-import { and, asc, count, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, asc, count, countDistinct, eq, gt, ilike, or, sql, type SQL } from "drizzle-orm";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
+import { Pager } from "@/components/admin/pager";
 import { SelectField } from "@/components/ui/field";
 import { requirePermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
 import { db } from "@/lib/db";
-import { clubs, players } from "@/lib/db/schema";
+import { clubs, licenses, players } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
-import { POSITION_LABELS } from "@/lib/licenses";
+import { POSITION_LABELS, seasonLabel, seasonOf } from "@/lib/licenses";
 import { scopedClubOptions } from "@/lib/queries/reference";
 
 export const metadata: Metadata = { title: "Joueurs — FECOFOOT" };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 5;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
 
 export default async function PlayersPage({ searchParams }: PageProps<"/admin/joueurs">) {
   const user = await requirePermission("players.read");
+  const canManage = can(user.role, "players.manage");
   const sp = await searchParams;
   const q = one(sp.q);
   const page = Math.max(1, Number(one(sp.page)) || 1);
@@ -36,6 +41,18 @@ export default async function PlayersPage({ searchParams }: PageProps<"/admin/jo
   }
   const where = filters.length ? and(...filters) : undefined;
 
+  // Indicateurs dans le périmètre du compte (sans les filtres de recherche).
+  const scope = user.role === "CLUB" ? eq(players.clubId, user.clubId ?? -1) : user.role === "LEAGUE" ? eq(clubs.leagueId, user.leagueId ?? -1) : undefined;
+  const [[{ all }], [{ women }], [{ minors }], [{ licensed }]] = await Promise.all([
+    db.select({ all: count() }).from(players).leftJoin(clubs, eq(players.clubId, clubs.id)).where(scope),
+    db.select({ women: count() }).from(players).leftJoin(clubs, eq(players.clubId, clubs.id)).where(and(scope, eq(players.gender, "F"))),
+    db.select({ minors: count() }).from(players).leftJoin(clubs, eq(players.clubId, clubs.id)).where(and(scope, gt(players.birthDate, sql`now() - interval '18 years'`))),
+    db
+      .select({ licensed: countDistinct(licenses.playerId) })
+      .from(licenses)
+      .innerJoin(clubs, eq(licenses.clubId, clubs.id))
+      .where(and(scope, eq(licenses.season, seasonOf()), eq(licenses.status, "VALIDATED"))),
+  ]);
   const [rows, [{ total }]] = await Promise.all([
     db
       .select({
@@ -67,17 +84,26 @@ export default async function PlayersPage({ searchParams }: PageProps<"/admin/jo
         description={`${total} joueur(s) enregistré(s)`}
         actions={
           can(user.role, "players.manage") && (
-            <Link href="/admin/joueurs/nouveau" className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+            <Link href="/admin/joueurs/nouveau" className="admin-btn admin-btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={14} height={14} aria-hidden><path d="M12 5v14m-7-7h14" /></svg>
               Nouveau joueur
             </Link>
           )
         }
       />
+      <StatCards
+        stats={[
+          { label: "Joueurs", value: all },
+          { label: `Licenciés ${seasonLabel(seasonOf())}`, value: licensed, sub: all ? `${Math.round((licensed / all) * 100)} % des joueurs` : undefined },
+          { label: "Joueuses", value: women },
+          { label: "Mineurs", value: minors, sub: "accord du représentant légal requis" },
+        ]}
+      />
 
-      <form className="mb-4 grid gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
-        <label className="flex flex-col gap-1.5 font-medium">
-          Recherche
-          <input name="q" defaultValue={q} placeholder="Nom, prénom, identifiant" className="h-10 rounded-md border px-3" />
+      <form className="mb-5 flex flex-wrap items-end gap-3 text-sm">
+        <label className="flex flex-col gap-1">
+          <span className="admin-label">Recherche</span>
+          <input name="q" defaultValue={q} placeholder="Nom, prénom, identifiant" className="admin-input" style={{ maxWidth: 260 }} />
         </label>
         {clubChoices.length > 1 && (
           <SelectField label="Club" name="club" defaultValue={requestedClub ?? ""}>
@@ -89,12 +115,12 @@ export default async function PlayersPage({ searchParams }: PageProps<"/admin/jo
             ))}
           </SelectField>
         )}
-        <button type="submit" className="h-10 rounded-md border px-4 hover:bg-muted">
+        <button type="submit" className="admin-btn admin-btn-outline">
           Filtrer
         </button>
       </form>
 
-      <DataTable head={["Identifiant", "Joueur", "Naissance", "Poste", "Club"]}>
+      <DataTable head={["Identifiant", "Joueur", "Naissance", "Poste", "Club", ""]}>
         {rows.map((p) => (
           <tr key={p.id}>
             <td className="px-3 py-2 font-mono text-xs">{p.federalId}</td>
@@ -106,17 +132,14 @@ export default async function PlayersPage({ searchParams }: PageProps<"/admin/jo
             <td className="px-3 py-2">{formatDate(p.birthDate)}</td>
             <td className="px-3 py-2">{p.position ? POSITION_LABELS[p.position] : "—"}</td>
             <td className="px-3 py-2">{p.club ?? "—"}</td>
+            <td>
+              <RowActions name={`${p.lastName} ${p.firstName}`} viewHref={`/admin/joueurs/${p.id}`} editHref={canManage ? `/admin/joueurs/${p.id}#modifier` : undefined} onDelete={canManage ? deletePlayer.bind(null, p.id) : undefined} />
+            </td>
           </tr>
         ))}
       </DataTable>
 
-      {pages > 1 && (
-        <nav className="mt-4 flex items-center gap-3 text-sm" aria-label="Pagination">
-          {page > 1 && <Link href={href(page - 1)} className="underline">← Précédent</Link>}
-          <span>Page {page} / {pages}</span>
-          {page < pages && <Link href={href(page + 1)} className="underline">Suivant →</Link>}
-        </nav>
-      )}
+      <Pager page={page} pages={pages} total={total} pageSize={PAGE_SIZE} hrefFor={href} />
     </>
   );
 }

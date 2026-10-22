@@ -127,6 +127,7 @@ test("championnat : du calendrier au classement public", async ({ page, browser 
   await page.goto("/admin/espace-arbitre");
   await expect(page.locator("main")).toContainText("Commissaire");
   await page.getByRole("link", { name: "Remplir la feuille de match" }).click();
+  const sheetUrl = page.url();
 
   const addEvent = async (type: string, minute: number, player: RegExp) => {
     await page.selectOption('select[name="type"]', type);
@@ -161,8 +162,14 @@ test("championnat : du calendrier au classement public", async ({ page, browser 
   await expect(page).toHaveURL(/acces-refuse/);
   await logout(page);
 
-  // Classement (fédération) puis page publique
+  // Résultat saisi par le commissaire : officiel seulement après validation par l'organisateur.
   await login(page, admin());
+  await page.goto(sheetUrl);
+  await expect(page.locator("main")).toContainText("Résultat en attente de validation");
+  await button(page, "Valider le résultat").click();
+  await expect(formStatus(page).first()).toContainText("Résultat validé");
+
+  // Classement (fédération) puis page publique
   await page.goto(compUrl);
   const firstRow = page.locator("main table tbody tr").first();
   await expect(firstRow).toContainText(clubs[0]);

@@ -1,5 +1,5 @@
 import "server-only";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { clubs, leagues } from "@/lib/db/schema";
 
@@ -7,6 +7,11 @@ import { clubs, leagues } from "@/lib/db/schema";
 
 export async function leagueOptions() {
   return db.select({ id: leagues.id, name: leagues.name }).from(leagues).orderBy(asc(leagues.name));
+}
+
+/** Ligues actives : seules à recevoir de nouveaux clubs ou de nouvelles compétitions. */
+export async function activeLeagueOptions() {
+  return db.select({ id: leagues.id, name: leagues.name }).from(leagues).where(eq(leagues.active, true)).orderBy(asc(leagues.name));
 }
 
 export async function clubOptions() {

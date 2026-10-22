@@ -30,6 +30,9 @@ const COLUMNS = [
     title: "Compétitions",
     links: [
       ["/competitions", "Résultats et classements"],
+      ["/championnats/ligue-1", "Ligue 1"],
+      ["/championnats/ligue-2", "Ligue 2"],
+      ["/ligues", "Ligues départementales"],
       ["/clubs", "Clubs affiliés"],
       ["/discipline", "Décisions disciplinaires"],
     ],

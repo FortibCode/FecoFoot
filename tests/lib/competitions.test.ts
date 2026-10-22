@@ -10,6 +10,12 @@ import {
   scoreFromEvents,
   shuffle,
   standings,
+  nextSeasonClubs,
+  standingZone,
+  parseTiebreakers,
+  canReschedule,
+  hasScore,
+  isLive,
   topScorers,
   type Pairing,
 } from "@/lib/competitions";
@@ -85,6 +91,54 @@ describe("Score et classement (RG-07, EF-CMP-06)", () => {
     // 1 et 3 : 4 pts, +1 chacun ; 3 a marqué plus (4 contre 1).
     expect(table.map((r) => r.clubId)).toEqual([3, 1, 4, 2]);
     expect(table[0]).toMatchObject({ played: 2, won: 1, drawn: 1, lost: 0, goalsFor: 4, goalsAgainst: 3, goalDiff: 1, points: 4, form: ["V", "N"] });
+  });
+
+  it("départage configurable : confrontation directe avant la différence de buts", () => {
+    const m = (h: number, a: number, hs: number, as: number) => ({ homeClubId: h, awayClubId: a, homeScore: hs, awayScore: as, kickoffAt: null });
+    const matches = [m(1, 2, 1, 0), m(2, 4, 5, 0), m(3, 1, 1, 0), m(3, 2, 1, 0)];
+    const rule = { win: 3, draw: 1, loss: 0 };
+    // 1 et 2 : 3 points ; 2 a la meilleure différence (+3 contre 0), mais 1 a gagné leur confrontation.
+    expect(standings([1, 2, 3, 4], matches, rule).map((r) => r.clubId)).toEqual([3, 2, 1, 4]);
+    expect(standings([1, 2, 3, 4], matches, rule, new Map(), ["H2H_POINTS", "GOAL_DIFF"]).map((r) => r.clubId)).toEqual([3, 1, 2, 4]);
+  });
+
+  it("égalité parfaite : ordre stable, et critères inconnus ou en double ignorés", () => {
+    const table = standings([5, 2], [{ homeClubId: 5, awayClubId: 2, homeScore: 1, awayScore: 1, kickoffAt: null }], { win: 3, draw: 1, loss: 0 }, new Map(), ["H2H_POINTS", "WINS"]);
+    expect(table.map((r) => r.clubId)).toEqual([2, 5]);
+    expect(parseTiebreakers(["H2H_POINTS", "H2H_POINTS", "PILE_OU_FACE", "GOALS_FOR"])).toEqual(["H2H_POINTS", "GOALS_FOR"]);
+    expect(parseTiebreakers([])).toEqual(["GOAL_DIFF", "GOALS_FOR"]);
+  });
+
+  it("statuts : direct, score, reprogrammation", () => {
+    expect(isLive("HALF_TIME")).toBe(true);
+    expect(isLive("SUSPENDED")).toBe(false);
+    expect(hasScore("FINISHED")).toBe(true);
+    expect(hasScore("POSTPONED")).toBe(false);
+    expect(canReschedule("POSTPONED")).toBe(true);
+    expect(canReschedule("LIVE")).toBe(false);
+    expect(canReschedule("FINISHED")).toBe(false);
+  });
+
+  it("saison suivante : maintenus, promus d'en dessous, relégués d'au-dessus", () => {
+    const l1 = [
+      { clubId: 1, outcome: "CHAMPION" as const },
+      { clubId: 2, outcome: null },
+      { clubId: 3, outcome: "RELEGATED" as const },
+      { clubId: 4, outcome: "WITHDRAWN" as const },
+    ];
+    const l2 = [
+      { clubId: 10, outcome: "PROMOTED" as const },
+      { clubId: 11, outcome: "MAINTAINED" as const },
+    ];
+    expect(nextSeasonClubs(l1, l2, [])).toEqual([1, 2, 10]);
+    // Ligue 2 : ses maintenus + les relégués de Ligue 1 ; ses promus partent.
+    expect(nextSeasonClubs(l2, [], l1)).toEqual([11, 3]);
+  });
+
+  it("zones du classement : montée en tête, descente en bas, réglables par saison", () => {
+    const spots = { promotion: 2, relegation: 3 };
+    expect([1, 2, 3, 13, 14, 16].map((r) => standingZone(r, 16, spots))).toEqual(["promotion", "promotion", null, null, "relegation", "relegation"]);
+    expect(standingZone(1, 16, { promotion: 0, relegation: 0 })).toBeNull();
   });
 
   it("pénalité de points et barème paramétrable", () => {

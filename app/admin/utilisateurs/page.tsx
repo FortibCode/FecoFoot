@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { RowActions } from "@/components/admin/row-actions";
+import { setUserActive } from "./actions";
+import { StatCards } from "@/components/admin/stat-cards";
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
@@ -23,6 +26,7 @@ export default async function UsersPage() {
       active: users.active,
       lockedUntil: users.lockedUntil,
       lastLoginAt: users.lastLoginAt,
+      totpEnabledAt: users.totpEnabledAt,
       league: leagues.name,
       club: clubs.name,
     })
@@ -38,12 +42,20 @@ export default async function UsersPage() {
         title="Utilisateurs"
         description={`${rows.length} compte(s)`}
         actions={
-          <Link href="/admin/utilisateurs/nouveau" className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+          <Link href="/admin/utilisateurs/nouveau" className="admin-btn admin-btn-primary">
             Nouveau compte
           </Link>
         }
       />
-      <DataTable head={["Nom", "Profil", "Périmètre", "Dernière connexion", "État"]}>
+      <StatCards
+        stats={[
+          { label: "Comptes", value: rows.length },
+          { label: "Actifs", value: rows.filter((u) => u.active).length },
+          { label: "Double authentification", value: rows.filter((u) => u.totpEnabledAt).length, sub: "comptes protégés" },
+          { label: "Verrouillés", value: rows.filter((u) => u.lockedUntil && u.lockedUntil > new Date()).length, sub: "trop d'échecs de connexion" },
+        ]}
+      />
+      <DataTable head={["Nom", "Profil", "Périmètre", "Dernière connexion", "État", ""]} pageSize={5}>
         {rows.map((u) => (
           <tr key={u.id}>
             <td className="px-3 py-2">
@@ -57,6 +69,9 @@ export default async function UsersPage() {
             <td className="px-3 py-2">{formatDateTime(u.lastLoginAt)}</td>
             <td className="px-3 py-2">
               {!u.active ? "Désactivé" : isLocked(u.lockedUntil) ? "Verrouillé" : "Actif"}
+            </td>
+            <td>
+              <RowActions name={u.fullName} viewHref={`/admin/utilisateurs/${u.id}`} editHref={`/admin/utilisateurs/${u.id}#modifier`} toggle={{ label: u.active ? "Désactiver le compte" : "Réactiver le compte", danger: u.active, action: setUserActive.bind(null, u.id, !u.active) }} />
             </td>
           </tr>
         ))}

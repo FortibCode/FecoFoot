@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
+import { StatCards } from "@/components/admin/stat-cards";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -29,7 +31,7 @@ export default async function AdminAccreditationsPage({ searchParams }: PageProp
     return (
       <>
         <PageHeader eyebrow="Communication" title="Accréditations médias" />
-        <p className="text-sm text-muted-foreground">Aucun match publié.</p>
+        <EmptyState icon="press" title="Aucun match publié">Les demandes d’accréditation presse s’ouvrent pour les matchs mis en vente dans la billetterie.</EmptyState>
       </>
     );
   }
@@ -60,21 +62,12 @@ export default async function AdminAccreditationsPage({ searchParams }: PageProp
             ))}
           </select>
         </label>
-        <button type="submit" className="h-10 rounded-md border px-4 hover:bg-muted">
+        <button type="submit" className="admin-btn admin-btn-outline">
           Afficher
         </button>
       </form>
 
-      <section className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {kpis.map(([label, n]) => (
-          <div key={label} className="rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-2xl font-bold" data-testid={`acc-${label}`}>
-              {n}
-            </p>
-          </div>
-        ))}
-      </section>
+      <StatCards testIdPrefix="acc-" stats={kpis.map(([label, n]) => ({ label, value: n }))} />
 
       <section className="mb-8 flex flex-col gap-2">
         <h2 className="font-semibold">Quotas par zone</h2>

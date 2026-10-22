@@ -9,6 +9,7 @@ import { blankToNull, fromZodError, type ActionState } from "@/lib/action-state"
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
+import { blockedMessage, deleteTicketEventRecord, ticketEventBlockers } from "@/lib/deletion";
 import { fanIdSeq, supporters, ticketCategories, ticketEvents, tickets } from "@/lib/db/schema";
 import { slugify } from "@/lib/format";
 import { isUniqueViolation } from "@/lib/queries/players";
@@ -189,4 +190,16 @@ export async function syncOfflineScans(eventId: number, scans: unknown): Promise
   await logAudit({ userId: user.id, action: "OFFLINE_SYNC", entity: "ticket_event", entityId: eventId, details: { scans: ordered.length, accepted, conflicts: conflicts.length } });
   revalidatePath(eventPath(eventId));
   return { accepted, conflicts };
+}
+
+/** Suppression d'un événement sans aucune vente ni demande d'accréditation (sinon : annuler la vente). */
+export async function deleteTicketEvent(eventId: number): Promise<ActionState> {
+  const user = await requirePermission("ticketing.manage");
+  const reasons = await ticketEventBlockers(eventId);
+  if (reasons.length) return { error: `${blockedMessage("L'événement", reasons)} Passez plutôt sa vente à « Annulée ».` };
+  await deleteTicketEventRecord(eventId);
+  await logAudit({ userId: user.id, action: "DELETE", entity: "ticket_event", entityId: eventId });
+  revalidatePath("/admin/billetterie");
+  revalidatePath("/billetterie", "layout");
+  return { success: "Événement supprimé." };
 }

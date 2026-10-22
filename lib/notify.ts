@@ -7,8 +7,12 @@ import { notifications } from "@/lib/db/schema";
  *
  * NOTIFY_MODE=log (défaut) : rien n'est envoyé, le message est enregistré et consultable
  * par le super administrateur (Administration › Notifications) — développement et recette.
- * NOTIFY_MODE=live : brancher ici l'opérateur SMS (expéditeur « FECOFOOT ») et le service
- * d'e-mail (domaine fecofoot.cg, SPF/DKIM) une fois choisis (§9).
+ * NOTIFY_MODE=live : envoi par passerelle HTTP, une par canal, configurée par variables d'environnement :
+ *   SMS_GATEWAY_URL, SMS_GATEWAY_TOKEN, SMS_SENDER (défaut « FECOFOOT ») ;
+ *   EMAIL_GATEWAY_URL, EMAIL_GATEWAY_TOKEN, EMAIL_FROM (adresse du domaine fecofoot.cg, SPF/DKIM).
+ * Requête : POST JSON { from, to, subject?, text } avec « Authorization: Bearer <token> » ; toute réponse
+ * 2xx vaut envoi. L'opérateur SMS et le service d'e-mail retenus (§9) exposent ce format directement ou via
+ * un petit relais. Passerelle non configurée ou en erreur : message « en échec », jamais présenté comme envoyé.
  */
 
 export const notifyMode = () => (process.env.NOTIFY_MODE === "live" ? "live" : "log");
@@ -27,8 +31,17 @@ async function deliver(channel: "SMS" | "EMAIL", m: Message & { subject?: string
     return true;
   }
   try {
-    // TODO (mise en production) : appel à l'API de l'opérateur SMS / du service d'e-mail.
-    throw new Error(`Fournisseur ${channel} non configuré (NOTIFY_MODE=live).`);
+    const env = channel === "SMS" ? { url: process.env.SMS_GATEWAY_URL, token: process.env.SMS_GATEWAY_TOKEN, from: process.env.SMS_SENDER ?? "FECOFOOT" } : { url: process.env.EMAIL_GATEWAY_URL, token: process.env.EMAIL_GATEWAY_TOKEN, from: process.env.EMAIL_FROM };
+    if (!env.url || !env.token || !env.from) throw new Error(`Passerelle ${channel} non configurée (NOTIFY_MODE=live).`);
+    const res = await fetch(env.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.token}` },
+      body: JSON.stringify({ from: env.from, to: m.to, subject: m.subject, text: m.body }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Passerelle ${channel} : réponse ${res.status}.`);
+    await record(channel, m, "SENT");
+    return true;
   } catch (e) {
     await record(channel, m, "FAILED", (e as Error).message);
     return false;

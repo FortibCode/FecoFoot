@@ -42,7 +42,7 @@ export async function createClub(page: Page, name: string, opts: { affiliate?: b
   await page.goto("/admin/clubs/nouveau");
   await page.fill('input[name="name"]', name);
   if (opts.shortName) await page.fill('input[name="shortName"]', opts.shortName);
-  await page.selectOption('select[name="leagueId"]', { label: "Ligue de Brazzaville" });
+  await page.selectOption('select[name="leagueId"]', { label: "Ligue départementale de Brazzaville" });
   await page.fill('input[name="city"]', "Brazzaville");
   await button(page, "Créer le club").click();
   await expect(page).toHaveURL(/\/admin\/clubs\/\d+$/);

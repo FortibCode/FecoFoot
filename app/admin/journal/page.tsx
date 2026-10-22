@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { count, desc, eq } from "drizzle-orm";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
+import { Pager } from "@/components/admin/pager";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { auditLogs, users } from "@/lib/db/schema";
@@ -10,7 +10,7 @@ import { auditFilters, auditQueryString, auditWhere } from "@/lib/queries/audit"
 
 export const metadata: Metadata = { title: "Journal d'audit — FECOFOOT" };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 5;
 
 export default async function AuditPage({ searchParams }: PageProps<"/admin/journal">) {
   await requirePermission("audit.read");
@@ -58,7 +58,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/jour
         title="Journal d'audit"
         description={`${total} opération(s) enregistrée(s) · ${retention}`}
         actions={
-          <a href={`/admin/journal/export?${auditQueryString(filters)}`} className="rounded-md border px-4 py-2 text-sm font-semibold hover:bg-muted">
+          <a href={`/admin/journal/export?${auditQueryString(filters)}`} className="admin-btn admin-btn-outline">
             Exporter (Excel)
           </a>
         }
@@ -104,15 +104,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/jour
         ))}
       </DataTable>
 
-      {pages > 1 && (
-        <nav className="mt-4 flex items-center gap-3 text-sm" aria-label="Pagination">
-          {page > 1 && <Link href={pageHref(page - 1)} className="underline">← Précédent</Link>}
-          <span>
-            Page {page} / {pages}
-          </span>
-          {page < pages && <Link href={pageHref(page + 1)} className="underline">Suivant →</Link>}
-        </nav>
-      )}
+      <Pager page={page} pages={pages} total={total} pageSize={PAGE_SIZE} hrefFor={pageHref} />
     </>
   );
 }

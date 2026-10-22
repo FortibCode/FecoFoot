@@ -38,7 +38,7 @@ export default async function RenewalPage({ searchParams }: PageProps<"/admin/li
               </option>
             ))}
           </SelectField>
-          <button type="submit" className="h-10 rounded-md border px-4 hover:bg-muted">
+          <button type="submit" className="admin-btn admin-btn-outline">
             Afficher
           </button>
         </form>

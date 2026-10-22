@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PagedTable } from "./paged-table";
 
 /**
  * En-tête de page standardisée pour l'espace admin.
@@ -34,14 +35,23 @@ export function PageHeader({
 /**
  * Tableau de données premium — défilement horizontal sur mobile,
  * en-tête épinglé, rangées avec hover, bords arrondis.
+ * Avec `pageSize`, les lignes sont paginées dans le navigateur.
  */
 export function DataTable({
   head,
+  pageSize,
   children,
 }: {
   head: string[];
+  pageSize?: number;
   children: ReactNode;
 }) {
+  if (pageSize)
+    return (
+      <PagedTable head={head} pageSize={pageSize}>
+        {children}
+      </PagedTable>
+    );
   return (
     <div className="admin-table-wrap">
       <table className="admin-table">

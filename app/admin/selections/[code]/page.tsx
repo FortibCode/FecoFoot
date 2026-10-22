@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
@@ -101,7 +102,7 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
             )}
           </div>
           {gallery.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune photo publiée pour cette sélection.</p>
+            <EmptyState icon="photo" title="Aucune photo publiée" compact />
           ) : (
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               {gallery.slice(0, 12).map((p) => (

@@ -4,9 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
+/** Rubrique principale « Compétitions nationales » : ses deux championnats, en tête du menu. */
+const NATIONAL = [
+  ["/championnats/ligue-1", "Ligue 1"],
+  ["/championnats/ligue-2", "Ligue 2"],
+] as const;
+
 const LINKS = [
   ["/actualites", "Actualités"],
   ["/competitions", "Compétitions"],
+  ["/ligues", "Ligues départementales"],
   ["/clubs", "Clubs"],
   ["/equipes-nationales", "Équipes nationales"],
   ["/verifier", "Vérifier une licence"],
@@ -81,6 +88,31 @@ export function PublicNav() {
         hidden={!open}
         className="brand-band absolute inset-x-0 top-full z-40 border-t border-white/10 shadow-2xl"
       >
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 pt-5 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+          <p className="px-3 font-heading text-xs font-semibold tracking-[0.2em] text-white/50 uppercase sm:w-56">Compétitions nationales</p>
+          <ul className="grid flex-1 grid-cols-2 gap-1 sm:max-w-md">
+            {NATIONAL.map(([href, label]) => {
+              const active = pathname === href;
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center justify-between rounded-md border border-white/15 px-3 py-3 font-heading text-lg font-bold uppercase tracking-wide transition-colors ${
+                      active ? "bg-white/10 text-[var(--flag-yellow)]" : "text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {label}
+                    <span aria-hidden className="text-sm text-white/40">
+                      →
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
         <ul className="mx-auto grid max-w-7xl px-4 sm:px-6 lg:px-8 gap-1 py-5 sm:grid-cols-2 lg:grid-cols-4">
           {LINKS.map(([href, label]) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);

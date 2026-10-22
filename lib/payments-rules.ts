@@ -16,6 +16,11 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 
 export const PAYMENT_PURPOSES = ["MEMBERSHIP", "TICKET_ORDER", "LICENSE_FEE"] as const;
 export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
+export const PAYMENT_PURPOSE_LABELS: Record<PaymentPurpose, string> = {
+  MEMBERSHIP: "Adhésion supporter",
+  TICKET_ORDER: "Billetterie",
+  LICENSE_FEE: "Droits de licence",
+};
 
 /** Méthode Mobile Money d'après l'opérateur du numéro. */
 export const methodForOperator = (op: "AIRTEL" | "MTN" | null): PaymentMethod | null =>

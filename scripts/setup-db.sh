@@ -2,7 +2,7 @@
 # Prépare l'environnement de développement local :
 #   1. crée l'utilisateur et la base PostgreSQL « fecofoot » (demande le mot de passe sudo) ;
 #   2. écrit le fichier .env (secrets générés aléatoirement) ;
-#   3. applique les migrations et crée les 12 ligues + le super administrateur.
+#   3. applique les migrations et crée les 11 ligues départementales + le super administrateur.
 # Sans effet destructeur : ne touche ni à un .env existant, ni à une base existante.
 set -euo pipefail
 cd "$(dirname "$0")/.."

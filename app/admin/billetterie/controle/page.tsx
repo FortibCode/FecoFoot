@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { PageHeader } from "@/components/admin/page-header";
 import { requirePermission } from "@/lib/auth/guard";
@@ -32,7 +33,7 @@ export default async function AccessControlPage({ searchParams }: PageProps<"/ad
     <>
       <PageHeader eyebrow="Billetterie" title="Contrôle d'accès" description="Chaque billet n'est accepté qu'une seule fois, même présenté à deux portes en même temps." />
       {!event ? (
-        <p className="text-sm text-muted-foreground">Aucun match à contrôler.</p>
+        <EmptyState icon="ticket" title="Aucun match à contrôler">Le contrôle d’accès s’ouvre pour les matchs dont la billetterie est en prévente, ouverte ou close, à partir de la veille.</EmptyState>
       ) : (
         <div className="flex flex-col gap-6">
           <form className="flex flex-wrap items-end gap-2 text-sm">
@@ -46,7 +47,7 @@ export default async function AccessControlPage({ searchParams }: PageProps<"/ad
                 ))}
               </select>
             </label>
-            <button type="submit" className="h-10 rounded-md border px-4 hover:bg-muted">
+            <button type="submit" className="admin-btn admin-btn-outline">
               Changer
             </button>
           </form>

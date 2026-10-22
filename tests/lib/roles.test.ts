@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, canAccessClub, ROLES, scopeError, type Permission, type Role } from "@/lib/auth/roles";
+import { can, canAccessClub, canAccessCompetition, canManageLeague, ROLES, scopeError, type Permission, type Role } from "@/lib/auth/roles";
 import { modulesFor } from "@/lib/modules";
 
 describe("Matrice des droits (§3.3)", () => {
@@ -14,9 +14,13 @@ describe("Matrice des droits (§3.3)", () => {
     ["national_teams.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "DTN"]],
     ["communication.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "COMMUNICATION"]],
     ["ticketing.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "TICKETING"]],
+    ["payments.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "TICKETING"]],
     ["refereeing.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "REFEREEING"]],
     ["players.read", ["SUPER_ADMIN", "FEDERATION_ADMIN", "LEAGUE", "CLUB", "DTN"]],
     ["discipline.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "DISCIPLINE"]],
+    ["competitions.manage", ["SUPER_ADMIN", "FEDERATION_ADMIN", "LEAGUE", "COMPETITION_MANAGER"]],
+    ["leagues.own", ["LEAGUE"]],
+    ["player.self", ["PLAYER"]],
   ];
 
   it.each(cases)("%s est réservé à %j", (permission, allowed) => {
@@ -25,6 +29,14 @@ describe("Matrice des droits (§3.3)", () => {
 
   it("tous les profils voient le tableau de bord", () => {
     for (const role of ROLES) expect(can(role, "dashboard.view")).toBe(true);
+  });
+
+  it("menu en cinq domaines ; une ligue ne voit pas les championnats nationaux ; un joueur ne voit que son espace", () => {
+    const groups = [...new Set(modulesFor("SUPER_ADMIN").map((m) => m.group))];
+    expect(groups).toEqual(["Tableau de bord", "Gestion sportive", "Communication", "Services et finances", "Administration système"]);
+    expect(modulesFor("LEAGUE").map((m) => m.label)).not.toContain("Championnats nationaux");
+    expect(modulesFor("FEDERATION_ADMIN").map((m) => m.label)).toContain("Championnats nationaux");
+    expect(modulesFor("PLAYER").map((m) => m.label)).toEqual(["Tableau de bord", "Mon espace joueur"]);
   });
 
   it("le menu d'un club ne propose ni ligues, ni utilisateurs, ni billetterie", () => {
@@ -59,5 +71,35 @@ describe("Périmètre de données (EF-CLB-04)", () => {
     expect(scopeError({ role: "CLUB", leagueId: null, clubId: null })).not.toBeNull();
     expect(scopeError({ role: "DTN", leagueId: 1, clubId: null })).not.toBeNull();
     expect(scopeError({ role: "CLUB", leagueId: null, clubId: 3 })).toBeNull();
+  });
+});
+
+describe("Périmètre des compétitions et des ligues", () => {
+  const league = (leagueId: number | null) => ({ role: "LEAGUE" as const, leagueId, clubId: null });
+  const departmental = { leagueId: 1 };
+  const national = { leagueId: null };
+
+  it("une ligue ne gère que ses compétitions départementales", () => {
+    expect(canAccessCompetition(league(1), departmental)).toBe(true);
+    expect(canAccessCompetition(league(2), departmental)).toBe(false);
+    expect(canAccessCompetition(league(1), national)).toBe(false);
+    expect(canAccessCompetition(league(null), national)).toBe(false);
+  });
+
+  it("fédération et gestion des compétitions : toutes ; les autres profils : aucune", () => {
+    for (const role of ["SUPER_ADMIN", "FEDERATION_ADMIN", "COMPETITION_MANAGER"] as const) {
+      expect(canAccessCompetition({ role, leagueId: null, clubId: null }, departmental)).toBe(true);
+      expect(canAccessCompetition({ role, leagueId: null, clubId: null }, national)).toBe(true);
+    }
+    for (const role of ["CLUB", "REFEREE", "TICKETING", "DTN"] as const) {
+      expect(canAccessCompetition({ role, leagueId: null, clubId: 3 }, national)).toBe(false);
+    }
+  });
+
+  it("un responsable départemental ne gère que la fiche de sa ligue", () => {
+    expect(canManageLeague(league(1), 1)).toBe(true);
+    expect(canManageLeague(league(1), 2)).toBe(false);
+    expect(canManageLeague({ role: "FEDERATION_ADMIN", leagueId: null, clubId: null }, 2)).toBe(true);
+    expect(canManageLeague({ role: "COMPETITION_MANAGER", leagueId: null, clubId: null }, 2)).toBe(false);
   });
 });

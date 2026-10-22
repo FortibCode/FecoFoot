@@ -1,5 +1,6 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -8,7 +9,8 @@ import { blankToNull, fromZodError, type ActionState } from "@/lib/action-state"
 import { logAudit } from "@/lib/audit";
 import { requireAnyPermission, requirePermission, type CurrentUser } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
-import { playerConsents, playerFederalSeq, players } from "@/lib/db/schema";
+import { blockedMessage, deletePlayerRecord, playerBlockers } from "@/lib/deletion";
+import { playerConsents, playerFederalSeq, players, users } from "@/lib/db/schema";
 import {
   CATEGORIES,
   consentLinkExpiry,
@@ -25,6 +27,7 @@ import { isUniqueViolation, loadClubFor, loadPlayerFor } from "@/lib/queries/pla
 import { nextVal } from "@/lib/sequences";
 import { hashToken, randomToken } from "@/lib/tokens";
 import { insertLicenseRequest } from "@/lib/license-requests";
+import { sendPasswordLink } from "@/lib/auth/reset-link";
 
 const optText = (max: number) => z.preprocess(blankToNull, z.string().trim().max(max).nullable());
 const optEmail = z.preprocess(blankToNull, z.email({ error: "Adresse e-mail invalide." }).nullable());
@@ -247,4 +250,49 @@ export async function requestLicense(playerId: number, _state: ActionState, form
   revalidatePath(`/admin/joueurs/${playerId}`);
   revalidatePath("/admin/licences");
   redirect(`/admin/licences/${created.id}`);
+}
+
+/** Suppression d'un joueur enregistré par erreur : refusée dès qu'il a une licence, un transfert, un match… */
+export async function deletePlayer(playerId: number): Promise<ActionState> {
+  const user = await requirePermission("players.manage");
+  const row = await loadPlayerFor(user, playerId);
+  if (!row) return { error: "Joueur introuvable." };
+  const reasons = await playerBlockers(playerId);
+  if (reasons.length) return { error: blockedMessage("Le joueur", reasons) };
+  await deletePlayerRecord(playerId);
+  await logAudit({ userId: user.id, action: "DELETE", entity: "player", entityId: playerId, details: { federalId: row.player.federalId } });
+  revalidatePath("/admin/joueurs");
+  return { success: "Joueur supprimé." };
+}
+
+/**
+ * Ouvre l'espace personnel du joueur : compte « Joueur / joueuse » et lien pour choisir son mot de passe.
+ * Réservé aux joueurs majeurs disposant d'une adresse e-mail ; l'accès d'un mineur (via son représentant
+ * légal) reste à définir par la fédération.
+ */
+export async function openPlayerAccess(playerId: number): Promise<ActionState> {
+  const user = await requirePermission("players.manage");
+  const row = await loadPlayerFor(user, playerId);
+  if (!row) return { error: "Joueur introuvable." };
+  const { player } = row;
+  if (player.userId) return { error: "L'accès est déjà ouvert." };
+  if (isMinor(player.birthDate)) return { error: "Joueur mineur : l'accès en ligne d'un mineur n'est pas encore ouvert." };
+  if (!player.email) return { error: "Renseignez d'abord l'adresse e-mail du joueur (identifiant de connexion)." };
+  const email = player.email.toLowerCase();
+  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  if (existing) return { error: "Un compte existe déjà avec cette adresse e-mail." };
+
+  // Mot de passe aléatoire inconnu de tous : le joueur choisit le sien avec le lien reçu.
+  const account = await db.transaction(async (tx) => {
+    const [a] = await tx
+      .insert(users)
+      .values({ email, fullName: `${player.firstName} ${player.lastName}`, phone: player.phone, role: "PLAYER", passwordHash: await bcrypt.hash(randomToken(), 12) })
+      .returning({ id: users.id, email: users.email, phone: users.phone, fullName: users.fullName });
+    await tx.update(players).set({ userId: a.id }).where(eq(players.id, playerId));
+    return a;
+  });
+  await sendPasswordLink(account, "welcome", 7 * 86_400_000);
+  await logAudit({ userId: user.id, action: "PLAYER_ACCESS", entity: "player", entityId: playerId, details: { userId: account.id } });
+  revalidatePath(`/admin/joueurs/${playerId}`);
+  return { success: `Accès ouvert : un lien pour choisir son mot de passe a été envoyé à ${email}.` };
 }

@@ -12,7 +12,7 @@ type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;
 type ClubValues = {
   name: string;
   shortName: string | null;
-  leagueId: number;
+  leagueId: number | null;
   city: string;
   stadium: string | null;
   colors: string | null;
@@ -40,8 +40,20 @@ export function ClubForm({
     <form {...formProps} className="grid max-w-2xl gap-4 sm:grid-cols-2">
       <TextField label="Nom du club" name="name" required defaultValue={initial?.name} errors={fe?.name} />
       <TextField label="Sigle" name="shortName" defaultValue={initial?.shortName ?? ""} errors={fe?.shortName} hint="Ex. CARA, JST" />
-      <SelectField label="Ligue" name="leagueId" required defaultValue={initial?.leagueId ?? (leagues.length === 1 ? leagues[0].id : "")} errors={fe?.leagueId}>
-        {leagues.length > 1 && <option value="">— Choisir —</option>}
+      <SelectField
+        label="Rattachement"
+        name="leagueId"
+        required
+        defaultValue={initial ? (initial.leagueId ?? "national") : leagues.length === 1 ? leagues[0].id : ""}
+        errors={fe?.leagueId}
+      >
+        {leagues.length > 1 && (
+          <>
+            <option value="">— Choisir —</option>
+            {/* Clubs des divisions nationales (Ligue 1 / Ligue 2 National) : rattachés directement à la fédération. */}
+            <option value="national">Fédération — division nationale</option>
+          </>
+        )}
         {leagues.map((l) => (
           <option key={l.id} value={l.id}>
             {l.name}

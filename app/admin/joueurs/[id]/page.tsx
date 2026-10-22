@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -28,7 +29,8 @@ import { transferQuery } from "@/lib/queries/transfers";
 import { TRANSFER_STATUS_LABELS, TRANSFER_TYPE_LABELS } from "@/lib/transfers";
 import { latestConsent, loadPlayerFor } from "@/lib/queries/players";
 import { scopedClubOptions } from "@/lib/queries/reference";
-import { requestConsent, requestLicense, updatePlayer } from "../actions";
+import { openPlayerAccess, requestConsent, requestLicense, updatePlayer } from "../actions";
+import { ActionForm } from "@/components/admin/action-form";
 import { ConsentRequestButton } from "../ConsentPanel";
 import { LicenseRequestForm, PlayerForm } from "../PlayerForms";
 
@@ -103,7 +105,7 @@ export default async function PlayerPage({ params }: PageProps<"/admin/joueurs/[
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Licences</h2>
           {history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune licence.</p>
+            <EmptyState icon="shield" title="Aucune licence" compact>Ce joueur n’a encore aucune licence enregistrée.</EmptyState>
           ) : (
             <DataTable head={["N°", "Saison", "Catégorie", "Droits", "Statut"]}>
               {history.map((l) => {
@@ -145,7 +147,7 @@ export default async function PlayerPage({ params }: PageProps<"/admin/joueurs/[
           <section className="flex flex-col gap-3 border-t pt-6">
             <h2 className="font-semibold">Transferts</h2>
             {moves.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun transfert.</p>
+              <EmptyState icon="transfer" title="Aucun transfert" compact />
             ) : (
               <ul className="flex flex-col gap-1 text-sm">
                 {moves.map(({ transfer: t, fromClub, toClub }) => (
@@ -174,15 +176,33 @@ export default async function PlayerPage({ params }: PageProps<"/admin/joueurs/[
         </section>
 
         {/* Identité */}
+        {canManage && (
+          <section className="flex flex-col gap-3 border-t pt-6">
+            <h2 className="font-semibold">Espace personnel</h2>
+            {player.userId ? (
+              <p className="text-sm">Accès ouvert : le joueur consulte en ligne ses licences, ses transferts et ses matchs.</p>
+            ) : minor ? (
+              <p className="text-sm text-muted-foreground">Joueur mineur : l&apos;accès en ligne d&apos;un mineur n&apos;est pas encore ouvert.</p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Le joueur reçoit par e-mail un lien pour choisir son mot de passe ; il ne voit que ses propres données.</p>
+                <ActionForm action={openPlayerAccess.bind(null, player.id)} label="Ouvrir l'accès à l'espace joueur" />
+              </>
+            )}
+          </section>
+        )}
+
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Identité</h2>
           {canManage ? (
+            <div id="modifier">
             <PlayerForm
               action={updatePlayer.bind(null, player.id)}
               clubs={clubChoices}
               initial={{ ...player, birthDate: toIsoDate(player.birthDate) }}
               submitLabel="Enregistrer"
             />
+            </div>
           ) : (
             <dl className="grid max-w-2xl gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
               {(

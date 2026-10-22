@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { RowActions } from "@/components/admin/row-actions";
+import { StatCards } from "@/components/admin/stat-cards";
 import Link from "next/link";
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
+import { Pager } from "@/components/admin/pager";
 import { licenseTone, StatusBadge } from "@/components/admin/status-badge";
 import { SelectField } from "@/components/ui/field";
 import { requireAnyPermission } from "@/lib/auth/guard";
@@ -13,7 +16,7 @@ import { scopedClubOptions } from "@/lib/queries/reference";
 
 export const metadata: Metadata = { title: "Licences — FECOFOOT" };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 5;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
 
 /** Tableau de bord des licences par statut, saison et club (EF-LIC-08). */
@@ -99,26 +102,22 @@ export default async function LicensesPage({ searchParams }: PageProps<"/admin/l
                 </a>
               </>
             )}
-            <Link href="/admin/licences/renouvellement" className="rounded-md border px-4 py-2 text-sm font-semibold hover:bg-muted">
+            <Link href="/admin/licences/renouvellement" className="admin-btn admin-btn-outline">
               Renouvellement groupé
             </Link>
           </>
         }
       />
 
-      <ul className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {LICENSE_STATUSES.filter((s) => s !== "EXPIRED").map((s) => (
-          <li key={s}>
-            <Link
-              href={params(status === s ? {} : { status: s })}
-              className={`block rounded-lg border p-3 ${status === s ? "border-foreground" : "hover:bg-muted"}`}
-            >
-              <p className="text-xs text-muted-foreground">{LICENSE_STATUS_LABELS[s]}</p>
-              <p className="text-2xl font-bold">{counts[s] ?? 0}</p>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <StatCards
+        label="Licences par statut"
+        stats={LICENSE_STATUSES.filter((s) => s !== "EXPIRED").map((s) => ({
+          label: LICENSE_STATUS_LABELS[s],
+          value: counts[s] ?? 0,
+          href: params(status === s ? {} : { status: s }),
+          active: status === s,
+        }))}
+      />
 
       <form className="mb-4 grid gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
         {status && <input type="hidden" name="status" value={status} />}
@@ -141,14 +140,14 @@ export default async function LicensesPage({ searchParams }: PageProps<"/admin/l
         )}
         <label className="flex flex-col gap-1.5 font-medium">
           Recherche
-          <input name="q" defaultValue={q} placeholder="Joueur ou n° de licence" className="h-10 rounded-md border px-3" />
+          <input name="q" defaultValue={q} placeholder="Joueur ou n° de licence" className="admin-input" style={{ maxWidth: 260 }} />
         </label>
-        <button type="submit" className="h-10 rounded-md border px-4 hover:bg-muted">
+        <button type="submit" className="admin-btn admin-btn-outline">
           Filtrer
         </button>
       </form>
 
-      <DataTable head={["N°", "Joueur", "Club", "Catégorie", "Déposée le", "Statut"]}>
+      <DataTable head={["N°", "Joueur", "Club", "Catégorie", "Déposée le", "Statut", ""]}>
         {rows.map((l) => (
           <tr key={l.id}>
             <td className="px-3 py-2 font-mono text-xs">
@@ -167,17 +166,14 @@ export default async function LicensesPage({ searchParams }: PageProps<"/admin/l
             <td className="px-3 py-2">
               <StatusBadge tone={licenseTone(l.status)}>{LICENSE_STATUS_LABELS[l.status]}</StatusBadge>
             </td>
+            <td>
+              <RowActions name={l.number} viewHref={`/admin/licences/${l.id}`} />
+            </td>
           </tr>
         ))}
       </DataTable>
 
-      {pages > 1 && (
-        <nav className="mt-4 flex items-center gap-3 text-sm" aria-label="Pagination">
-          {page > 1 && <Link href={params({ ...(status && { status }), page: String(page - 1) })} className="underline">← Précédent</Link>}
-          <span>Page {page} / {pages}</span>
-          {page < pages && <Link href={params({ ...(status && { status }), page: String(page + 1) })} className="underline">Suivant →</Link>}
-        </nav>
-      )}
+      <Pager page={page} pages={pages} total={total} pageSize={PAGE_SIZE} hrefFor={(p) => params({ ...(status && { status }), page: String(p) })} />
     </>
   );
 }

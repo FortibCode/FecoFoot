@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { EmptyState } from "@/components/admin/empty-state";
+import { StatCards } from "@/components/admin/stat-cards";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -38,7 +40,7 @@ export default async function AdminTicketEventPage({ params }: PageProps<"/admin
             <Link href={`/billetterie/${event.slug}`} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">
               Page publique
             </Link>
-            <Link href={`/admin/billetterie/controle?event=${event.id}`} className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">
+            <Link href={`/admin/billetterie/controle?event=${event.id}`} className="admin-btn admin-btn-primary">
               Contrôle d&apos;accès
             </Link>
           </>
@@ -46,25 +48,17 @@ export default async function AdminTicketEventPage({ params }: PageProps<"/admin
       />
       <div className="flex flex-col gap-10">
         {/* Tableau de bord (EF-BIL-10) */}
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Indicateurs">
-          {(
-            [
-              ["Billets vendus", `${sold} / ${capacity}`],
-              ["Recettes", formatFcfa(revenue)],
-              ["Entrées contrôlées", String(d.entries)],
-              ["Contrôles refusés", String(d.refused)],
-            ] as const
-          ).map(([k, v]) => (
-            <div key={k} className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground">{k}</p>
-              <p className="text-xl font-bold" data-testid={`kpi-${k}`}>
-                {v}
-              </p>
-            </div>
-          ))}
-        </section>
+        <StatCards
+          testIdPrefix="kpi-"
+          stats={[
+            { label: "Billets vendus", value: `${sold} / ${capacity}`, sub: capacity ? `${Math.round((sold / capacity) * 100)} % de la jauge` : undefined },
+            { label: "Recettes", value: formatFcfa(revenue) },
+            { label: "Entrées contrôlées", value: String(d.entries) },
+            { label: "Contrôles refusés", value: String(d.refused) },
+          ]}
+        />
 
-        <section className="flex flex-col gap-3">
+        <section id="modifier" className="flex flex-col gap-3">
           <h2 className="font-semibold">Tribunes</h2>
           <DataTable head={["Tribune", "Porte", "Prix public / membre", "Vendus", "Réservés", "Disponibles", "Remplissage"]}>
             {d.categories.map((c) => (
@@ -111,7 +105,7 @@ export default async function AdminTicketEventPage({ params }: PageProps<"/admin
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Clôture de caisse (guichet)</h2>
           {d.cash.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune vente au guichet.</p>
+            <EmptyState icon="ticket" title="Aucune vente au guichet" compact />
           ) : (
             <DataTable head={["Jour", "Agent", "Commandes", "Montant encaissé"]}>
               {d.cash.map((c) => (
