@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { articles, clubs, competitions, competitionTeams, licenses, matches, nationalTeams, selections, ticketEvents } from "@/lib/db/schema";
 import { seasonOf } from "@/lib/licenses";
@@ -9,7 +9,12 @@ import { competitionTables, matchQuery } from "@/lib/queries/competitions";
 export async function homeData() {
   const now = new Date();
   const season = seasonOf();
-  const [results, upcoming, onSale, news, latestSelection, [{ clubsCount }], [{ licensesCount }], main] = await Promise.all([
+  const [live, results, upcoming, onSale, news, latestSelection, [{ clubsCount }], [{ licensesCount }], main] = await Promise.all([
+    // Matchs en cours (saisie officielle du commissaire), compétitions publiées.
+    matchQuery()
+      .where(and(inArray(matches.status, ["LIVE", "HALF_TIME"]), ne(competitions.status, "DRAFT")))
+      .orderBy(asc(matches.kickoffAt))
+      .limit(8),
     // Résultats officiels uniquement (validés par l'organisateur).
     matchQuery().where(and(eq(matches.status, "FINISHED"), isNotNull(matches.validatedAt))).orderBy(desc(matches.kickoffAt)).limit(6),
     matchQuery()
@@ -51,7 +56,7 @@ export async function homeData() {
       .limit(1),
   ]);
   const table = main[0] ? await competitionTables(main[0].id) : null;
-  return { results, upcoming, onSale, news, latestSelection: latestSelection[0] ?? null, clubsCount, licensesCount, table };
+  return { live, results, upcoming, onSale, news, latestSelection: latestSelection[0] ?? null, clubsCount, licensesCount, table };
 }
 
 /**

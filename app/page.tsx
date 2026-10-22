@@ -14,6 +14,8 @@ import { eliteClubs, homeData } from "@/lib/queries/portal";
 import { competitionTables } from "@/lib/queries/competitions";
 import { clubLogos } from "@/lib/club-logos";
 import { ClubLogo } from "@/components/public/club-logo";
+import { LiveRefresh } from "@/components/live-refresh";
+import { isLive, MATCH_STATUS_LABELS } from "@/lib/competitions";
 import { seasonLabel } from "@/lib/licenses";
 import { nationalFixturesOverview } from "@/lib/queries/national";
 import { NationalFixtures } from "@/components/public/national-fixtures";
@@ -35,7 +37,8 @@ function Container({ children, className = "" }: { children: ReactNode; classNam
 /** Ligne de la liste des matchs : rencontre, compétition, date, flèche. */
 function MatchListRow({ row }: { row: MatchRow }) {
   const m = row.match;
-  const played = m.status === "FINISHED";
+  const live = isLive(m.status);
+  const played = m.status === "FINISHED" || live;
   return (
     <li>
       <Link
@@ -46,7 +49,7 @@ function MatchListRow({ row }: { row: MatchRow }) {
           {row.home && <ClubLogo src={row.home.logo} name={row.home.name} className="size-8 text-xs" />}
           <span className="truncate">{teamName(row.home)}</span>
           {played ? (
-            <span className="shrink-0 rounded-md bg-brand-ink px-2 py-0.5 text-base text-white tabular-nums">
+            <span className={`shrink-0 rounded-md px-2 py-0.5 text-base text-white tabular-nums ${live ? "bg-[var(--flag-red,#dc241f)]" : "bg-brand-ink"}`}>
               {m.homeScore ?? 0} – {m.awayScore ?? 0}
             </span>
           ) : (
@@ -58,7 +61,11 @@ function MatchListRow({ row }: { row: MatchRow }) {
         <ArrowCircle className="row-span-2" />
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-[var(--flag-green)]">{row.competition.name}</span>
-          <span className="text-xs text-muted-foreground">{m.kickoffAt ? formatDateTime(m.kickoffAt) : "Date à fixer"}</span>
+          {live ? (
+            <span className="text-xs font-bold text-[var(--flag-red,#dc241f)] uppercase">● {MATCH_STATUS_LABELS[m.status]}</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">{m.kickoffAt ? formatDateTime(m.kickoffAt) : "Date à fixer"}</span>
+          )}
         </span>
       </Link>
     </li>
@@ -237,6 +244,12 @@ export default async function HomePage() {
               </PillLink>
             }
           />
+          {d.live.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-xl border-2 border-[var(--flag-red,#dc241f)]/40 p-4">
+              <MatchList title="En direct" rows={d.live} empty="" />
+              <LiveRefresh />
+            </div>
+          )}
           <div className="grid gap-8 lg:grid-cols-2">
             <MatchList title="Derniers résultats" rows={d.results} empty="Aucun résultat." />
             <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé." from="right" />

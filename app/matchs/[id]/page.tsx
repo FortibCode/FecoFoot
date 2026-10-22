@@ -5,6 +5,7 @@ import { asc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ClubLogo } from "@/components/public/club-logo";
 import { PublicShell } from "@/components/public/public-shell";
+import { LiveRefresh } from "@/components/live-refresh";
 import { clubLogos } from "@/lib/club-logos";
 import { EVENT_TYPE_LABELS, hasScore, isLive, MATCH_STATUS_LABELS, roundLabel } from "@/lib/competitions";
 import { db } from "@/lib/db";
@@ -95,6 +96,8 @@ export default async function PublicMatchPage({ params }: PageProps<"/matchs/[id
             ),
           )}
         </section>
+
+        {live && <LiveRefresh seconds={20} />}
 
         <dl className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-5 text-sm sm:grid-cols-4">
           {(

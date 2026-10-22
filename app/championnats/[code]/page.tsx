@@ -7,6 +7,7 @@ import { PaginatedStandings } from "@/components/competitions/paginated-standing
 import { ScorersList } from "@/components/competitions/standings-table";
 import { ClubLogo } from "@/components/public/club-logo";
 import { PublicShell } from "@/components/public/public-shell";
+import { LiveRefresh } from "@/components/live-refresh";
 import { clubLogos } from "@/lib/club-logos";
 import { COMPETITION_CATEGORY_LABELS, COMPETITION_STATUS_LABELS, isLive, TEAM_OUTCOME_LABELS } from "@/lib/competitions";
 import { matches } from "@/lib/db/schema";
@@ -109,7 +110,7 @@ export default async function PublicChampionshipPage({ params, searchParams }: P
                 <h2 id="direct" className="flex items-center gap-2 text-lg font-bold">
                   <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-[var(--flag-red,#dc241f)]" /> En direct
                 </h2>
-                <p className="text-xs text-muted-foreground">Scores saisis par les officiels sur la feuille de match.</p>
+                <LiveRefresh />
                 <div className="divide-y overflow-hidden rounded-lg border bg-card">
                   {live.map((m) => (
                     <MatchLine key={m.match.id} row={m} href={`/matchs/${m.match.id}`} official />

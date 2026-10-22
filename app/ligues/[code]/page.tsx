@@ -5,8 +5,9 @@ import { MatchLine } from "@/components/competitions/match-line";
 import { PaginatedStandings } from "@/components/competitions/paginated-standings";
 import { ClubLogo } from "@/components/public/club-logo";
 import { PublicShell } from "@/components/public/public-shell";
+import { LiveRefresh } from "@/components/live-refresh";
 import { clubLogos } from "@/lib/club-logos";
-import { COMPETITION_CATEGORY_LABELS, COMPETITION_STATUS_LABELS } from "@/lib/competitions";
+import { COMPETITION_CATEGORY_LABELS, COMPETITION_STATUS_LABELS, isLive } from "@/lib/competitions";
 import { leagueLogoUrl } from "@/lib/league-logo";
 import { seasonLabel } from "@/lib/licenses";
 import { competitionTables } from "@/lib/queries/competitions";
@@ -73,6 +74,7 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-3">
             <h2 className="text-lg font-bold">Matchs à venir</h2>
+            {upcoming.some((m) => isLive(m.match.status)) && <LiveRefresh />}
             {upcoming.length === 0 ? (
               <Empty>Aucun match programmé.</Empty>
             ) : (

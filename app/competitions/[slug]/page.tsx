@@ -6,7 +6,8 @@ import { ScorersList } from "@/components/competitions/standings-table";
 import { PaginatedStandings } from "@/components/competitions/paginated-standings";
 import { clubLogos } from "@/lib/club-logos";
 import { PublicShell } from "@/components/public/public-shell";
-import { roundLabel , COMPETITION_CATEGORY_LABELS } from "@/lib/competitions";
+import { LiveRefresh } from "@/components/live-refresh";
+import { COMPETITION_CATEGORY_LABELS, isLive, roundLabel } from "@/lib/competitions";
 import { db } from "@/lib/db";
 import { competitions, matches } from "@/lib/db/schema";
 import { seasonLabel } from "@/lib/licenses";
@@ -37,6 +38,7 @@ export default async function PublicCompetitionPage({ params }: PageProps<"/comp
   return (
     <PublicShell eyebrow={`${seasonLabel(c.season)} · ${COMPETITION_CATEGORY_LABELS[c.category]}`} subtitle={`${seasonLabel(c.season)} · ${COMPETITION_CATEGORY_LABELS[c.category]}`} title={c.name} wide>
       <div className="flex flex-col gap-8">
+        {allMatches.some((m) => isLive(m.match.status)) && <LiveRefresh />}
         {c.type === "LEAGUE" && data && (
           <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="flex min-w-0 flex-col gap-4">

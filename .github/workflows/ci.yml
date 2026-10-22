@@ -73,7 +73,11 @@ jobs:
       # Sauvegarde puis restauration de la base dans une base temporaire (ENF-06), à chaque exécution.
       - name: Sauvegarde et test de restauration
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16
+          # Client PostgreSQL 16 (même version que la base) depuis le dépôt officiel PGDG :
+          # l'image Ubuntu de GitHub ne le fournit plus dans ses dépôts par défaut.
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-16
           export PATH=/usr/lib/postgresql/16/bin:$PATH
           ops/backup.sh "$RUNNER_TEMP/backups"
           ops/restore-test.sh "$RUNNER_TEMP/backups"
