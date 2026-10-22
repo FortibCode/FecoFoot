@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { ActionForm } from "@/components/admin/action-form";
 import { EmptyState } from "@/components/admin/empty-state";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
@@ -17,7 +17,7 @@ import { formatDateTime } from "@/lib/format";
 import { apiFootballConfigured, ExternalApiError, leaguesOfCountry, teamsOf, type ApiLeague, type ApiTeam } from "@/lib/integrations/api-football";
 import { seasonLabel, seasonOf } from "@/lib/licenses";
 import { homeClub, awayClub } from "@/lib/queries/competitions";
-import { linkClub, linkCompetition, resolveConflict, syncNow, unlinkCompetition } from "./actions";
+import { linkClub, linkCompetition, resolveConflict, syncNow, unlinkCompetition, validateExternalResults } from "./actions";
 import { ClubLinkForm, LinkCompetitionForm } from "./SourceForms";
 
 export const metadata: Metadata = { title: "Sources externes — FECOFOOT" };
@@ -42,7 +42,13 @@ export default async function SourcesPage({ searchParams }: PageProps<"/admin/so
 
   const [links, comps, runs, conflicts, allClubs, clubLinks] = await Promise.all([
     db
-      .select({ link: externalLinks, name: competitions.name, season: competitions.season })
+      .select({
+        link: externalLinks,
+        name: competitions.name,
+        season: competitions.season,
+        // Résultats importés terminés, pas encore validés par la fédération (hors classement).
+        pending: sql<number>`(select count(*)::int from ${matches} where ${matches.competitionId} = ${competitions.id} and ${matches.status} = 'FINISHED' and ${matches.scoreSource} = 'EXTERNAL' and ${matches.validatedAt} is null)`,
+      })
       .from(externalLinks)
       .innerJoin(competitions, eq(competitions.id, externalLinks.entityId))
       .where(and(eq(externalLinks.provider, "API_FOOTBALL"), eq(externalLinks.entity, "competition"))),
@@ -145,13 +151,14 @@ export default async function SourcesPage({ searchParams }: PageProps<"/admin/so
             <EmptyState icon="calendar" title="Aucune compétition liée" compact />
           ) : (
             <DataTable head={["Compétition", "Ligue / saison du fournisseur", "Actions"]}>
-              {links.map(({ link, name, season }) => (
+              {links.map(({ link, name, season, pending }) => (
                 <tr key={link.id}>
                   <td>
                     <Link href={`/admin/competitions/${link.entityId}`} className="font-semibold">
                       {name}
                     </Link>
                     <span className="block text-xs text-muted-foreground">{seasonLabel(season)}</span>
+                    {pending > 0 && <span className="block text-xs text-[var(--flag-red,#dc241f)]">{pending} résultat(s) importé(s) à valider (hors classement)</span>}
                   </td>
                   <td className="font-mono text-sm">
                     {link.externalId} / {link.externalSeason}
@@ -162,6 +169,7 @@ export default async function SourcesPage({ searchParams }: PageProps<"/admin/so
                       <Link href={`/admin/sources?equipes=${link.entityId}`} className="admin-btn admin-btn-outline">
                         Équipes
                       </Link>
+                      {pending > 0 && <ActionForm action={validateExternalResults.bind(null, link.entityId)} label={`Valider les ${pending} résultats`} />}
                       <ActionForm action={unlinkCompetition.bind(null, link.entityId)} label="Délier" variant="destructive" />
                     </div>
                   </td>

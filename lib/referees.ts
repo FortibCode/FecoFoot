@@ -10,6 +10,25 @@ export const REFEREE_GRADE_LABELS: Record<RefereeGrade, string> = {
   TRAINEE: "Stagiaire",
 };
 
+/** Arbitre sans ligue ni division : rattaché directement à la fédération. */
+export const NATIONAL_LEVEL = "FECOFOOT — niveau national";
+
+/**
+ * Rattachement d'un arbitre dans les listes : « l:<id> » (ligue départementale), « c:<id> » (division
+ * nationale, table championships) ou « » (fédération). Une seule des deux colonnes est renseignée.
+ */
+export function scopeValue(r: { leagueId: number | null; championshipId: number | null }) {
+  return r.championshipId ? `c:${r.championshipId}` : r.leagueId ? `l:${r.leagueId}` : "";
+}
+
+export function parseScope(v: unknown): { leagueId: number | null; championshipId: number | null } | null {
+  if (v === undefined || v === null || v === "") return { leagueId: null, championshipId: null };
+  const m = /^([lc]):(\d+)$/.exec(String(v));
+  if (!m) return null;
+  const id = Number(m[2]);
+  return m[1] === "l" ? { leagueId: id, championshipId: null } : { leagueId: null, championshipId: id };
+}
+
 export const OFFICIAL_ROLES = ["REFEREE", "ASSISTANT_1", "ASSISTANT_2", "FOURTH_OFFICIAL", "COMMISSIONER"] as const;
 export type OfficialRole = (typeof OFFICIAL_ROLES)[number];
 export const OFFICIAL_ROLE_LABELS: Record<OfficialRole, string> = {

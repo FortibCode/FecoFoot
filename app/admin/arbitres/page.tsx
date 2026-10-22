@@ -7,9 +7,9 @@ import { asc, eq } from "drizzle-orm";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
-import { leagues, referees } from "@/lib/db/schema";
-import { leagueOptions } from "@/lib/queries/reference";
-import { REFEREE_GRADE_LABELS, REFEREE_GRADES } from "@/lib/referees";
+import { championships, leagues, referees } from "@/lib/db/schema";
+import { leagueOptions, nationalDivisionOptions } from "@/lib/queries/reference";
+import { NATIONAL_LEVEL, parseScope, REFEREE_GRADE_LABELS, REFEREE_GRADES, scopeValue } from "@/lib/referees";
 import { SelectField } from "@/components/ui/field";
 import { textMatch } from "@/lib/text-search";
 import { createReferee } from "./actions";
@@ -23,21 +23,24 @@ export default async function RefereesPage({ searchParams }: PageProps<"/admin/a
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : undefined;
   const grade = REFEREE_GRADES.find((g) => g === sp.grade);
-  const league = Number(sp.league) || undefined;
+  // Rattachement filtré : « l:<id> » (ligue), « c:<id> » (division nationale) ou « federation » (aucun des deux).
+  const scope = sp.scope === "federation" ? "federation" : typeof sp.scope === "string" && sp.scope && parseScope(sp.scope) ? sp.scope : undefined;
   const state = sp.state === "active" || sp.state === "inactive" ? sp.state : undefined;
-  const [rows, allLeagues] = await Promise.all([
+  const [rows, allLeagues, divisions] = await Promise.all([
     db
-      .select({ r: referees, league: leagues.name })
+      .select({ r: referees, league: leagues.name, division: championships.name })
       .from(referees)
       .leftJoin(leagues, eq(referees.leagueId, leagues.id))
+      .leftJoin(championships, eq(referees.championshipId, championships.id))
       .orderBy(asc(referees.lastName), asc(referees.firstName)),
     leagueOptions(),
+    nationalDivisionOptions(),
   ]);
   const shown = rows.filter(
     ({ r }) =>
       textMatch(q, `${r.lastName} ${r.firstName}`, r.email, r.phone) &&
       (!grade || r.grade === grade) &&
-      (!league || r.leagueId === league) &&
+      (!scope || scopeValue(r) === (scope === "federation" ? "" : scope)) &&
       (!state || r.active === (state === "active")),
   );
   return (
@@ -74,13 +77,23 @@ export default async function RefereesPage({ searchParams }: PageProps<"/admin/a
             </option>
           ))}
         </SelectField>
-        <SelectField label="Ligue" name="league" defaultValue={league ?? ""}>
+        <SelectField label="Ligue ou division" name="scope" defaultValue={scope ?? ""}>
           <option value="">Toutes</option>
-          {allLeagues.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
+          <option value="federation">{NATIONAL_LEVEL}</option>
+          <optgroup label="Divisions nationales">
+            {divisions.map((d) => (
+              <option key={d.id} value={`c:${d.id}`}>
+                {d.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Ligues départementales">
+            {allLeagues.map((l) => (
+              <option key={l.id} value={`l:${l.id}`}>
+                {l.name}
+              </option>
+            ))}
+          </optgroup>
         </SelectField>
         <SelectField label="État" name="state" defaultValue={state ?? ""}>
           <option value="">Tous</option>
@@ -89,7 +102,7 @@ export default async function RefereesPage({ searchParams }: PageProps<"/admin/a
         </SelectField>
         <button type="submit">Filtrer</button>
       </form>
-      <DataTable head={["Nom", "Grade", "Ligue", "Contact", "État", ""]} pageSize={5}>
+      <DataTable head={["Nom", "Grade", "Ligue ou division", "Contact", "État", ""]} pageSize={5}>
         {shown.length === 0 && (
           <tr>
             <td colSpan={6} className="text-center text-muted-foreground">
@@ -97,7 +110,7 @@ export default async function RefereesPage({ searchParams }: PageProps<"/admin/a
             </td>
           </tr>
         )}
-        {shown.map(({ r, league }) => (
+        {shown.map(({ r, league, division }) => (
           <tr key={r.id}>
             <td className="px-3 py-2">
               <Link href={`/admin/arbitres/${r.id}`} className="font-medium underline-offset-2 hover:underline">
@@ -105,7 +118,7 @@ export default async function RefereesPage({ searchParams }: PageProps<"/admin/a
               </Link>
             </td>
             <td className="px-3 py-2">{REFEREE_GRADE_LABELS[r.grade]}</td>
-            <td className="px-3 py-2">{league ?? "—"}</td>
+            <td className="px-3 py-2">{division ? `${division} National` : (league ?? NATIONAL_LEVEL)}</td>
             <td className="px-3 py-2 text-xs">{[r.phone, r.email].filter(Boolean).join(" · ") || "—"}</td>
             <td className="px-3 py-2">{r.active ? "Actif" : "Inactif"}</td>
             <td>
@@ -116,7 +129,7 @@ export default async function RefereesPage({ searchParams }: PageProps<"/admin/a
       </DataTable>
       <section id="ajouter" className="mt-6 flex flex-col gap-3">
         <h2 className="font-semibold">Ajouter un officiel</h2>
-        <RefereeForm action={createReferee} leagues={allLeagues} submitLabel="Ajouter" />
+        <RefereeForm action={createReferee} leagues={allLeagues} divisions={divisions} submitLabel="Ajouter" />
       </section>
     </>
   );

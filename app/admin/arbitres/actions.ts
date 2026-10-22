@@ -12,18 +12,20 @@ import { sendPasswordLink } from "@/lib/auth/reset-link";
 import { db } from "@/lib/db";
 import { blockedMessage, deleteRefereeRecord, refereeBlockers } from "@/lib/deletion";
 import { referees, users } from "@/lib/db/schema";
-import { REFEREE_GRADES } from "@/lib/referees";
+import { parseScope, REFEREE_GRADES } from "@/lib/referees";
 import { randomToken } from "@/lib/tokens";
 
 const RefereeSchema = z.object({
   lastName: z.string().trim().min(2, { error: "Nom requis." }).max(80),
   firstName: z.string().trim().min(2, { error: "Prénom requis." }).max(80),
   grade: z.enum(REFEREE_GRADES, { error: "Grade requis." }),
-  leagueId: z.preprocess(blankToNull, z.coerce.number().int().positive().nullable()),
+  scope: z.preprocess(parseScope, z.object({ leagueId: z.number().nullable(), championshipId: z.number().nullable() }, { error: "Rattachement invalide." })),
   phone: z.preprocess(blankToNull, z.string().trim().max(32).nullable()),
   email: z.preprocess(blankToNull, z.email({ error: "Adresse e-mail invalide." }).nullable()),
   active: z.preprocess((v) => v === "on", z.boolean()),
 });
+
+const refereeValues = ({ scope, ...d }: z.infer<typeof RefereeSchema>) => ({ ...d, ...scope, lastName: d.lastName.toUpperCase() });
 
 /** Registre des arbitres (EF-ARB-01). */
 export async function createReferee(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -32,7 +34,7 @@ export async function createReferee(_state: ActionState, formData: FormData): Pr
   if (!parsed.success) return fromZodError(parsed.error);
   const [created] = await db
     .insert(referees)
-    .values({ ...parsed.data, lastName: parsed.data.lastName.toUpperCase() })
+    .values(refereeValues(parsed.data))
     .returning({ id: referees.id });
   await logAudit({ userId: user.id, action: "CREATE", entity: "referee", entityId: created.id });
   revalidatePath("/admin/arbitres");
@@ -45,7 +47,7 @@ export async function updateReferee(refereeId: number, _state: ActionState, form
   if (!parsed.success) return fromZodError(parsed.error);
   const [ref] = await db
     .update(referees)
-    .set({ ...parsed.data, lastName: parsed.data.lastName.toUpperCase() })
+    .set(refereeValues(parsed.data))
     .where(eq(referees.id, refereeId))
     .returning({ userId: referees.userId });
   // Un arbitre inactif perd l'accès à son espace.

@@ -4,19 +4,21 @@ import { Button } from "@/components/ui/button";
 import { FormMessage, SelectField, TextField } from "@/components/ui/field";
 import type { ActionState } from "@/lib/action-state";
 import type { Option } from "@/lib/queries/reference";
-import { REFEREE_GRADE_LABELS, REFEREE_GRADES } from "@/lib/referees";
+import { NATIONAL_LEVEL, REFEREE_GRADE_LABELS, REFEREE_GRADES, scopeValue } from "@/lib/referees";
 import { useActionForm } from "@/lib/use-action-form";
 
-type Values = { lastName: string; firstName: string; grade: string; leagueId: number | null; phone: string | null; email: string | null; active: boolean };
+type Values = { lastName: string; firstName: string; grade: string; leagueId: number | null; championshipId: number | null; phone: string | null; email: string | null; active: boolean };
 
 export function RefereeForm({
   action,
   leagues,
+  divisions,
   initial,
   submitLabel,
 }: {
   action: (s: ActionState, f: FormData) => Promise<ActionState>;
   leagues: Option[];
+  divisions: Option[];
   initial?: Values;
   submitLabel: string;
 }) {
@@ -33,13 +35,22 @@ export function RefereeForm({
           </option>
         ))}
       </SelectField>
-      <SelectField label="Ligue" name="leagueId" defaultValue={initial?.leagueId ?? ""}>
-        <option value="">—</option>
-        {leagues.map((l) => (
-          <option key={l.id} value={l.id}>
-            {l.name}
-          </option>
-        ))}
+      <SelectField label="Ligue ou division" name="scope" defaultValue={initial ? scopeValue(initial) : ""} errors={fe?.scope}>
+        <option value="">{NATIONAL_LEVEL}</option>
+        <optgroup label="Divisions nationales">
+          {divisions.map((d) => (
+            <option key={d.id} value={`c:${d.id}`}>
+              {d.name}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Ligues départementales">
+          {leagues.map((l) => (
+            <option key={l.id} value={`l:${l.id}`}>
+              {l.name}
+            </option>
+          ))}
+        </optgroup>
       </SelectField>
       <TextField label="Téléphone" name="phone" type="tel" defaultValue={initial?.phone ?? ""} errors={fe?.phone} />
       <TextField label="E-mail" name="email" type="email" defaultValue={initial?.email ?? ""} errors={fe?.email} />

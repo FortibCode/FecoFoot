@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { MonthLine } from "@/components/admin/month-line";
+import { ClubLogo } from "@/components/public/club-logo";
 import { requirePermission } from "@/lib/auth/guard";
 import { can, ROLE_LABELS, type Permission } from "@/lib/auth/roles";
 import { formatFcfa } from "@/lib/format";
@@ -544,13 +545,15 @@ export default async function AdminDashboard() {
                   ({ match, competition, home, away }) => (
                     <li key={match.id} className="db-result">
                       <span className="db-result-team">
-                        {home?.shortName ?? home?.name}
+                        <span className="truncate">{home?.shortName ?? home?.name}</span>
+                        {home && <ClubLogo src={home.logo} name={home.name} className="size-7 text-[0.6rem]" />}
                       </span>
                       <span className="db-score">
                         {match.homeScore ?? 0} – {match.awayScore ?? 0}
                       </span>
                       <span className="db-result-team db-result-away">
-                        {away?.shortName ?? away?.name}
+                        {away && <ClubLogo src={away.logo} name={away.name} className="size-7 text-[0.6rem]" />}
+                        <span className="truncate">{away?.shortName ?? away?.name}</span>
                       </span>
                       <span className="db-result-meta">
                         {competition.name} ·{" "}
@@ -661,8 +664,10 @@ export default async function AdminDashboard() {
                   </span>
                   <span className="db-match-body">
                     <span className="db-match-teams">
-                      {home?.shortName ?? home?.name} <em>vs</em>{" "}
-                      {away?.shortName ?? away?.name}
+                      {home && <ClubLogo src={home.logo} name={home.name} className="size-6 text-[0.55rem]" />}
+                      <span className="truncate">{home?.shortName ?? home?.name}</span> <em>vs</em>{" "}
+                      <span className="truncate">{away?.shortName ?? away?.name}</span>
+                      {away && <ClubLogo src={away.logo} name={away.name} className="size-6 text-[0.55rem]" />}
                     </span>
                     <span className="db-match-meta">
                       {competition.name}

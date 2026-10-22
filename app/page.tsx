@@ -72,10 +72,17 @@ function MatchListRow({ row }: { row: MatchRow }) {
   );
 }
 
-function MatchList({ title, rows, empty, from = "left" }: { title: string; rows: MatchRow[]; empty: string; from?: "left" | "right" }) {
+function MatchList({ title, rows, empty, from = "left", more }: { title: string; rows: MatchRow[]; empty: string; from?: "left" | "right"; more?: string }) {
   return (
     <div data-reveal={from} className="flex min-w-0 flex-col">
-      <h3 className="border-b-2 border-foreground pb-2 font-heading text-xl font-bold uppercase">{title}</h3>
+      <h3 className="flex items-baseline justify-between gap-3 border-b-2 border-foreground pb-2 font-heading text-xl font-bold uppercase">
+        {title}
+        {more && (
+          <Link href={more} className="font-sans text-xs font-semibold normal-case text-[var(--flag-green)] hover:underline">
+            Tout voir →
+          </Link>
+        )}
+      </h3>
       {rows.length === 0 ? (
         <p className="border-b py-4 text-sm text-muted-foreground">{empty}</p>
       ) : (
@@ -246,13 +253,13 @@ export default async function HomePage() {
           />
           {d.live.length > 0 && (
             <div className="flex flex-col gap-2 rounded-xl border-2 border-[var(--flag-red,#dc241f)]/40 p-4">
-              <MatchList title="En direct" rows={d.live} empty="" />
+              <MatchList title="En direct" rows={d.live} empty="" more="/matchs?vue=direct" />
               <LiveRefresh />
             </div>
           )}
           <div className="grid gap-8 lg:grid-cols-2">
-            <MatchList title="Derniers résultats" rows={d.results} empty="Aucun résultat." />
-            <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé." from="right" />
+            <MatchList title="Derniers résultats" rows={d.results} empty="Aucun résultat." more="/matchs?vue=resultats" />
+            <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé." from="right" more="/matchs?vue=calendrier" />
           </div>
         </Container>
       </section>

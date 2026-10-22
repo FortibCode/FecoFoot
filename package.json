@@ -23,6 +23,7 @@
     "divisions:nationales": "tsx scripts/divisions-nationales.mts",
     "photos:import": "tsx --conditions=react-server scripts/import-photos.mts",
     "clubs:import": "tsx --conditions=react-server scripts/import-clubs.mts",
+    "sources:import-saison": "tsx --conditions=react-server scripts/import-saison-externe.mts",
     "actualites:import": "tsx --conditions=react-server scripts/import-actualites.mts",
     "start:standalone": "cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && node .next/standalone/server.js"
   },

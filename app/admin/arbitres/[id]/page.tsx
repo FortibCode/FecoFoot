@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { matches, matchOfficials, referees } from "@/lib/db/schema";
 import { formatDateTime } from "@/lib/format";
 import { homeClub, awayClub } from "@/lib/queries/competitions";
-import { leagueOptions } from "@/lib/queries/reference";
+import { leagueOptions, nationalDivisionOptions } from "@/lib/queries/reference";
 import { OFFICIAL_ROLE_LABELS } from "@/lib/referees";
 import { openRefereeAccess, updateReferee } from "../actions";
 import { RefereeForm } from "../RefereeForm";
@@ -23,8 +23,9 @@ export default async function RefereePage({ params }: PageProps<"/admin/arbitres
   if (!Number.isInteger(id)) notFound();
   const [ref] = await db.select().from(referees).where(eq(referees.id, id)).limit(1);
   if (!ref) notFound();
-  const [allLeagues, designations] = await Promise.all([
+  const [allLeagues, divisions, designations] = await Promise.all([
     leagueOptions(),
+    nationalDivisionOptions(),
     db
       .select({ o: matchOfficials, kickoffAt: matches.kickoffAt, home: homeClub.name, away: awayClub.name })
       .from(matchOfficials)
@@ -41,7 +42,7 @@ export default async function RefereePage({ params }: PageProps<"/admin/arbitres
       <PageHeader eyebrow="Arbitrage" title={`${ref.lastName} ${ref.firstName}`} />
       <div className="flex flex-col gap-10">
         <div id="modifier">
-        <RefereeForm action={updateReferee.bind(null, id)} leagues={allLeagues} initial={ref} submitLabel="Enregistrer" />
+        <RefereeForm action={updateReferee.bind(null, id)} leagues={allLeagues} divisions={divisions} initial={ref} submitLabel="Enregistrer" />
         </div>
 
         <section className="flex flex-col gap-3 border-t pt-6">

@@ -9,9 +9,10 @@ import { LiveRefresh } from "@/components/live-refresh";
 import { clubLogos } from "@/lib/club-logos";
 import { EVENT_TYPE_LABELS, hasScore, isLive, MATCH_STATUS_LABELS, roundLabel } from "@/lib/competitions";
 import { db } from "@/lib/db";
-import { championships, competitions, leagues, matchEvents, matches, players } from "@/lib/db/schema";
+import { championships, competitions, leagues, matchEvents, matches, matchLineups, matchOfficials, players, referees } from "@/lib/db/schema";
 import { formatDateTime } from "@/lib/format";
 import { seasonLabel } from "@/lib/licenses";
+import { OFFICIAL_ROLE_LABELS, OFFICIAL_ROLES } from "@/lib/referees";
 import { matchQuery } from "@/lib/queries/competitions";
 
 const playerIn = alias(players, "player_in");
@@ -30,12 +31,14 @@ export async function generateMetadata({ params }: PageProps<"/matchs/[id]">): P
   return row ? { title: `${title(row)} — FECOFOOT`, description: `${row.competition.name} : score, date, stade et événements du match.` } : {};
 }
 
-/** Fiche publique d'un match : équipes, score officiel, date, stade, statut, compétition, événements. */
+/** Fiche publique d'un match : équipes, score officiel, date, stade, statut, compétition, événements, compositions, officiels. */
 export default async function PublicMatchPage({ params }: PageProps<"/matchs/[id]">) {
   const row = await load(Number((await params).id));
   if (!row) notFound();
   const { match: m, home, away } = row;
-  const [[context], events, logos, total] = await Promise.all([
+  // Compositions publiées au coup d'envoi (avant, elles restent internes aux clubs et à l'organisateur).
+  const started = isLive(m.status) || m.status === "FINISHED";
+  const [[context], events, logos, total, officials, lineups] = await Promise.all([
     db
       .select({ c: competitions, league: { name: leagues.name, code: leagues.code }, championship: { name: championships.name, code: championships.code } })
       .from(competitions)
@@ -52,7 +55,21 @@ export default async function PublicMatchPage({ params }: PageProps<"/matchs/[id
       .orderBy(asc(matchEvents.minute), asc(matchEvents.id)),
     clubLogos([m.homeClubId, m.awayClubId].filter((x): x is number => x !== null)),
     row.competition.type === "CUP" ? db.select({ round: matches.round }).from(matches).where(eq(matches.competitionId, m.competitionId)) : Promise.resolve([]),
+    db
+      .select({ role: matchOfficials.role, lastName: referees.lastName, firstName: referees.firstName })
+      .from(matchOfficials)
+      .innerJoin(referees, eq(matchOfficials.refereeId, referees.id))
+      .where(eq(matchOfficials.matchId, m.id)),
+    started
+      ? db
+          .select({ l: matchLineups, lastName: players.lastName, firstName: players.firstName })
+          .from(matchLineups)
+          .innerJoin(players, eq(matchLineups.playerId, players.id))
+          .where(eq(matchLineups.matchId, m.id))
+          .orderBy(asc(matchLineups.shirtNumber), asc(players.lastName))
+      : Promise.resolve([]),
   ]);
+  officials.sort((a, b) => OFFICIAL_ROLES.indexOf(a.role) - OFFICIAL_ROLES.indexOf(b.role));
   const c = context.c;
   // Score affiché : en direct sur saisie officielle, définitif une fois validé par l'organisateur.
   const awaiting = m.status === "FINISHED" && !m.validatedAt;
@@ -137,6 +154,56 @@ export default async function PublicMatchPage({ params }: PageProps<"/matchs/[id
             </ol>
           )}
         </section>
+
+        {lineups.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold">Compositions</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[home, away].map((team) =>
+                team ? (
+                  <div key={team.id} className="rounded-lg border bg-card p-4 text-sm">
+                    <p className="mb-2 flex items-center gap-2 font-semibold">
+                      <ClubLogo src={logos.get(team.id)} name={team.name} className="size-6 text-[0.55rem]" />
+                      {team.name}
+                    </p>
+                    {[true, false].map((starter) => {
+                      const list = lineups.filter((x) => x.l.clubId === team.id && x.l.starter === starter);
+                      return list.length > 0 ? (
+                        <div key={String(starter)} className="mt-2">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">{starter ? "Titulaires" : "Remplaçants"}</p>
+                          <ul>
+                            {list.map(({ l, lastName, firstName }) => (
+                              <li key={l.id} className="flex gap-2 py-0.5">
+                                <span className="w-6 shrink-0 text-right font-semibold tabular-nums">{l.shirtNumber ?? ""}</span>
+                                {firstName} {lastName}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                ) : null,
+              )}
+            </div>
+          </section>
+        )}
+
+        {officials.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold">Officiels du match</h2>
+            <dl className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-5 text-sm sm:grid-cols-5">
+              {officials.map((o) => (
+                <div key={o.role} className="min-w-0">
+                  <dt className="text-xs uppercase tracking-wider text-muted-foreground">{OFFICIAL_ROLE_LABELS[o.role]}</dt>
+                  <dd className="font-medium">
+                    {o.firstName} {o.lastName}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
 
         <div className="flex flex-wrap gap-3 text-sm">
           <Link href={competitionHref} className="rounded-md border bg-card px-4 py-2 font-semibold hover:bg-muted">

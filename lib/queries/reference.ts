@@ -1,12 +1,18 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { clubs, leagues } from "@/lib/db/schema";
+import { championships, clubs, leagues } from "@/lib/db/schema";
 
 /** Listes de référence pour les formulaires (ligues, clubs). */
 
 export async function leagueOptions() {
   return db.select({ id: leagues.id, name: leagues.name }).from(leagues).orderBy(asc(leagues.name));
+}
+
+/** Divisions nationales (Ligue 1, Ligue 2…), nommées comme dans le module Ligues : « Ligue 1 National ». */
+export async function nationalDivisionOptions() {
+  const rows = await db.select({ id: championships.id, name: championships.name }).from(championships).orderBy(asc(championships.tier));
+  return rows.map((c) => ({ id: c.id, name: `${c.name} National` }));
 }
 
 /** Ligues actives : seules à recevoir de nouveaux clubs ou de nouvelles compétitions. */

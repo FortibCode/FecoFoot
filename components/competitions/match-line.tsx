@@ -9,7 +9,20 @@ import type { MatchRow } from "@/lib/queries/competitions";
  * `official` (portail) : un score terminé n'est affiché qu'une fois validé par l'organisateur ;
  * un match en cours n'est « en direct » que sur saisie officielle de la feuille de match.
  */
-export function MatchLine({ row, href, byeLabel = "exempt", official = false }: { row: MatchRow; href?: string; byeLabel?: string; official?: boolean }) {
+export function MatchLine({
+  row,
+  href,
+  byeLabel = "exempt",
+  official = false,
+  showCompetition = false,
+}: {
+  row: MatchRow;
+  href?: string;
+  byeLabel?: string;
+  official?: boolean;
+  /** Liste toutes compétitions confondues : nom de la compétition sous la date. */
+  showCompetition?: boolean;
+}) {
   const { match: m, home, away } = row;
   const awaiting = official && m.status === "FINISHED" && !m.validatedAt;
   const played = hasScore(m.status) && !awaiting;
@@ -25,6 +38,7 @@ export function MatchLine({ row, href, byeLabel = "exempt", official = false }: 
         ) : (
           "Date à fixer"
         )}
+        {showCompetition && <span className="block truncate text-[0.7rem] font-semibold text-[var(--flag-green,#009543)]">{row.competition.name}</span>}
       </span>
       <span className="flex min-w-0 items-center justify-end gap-2 font-medium">
         <span className="truncate">{name(home) ?? "À déterminer"}</span>

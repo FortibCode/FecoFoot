@@ -20,7 +20,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import { seasonOf } from "@/lib/licenses";
-import { homeClub, awayClub } from "@/lib/queries/competitions";
+import { matchQuery } from "@/lib/queries/competitions";
 
 /**
  * Toutes les statistiques nécessaires au tableau de bord fédéral.
@@ -101,17 +101,7 @@ export async function dashboardStats() {
       .where(gte(players.createdAt, thirtyDaysAgo)),
 
     // 5 prochains matchs programmés
-    db
-      .select({
-        match: matches,
-        competition: { id: competitions.id, name: competitions.name },
-        home: { id: homeClub.id, name: homeClub.name, shortName: homeClub.shortName },
-        away: { id: awayClub.id, name: awayClub.name, shortName: awayClub.shortName },
-      })
-      .from(matches)
-      .innerJoin(competitions, eq(matches.competitionId, competitions.id))
-      .leftJoin(homeClub, eq(matches.homeClubId, homeClub.id))
-      .leftJoin(awayClub, eq(matches.awayClubId, awayClub.id))
+    matchQuery()
       .where(
         and(
           eq(matches.status, "SCHEDULED"),
@@ -124,17 +114,7 @@ export async function dashboardStats() {
       .limit(5),
 
     // 5 derniers résultats
-    db
-      .select({
-        match: matches,
-        competition: { id: competitions.id, name: competitions.name },
-        home: { id: homeClub.id, name: homeClub.name, shortName: homeClub.shortName },
-        away: { id: awayClub.id, name: awayClub.name, shortName: awayClub.shortName },
-      })
-      .from(matches)
-      .innerJoin(competitions, eq(matches.competitionId, competitions.id))
-      .leftJoin(homeClub, eq(matches.homeClubId, homeClub.id))
-      .leftJoin(awayClub, eq(matches.awayClubId, awayClub.id))
+    matchQuery()
       .where(eq(matches.status, "FINISHED"))
       .orderBy(desc(matches.kickoffAt))
       .limit(5),

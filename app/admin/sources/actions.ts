@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, notExists } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { fromZodError, type ActionState } from "@/lib/action-state";
@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guard";
 import { canAccessCompetition } from "@/lib/auth/roles";
 import { db } from "@/lib/db";
-import { clubs, competitions, externalConflicts, externalLinks } from "@/lib/db/schema";
+import { clubs, competitions, externalConflicts, externalLinks, matches } from "@/lib/db/schema";
 import { syncCompetition } from "@/lib/live-sync";
 import { isUniqueViolation } from "@/lib/queries/players";
 
@@ -84,6 +84,30 @@ export async function syncNow(competitionId: number): Promise<ActionState> {
   revalidatePath("/", "layout");
   if (r.error) return { error: r.error };
   return { success: `Synchronisé : ${r.created} match(s) créé(s), ${r.updated} mis à jour, ${r.conflicts} conflit(s), ${r.skipped} ignoré(s).${r.notes.length ? ` ${r.notes.join(" ")}` : ""}` };
+}
+
+/**
+ * Décision de la fédération : les résultats terminés importés d'une compétition deviennent officiels
+ * et comptent au classement (saison passée importée, ou résultats vérifiés). Un match en conflit ouvert
+ * n'est pas validé ; chaque résultat reste corrigeable depuis sa feuille de match.
+ */
+export async function validateExternalResults(competitionId: number): Promise<ActionState> {
+  const user = await requirePermission("competitions.manage");
+  if (!canAccessCompetition(user, { leagueId: null })) return FORBIDDEN;
+  const openConflict = db
+    .select({ id: externalConflicts.id })
+    .from(externalConflicts)
+    .where(and(eq(externalConflicts.matchId, matches.id), isNull(externalConflicts.resolvedAt)));
+  const validated = await db
+    .update(matches)
+    .set({ validatedAt: new Date(), validatedBy: user.id })
+    .where(and(eq(matches.competitionId, competitionId), eq(matches.status, "FINISHED"), eq(matches.scoreSource, "EXTERNAL"), isNull(matches.validatedAt), notExists(openConflict)))
+    .returning({ id: matches.id });
+  if (!validated.length) return { error: "Aucun résultat externe terminé à valider." };
+  await logAudit({ userId: user.id, action: "EXTERNAL_RESULTS_VALIDATED", entity: "competition", entityId: competitionId, details: { provider: PROVIDER, count: validated.length } });
+  done();
+  revalidatePath("/", "layout");
+  return { success: `${validated.length} résultat(s) validé(s) : ils comptent désormais au classement.` };
 }
 
 /** Conflit examiné : la donnée officielle est conservée (une correction se fait sur la feuille de match). */

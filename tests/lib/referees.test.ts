@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calledPlayerError, shirtNumberError } from "@/lib/national-teams";
-import { designationError, matchDay, type Designation } from "@/lib/referees";
+import { designationError, matchDay, parseScope, scopeValue, type Designation } from "@/lib/referees";
 
 describe("Désignations des officiels (EF-ARB-03, RG-08)", () => {
   const existing: Designation[] = [
@@ -41,5 +41,17 @@ describe("Convocations (EF-SEL-02)", () => {
     expect(shirtNumberError(10, [1, 9])).toBeNull();
     expect(shirtNumberError(9, [1, 9])).toMatch(/déjà/);
     expect(shirtNumberError(100, [])).toMatch(/1 et 99/);
+  });
+});
+
+describe("rattachement d'un arbitre", () => {
+  it("encode et relit ligue, division nationale ou fédération", () => {
+    expect(scopeValue({ leagueId: 3, championshipId: null })).toBe("l:3");
+    expect(scopeValue({ leagueId: null, championshipId: 1 })).toBe("c:1");
+    expect(scopeValue({ leagueId: null, championshipId: null })).toBe("");
+    expect(parseScope("c:2")).toEqual({ leagueId: null, championshipId: 2 });
+    expect(parseScope("l:7")).toEqual({ leagueId: 7, championshipId: null });
+    expect(parseScope("")).toEqual({ leagueId: null, championshipId: null });
+    expect(parseScope("7")).toBeNull();
   });
 });

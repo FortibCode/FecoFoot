@@ -12,10 +12,13 @@ const NATIONAL = [
 
 const LINKS = [
   ["/actualites", "Actualités"],
+  ["/matchs", "Matchs"],
   ["/competitions", "Compétitions"],
   ["/ligues", "Ligues départementales"],
   ["/clubs", "Clubs"],
   ["/equipes-nationales", "Équipes nationales"],
+  ["/transferts", "Transferts"],
+  ["/discipline", "Discipline"],
   ["/verifier", "Vérifier une licence"],
   ["/billetterie", "Billetterie"],
   ["/supporters", "Supporters"],

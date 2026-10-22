@@ -671,7 +671,9 @@ export const referees = pgTable(
     lastName: varchar("last_name", { length: 80 }).notNull(),
     firstName: varchar("first_name", { length: 80 }).notNull(),
     grade: refereeGradeEnum("grade").notNull(),
+    // Rattachement : une ligue départementale, ou un championnat national (Ligue 1, Ligue 2), ou aucun (fédération).
     leagueId: integer("league_id").references(() => leagues.id),
+    championshipId: integer("championship_id").references(() => championships.id),
     phone: varchar("phone", { length: 32 }),
     email: varchar("email", { length: 255 }),
     active: boolean("active").notNull().default(true),
