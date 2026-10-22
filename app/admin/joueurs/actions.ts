@@ -27,6 +27,7 @@ import { isUniqueViolation, loadClubFor, loadPlayerFor } from "@/lib/queries/pla
 import { nextVal } from "@/lib/sequences";
 import { hashToken, randomToken } from "@/lib/tokens";
 import { insertLicenseRequest } from "@/lib/license-requests";
+import { BIOMETRIC_UNAVAILABLE, biometricProvider } from "@/lib/biometrics";
 import { sendPasswordLink } from "@/lib/auth/reset-link";
 
 const optText = (max: number) => z.preprocess(blankToNull, z.string().trim().max(max).nullable());
@@ -127,13 +128,43 @@ export async function updatePlayer(playerId: number, _state: ActionState, formDa
   const dup = await duplicateOf(row.identityKey, playerId);
   if (dup) return { error: `Ces informations correspondent déjà au joueur ${dup.federalId}.` };
 
+  // L'identité contrôlée ne vaut que pour l'identité d'alors : nom, prénom ou date de naissance modifiés → nouveau contrôle.
+  const identityChanged = row.identityKey !== current.player.identityKey;
   await db
     .update(players)
-    .set({ ...row, updatedAt: new Date() })
+    .set({ ...row, ...(identityChanged && { identityVerifiedAt: null, identityVerifiedBy: null, identityMethod: null }), updatedAt: new Date() })
     .where(eq(players.id, playerId));
-  await logAudit({ userId: user.id, action: "UPDATE", entity: "player", entityId: playerId });
+  await logAudit({ userId: user.id, action: "UPDATE", entity: "player", entityId: playerId, details: identityChanged ? { identityReset: true } : undefined });
   revalidatePath(`/admin/joueurs/${playerId}`);
-  return { success: "Fiche du joueur mise à jour." };
+  return { success: identityChanged && current.player.identityVerifiedAt ? "Fiche mise à jour. L'identité ayant changé, elle devra être contrôlée à nouveau." : "Fiche du joueur mise à jour." };
+}
+
+/**
+ * Publication (avec l'accord du joueur ou de son représentant légal) : photo sur la page publique de
+ * vérification, date de naissance sur la carte de licence.
+ */
+export async function setPublicationPrefs(playerId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("players.manage");
+  const current = await loadPlayerFor(user, playerId);
+  if (!current) return { error: "Joueur introuvable." };
+  const prefs = { publishPhoto: formData.get("publishPhoto") === "on", showBirthDate: formData.get("showBirthDate") === "on" };
+  await db.update(players).set({ ...prefs, updatedAt: new Date() }).where(eq(players.id, playerId));
+  await logAudit({ userId: user.id, action: "PUBLICATION_PREFS", entity: "player", entityId: playerId, details: prefs });
+  revalidatePath(`/admin/joueurs/${playerId}`);
+  return { success: "Préférences de publication enregistrées." };
+}
+
+/**
+ * Vérification biométrique : refusée tant qu'aucun prestataire n'est intégré et configuré (lib/biometrics.ts).
+ * Jamais simulée : aucune mention « biométrique » sans résultat réel du prestataire.
+ */
+export async function verifyBiometric(playerId: number): Promise<ActionState> {
+  const user = await requirePermission("licenses.validate");
+  const current = await loadPlayerFor(user, playerId);
+  if (!current) return { error: "Joueur introuvable." };
+  const provider = biometricProvider();
+  if (!provider) return { error: BIOMETRIC_UNAVAILABLE };
+  return { error: `Prestataire « ${provider.id} » configuré : la capture se lance depuis le poste équipé du lecteur.` };
 }
 
 // ─── Accord en ligne (M05) ───────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import "server-only";
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import type { CurrentUser } from "@/lib/auth/guard";
 import { can, canAccessCompetition } from "@/lib/auth/roles";
 import { GOAL_EVENTS, hasScore, knockoutWinner, nextSlot, parseTiebreakers, scoreFromEvents, standings, topScorers } from "@/lib/competitions";
@@ -9,6 +9,15 @@ import { clubs, competitions, competitionTeams, leagues, licenses, matchEvents, 
 
 export const homeClub = alias(clubs, "home_club");
 export const awayClub = alias(clubs, "away_club");
+
+/**
+ * Adresse du logo d'un club (pièce « Logo du club » la plus récente), versionnée comme dans lib/club-logos.ts ;
+ * null si le club n'a pas de logo ou n'est pas affilié (la route des médias ne le servirait pas).
+ */
+const logoOf = (club: { id: AnyPgColumn; status: AnyPgColumn }) =>
+  sql<string | null>`(select '/media/clubs/' || ${club.id} || '?v=' || d.id from documents d
+    where d.owner_type = 'club' and d.type = 'CLUB_LOGO' and d.owner_id = ${club.id} and ${club.status} = 'AFFILIATED'
+    order by d.created_at desc, d.id desc limit 1)`;
 
 /** Matchs avec les noms des équipes (null : équipe à déterminer ou exempt). */
 export function matchQuery() {
@@ -24,8 +33,8 @@ export function matchQuery() {
         status: competitions.status,
         leagueId: competitions.leagueId,
       },
-      home: { id: homeClub.id, name: homeClub.name, shortName: homeClub.shortName },
-      away: { id: awayClub.id, name: awayClub.name, shortName: awayClub.shortName },
+      home: { id: homeClub.id, name: homeClub.name, shortName: homeClub.shortName, logo: logoOf(homeClub) },
+      away: { id: awayClub.id, name: awayClub.name, shortName: awayClub.shortName, logo: logoOf(awayClub) },
     })
     .from(matches)
     .innerJoin(competitions, eq(matches.competitionId, competitions.id))

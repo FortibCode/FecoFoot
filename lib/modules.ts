@@ -24,7 +24,7 @@ export const ADMIN_MODULES: AdminModule[] = [
   { code: "M03", label: "Ligues", href: "/admin/ligues", anyOf: ["leagues.manage", "leagues.own"], group: "Gestion sportive", section: "Organisation", ready: true },
   { code: "M03", label: "Clubs", href: "/admin/clubs", anyOf: ["clubs.read"], group: "Gestion sportive", section: "Organisation", ready: true },
   { code: "M04", label: "Joueurs", href: "/admin/joueurs", anyOf: ["players.read"], group: "Gestion sportive", section: "Licences", ready: true },
-  { code: "M04", label: "Licences", href: "/admin/licences", anyOf: ["licenses.validate", "licenses.request"], group: "Gestion sportive", section: "Licences", ready: true },
+  { code: "M04", label: "Licences des joueurs", href: "/admin/licences", anyOf: ["licenses.validate", "licenses.request"], group: "Gestion sportive", section: "Licences", ready: true },
   { code: "M06", label: "Transferts", href: "/admin/transferts", anyOf: ["transfers.approve", "transfers.review", "transfers.release"], group: "Gestion sportive", section: "Licences", ready: true },
   { code: "M04", label: "Mon espace joueur", href: "/admin/espace-joueur", anyOf: ["player.self"], group: "Gestion sportive", section: "Licences", ready: true },
   { code: "M07", label: "Championnats nationaux", href: "/admin/championnats", anyOf: ["competitions.manage"], group: "Gestion sportive", section: "Compétitions", ready: true, exceptRoles: ["LEAGUE"] },

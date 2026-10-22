@@ -39,10 +39,11 @@ function MatchListRow({ row }: { row: MatchRow }) {
   return (
     <li>
       <Link
-        href={`/competitions/${row.competition.slug}`}
+        href={`/matchs/${m.id}`}
         className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b py-4 transition-colors hover:bg-accent/60 sm:px-2"
       >
         <span className="flex min-w-0 items-center gap-3 font-heading text-lg font-semibold uppercase sm:text-xl">
+          {row.home && <ClubLogo src={row.home.logo} name={row.home.name} className="size-8 text-xs" />}
           <span className="truncate">{teamName(row.home)}</span>
           {played ? (
             <span className="shrink-0 rounded-md bg-brand-ink px-2 py-0.5 text-base text-white tabular-nums">
@@ -52,6 +53,7 @@ function MatchListRow({ row }: { row: MatchRow }) {
             <span className="shrink-0 text-sm text-muted-foreground">vs</span>
           )}
           <span className="truncate">{teamName(row.away)}</span>
+          {row.away && <ClubLogo src={row.away.logo} name={row.away.name} className="size-8 text-xs" />}
         </span>
         <ArrowCircle className="row-span-2" />
         <span className="flex flex-wrap items-center gap-2">

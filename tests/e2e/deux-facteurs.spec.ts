@@ -12,7 +12,7 @@ test("double authentification : activation, connexion avec code, réinitialisati
   // Activation
   await login(page, user);
   await page.goto("/admin/mon-compte");
-  await page.getByRole("link", { name: /activer/ }).click();
+  await page.getByRole("link", { name: /activer la double authentification/i }).click();
   await button(page, "Commencer l'activation").click();
   const secret = (await page.getByTestId("totp-secret").textContent())!.trim();
   await expect(page.locator("main svg")).toBeVisible(); // QR code à scanner

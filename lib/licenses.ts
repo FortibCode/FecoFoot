@@ -102,32 +102,49 @@ export const isMinor = (birthDate: Date, at: Date = new Date()) => ageAt(birthDa
 
 // ─── Cycle de vie de la licence (EF-LIC-05) ──────────────────────────────────
 
-export const LICENSE_STATUSES = ["PENDING", "PAID", "VALIDATED", "REJECTED", "SUSPENDED", "EXPIRED", "TRANSFERRED"] as const;
+export const LICENSE_STATUSES = ["PENDING", "PAID", "TO_CORRECT", "VALIDATED", "REJECTED", "SUSPENDED", "REVOKED", "EXPIRED", "TRANSFERRED"] as const;
 export type LicenseStatus = (typeof LICENSE_STATUSES)[number];
 
 export const LICENSE_STATUS_LABELS: Record<LicenseStatus, string> = {
   PENDING: "En attente",
   PAID: "Droits encaissés",
+  TO_CORRECT: "Corrections demandées",
   VALIDATED: "Validée",
   REJECTED: "Rejetée",
   SUSPENDED: "Suspendue",
+  REVOKED: "Révoquée",
   EXPIRED: "Expirée",
   TRANSFERRED: "Close (transfert)",
 };
+
+/** Méthode du contrôle d'identité : pièces justificatives (agent), ou biométrie (prestataire intégré). */
+export const IDENTITY_METHODS = ["DOCUMENTS", "BIOMETRIC"] as const;
+export type IdentityMethod = (typeof IDENTITY_METHODS)[number];
+export const IDENTITY_METHOD_LABELS: Record<IdentityMethod, string> = { DOCUMENTS: "sur pièces justificatives", BIOMETRIC: "biométrique" };
 
 export const LICENSE_TYPES = ["AMATEUR", "PRO"] as const;
 export type LicenseType = (typeof LICENSE_TYPES)[number];
 export const LICENSE_TYPE_LABELS: Record<LicenseType, string> = { AMATEUR: "Amateur", PRO: "Professionnelle" };
 
-export type LicenseAction = "pay" | "validate" | "reject" | "suspend" | "reactivate";
+export type LicenseAction = "pay" | "validate" | "reject" | "correct" | "suspend" | "reactivate" | "revoke";
 
 const TRANSITIONS: Record<LicenseAction, { from: LicenseStatus[]; to: LicenseStatus }> = {
   pay: { from: ["PENDING"], to: "PAID" },
   validate: { from: ["PAID"], to: "VALIDATED" },
-  reject: { from: ["PENDING", "PAID"], to: "REJECTED" },
+  reject: { from: ["PENDING", "PAID", "TO_CORRECT"], to: "REJECTED" },
+  // Dossier renvoyé au club pour corrections (motif obligatoire) ; il le soumet à nouveau (resubmitStatus).
+  correct: { from: ["PENDING", "PAID"], to: "TO_CORRECT" },
   suspend: { from: ["VALIDATED"], to: "SUSPENDED" },
   reactivate: { from: ["SUSPENDED"], to: "VALIDATED" },
+  // Retrait définitif (fraude, erreur grave) : la licence ne redevient jamais valide.
+  revoke: { from: ["VALIDATED", "SUSPENDED"], to: "REVOKED" },
 };
+
+/** Actions qui exigent un motif (journalisé et communiqué au club). */
+export const REASON_REQUIRED: LicenseAction[] = ["reject", "correct", "suspend", "revoke"];
+
+/** Statut d'un dossier soumis à nouveau après corrections : il reprend où il en était (droits déjà encaissés ou non). */
+export const resubmitStatus = (paid: boolean): LicenseStatus => (paid ? "PAID" : "PENDING");
 
 /**
  * Nouvel état après une action, ou message d'erreur.
@@ -136,18 +153,53 @@ const TRANSITIONS: Record<LicenseAction, { from: LicenseStatus[]; to: LicenseSta
 export function transition(
   status: LicenseStatus,
   action: LicenseAction,
-  ctx: { hasValidConsent: boolean; expired: boolean },
+  ctx: {
+    hasValidConsent: boolean;
+    expired: boolean;
+    /** Justificatifs obligatoires manquants (libellés). */
+    missingDocuments?: string[];
+    /** Identité contrôlée par un agent habilité (pièces ou, plus tard, biométrie). */
+    identityVerified?: boolean;
+  },
 ): { to: LicenseStatus } | { error: string } {
   if (ctx.expired) return { error: "La licence est expirée : aucune action n'est possible." };
   const rule = TRANSITIONS[action];
   if (!rule.from.includes(status)) {
     return { error: `Action impossible sur une licence « ${LICENSE_STATUS_LABELS[status]} ».` };
   }
-  if (action === "validate" && !ctx.hasValidConsent) {
-    return { error: "Validation impossible : l'accord en ligne du joueur (ou de son représentant légal) manque." };
+  if (action === "validate") {
+    if (!ctx.hasValidConsent) return { error: "Validation impossible : l'accord en ligne du joueur (ou de son représentant légal) manque." };
+    if (ctx.missingDocuments?.length) return { error: `Validation impossible : justificatif(s) manquant(s) — ${ctx.missingDocuments.join(", ")}.` };
+    if (ctx.identityVerified === false) return { error: "Validation impossible : confirmez d'abord le contrôle de l'identité du joueur sur pièces." };
   }
   return { to: rule.to };
 }
+
+/**
+ * Statut présenté sur la carte et à la vérification publique : « active » pour une licence validée en cours de
+ * validité, « en attente » pour un dossier en cours d'instruction.
+ */
+export const CARD_STATUSES = ["ACTIVE", "PENDING", "EXPIRED", "SUSPENDED", "REVOKED", "CLOSED"] as const;
+export type CardStatus = (typeof CARD_STATUSES)[number];
+export const CARD_STATUS_LABELS: Record<CardStatus, string> = {
+  ACTIVE: "Active",
+  PENDING: "En attente",
+  EXPIRED: "Expirée",
+  SUSPENDED: "Suspendue",
+  REVOKED: "Révoquée",
+  CLOSED: "Close",
+};
+
+export function cardStatus(status: LicenseStatus, expiresAt: Date, now: Date = new Date()): CardStatus {
+  const s = effectiveStatus(status, expiresAt, now);
+  if (s === "VALIDATED") return "ACTIVE";
+  if (s === "PENDING" || s === "PAID" || s === "TO_CORRECT") return "PENDING";
+  if (s === "EXPIRED" || s === "SUSPENDED" || s === "REVOKED") return s;
+  return "CLOSED";
+}
+
+/** Une carte n'est délivrée (affichage, PDF, impression) que pour une licence ayant été validée. */
+export const cardIssued = (status: LicenseStatus) => status === "VALIDATED" || status === "SUSPENDED" || status === "REVOKED" || status === "EXPIRED";
 
 /** Statut affiché : une licence validée ou suspendue dont la saison est terminée est expirée. */
 export function effectiveStatus(status: LicenseStatus, expiresAt: Date, now: Date = new Date()): LicenseStatus {

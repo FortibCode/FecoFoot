@@ -142,7 +142,7 @@ test("billetterie : prévente, achat, plafond, jauge, guichet, remboursement et 
   await fan.reload();
   await expect(fan.locator("main ul li").filter({ hasText: "Tribune d'honneur" })).toContainText("1 place(s) disponible(s)");
   // Clôture de caisse : la vente remboursée n'apparaît plus.
-  await expect(page.locator("main")).toContainText("Aucune vente au guichet.");
+  await expect(page.locator("main")).toContainText("Aucune vente au guichet");
 
   // Contrôle d'accès : billet accepté, puis refusé au 2e passage ; billet inconnu refusé.
   await page.goto(`/admin/billetterie/controle?event=${eventUrl.split("/").pop()}`);

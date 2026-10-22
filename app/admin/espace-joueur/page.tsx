@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or } from "drizzle-orm";
+import { LicenseCard } from "@/components/licenses/license-card";
 import { EmptyState } from "@/components/admin/empty-state";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
 import { StatCards } from "@/components/admin/stat-cards";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
-import { clubs, competitions, licenses, matchEvents, matches, matchLineups, players, transfers } from "@/lib/db/schema";
+import { clubs, competitions, licenses, matchEvents, matches, matchLineups, notifications, players, transfers } from "@/lib/db/schema";
+import { licenseCardData } from "@/lib/queries/license-card";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { CATEGORY_LABELS, LICENSE_STATUS_LABELS, POSITION_LABELS, seasonLabel } from "@/lib/licenses";
+import { cardIssued, CATEGORY_LABELS, LICENSE_STATUS_LABELS, POSITION_LABELS, seasonLabel } from "@/lib/licenses";
 import { activeCaseSuspensions } from "@/lib/queries/discipline";
 import { awayClub, homeClub } from "@/lib/queries/competitions";
 import { transferQuery } from "@/lib/queries/transfers";
@@ -58,6 +60,20 @@ export default async function PlayerSpacePage() {
       .where(and(eq(matchEvents.playerId, player.id), inArray(matches.status, ["FINISHED"]))),
     activeCaseSuspensions(),
   ]);
+  // Carte : dernière licence délivrée (validée, puis éventuellement suspendue, révoquée ou expirée).
+  const issued = licenseRows.find((l) => cardIssued(l.status));
+  const [card, messages] = await Promise.all([
+    issued ? licenseCardData(issued.id) : Promise.resolve(null),
+    // Avis reçus au sujet de son dossier (SMS et e-mails envoyés à ses coordonnées).
+    player.phone || player.email
+      ? db
+          .select({ id: notifications.id, channel: notifications.channel, subject: notifications.subject, topic: notifications.topic, createdAt: notifications.createdAt })
+          .from(notifications)
+          .where(and(or(...[player.phone, player.email].filter((x): x is string => Boolean(x)).map((c) => eq(notifications.recipient, c))), like(notifications.topic, "license%")))
+          .orderBy(desc(notifications.createdAt))
+          .limit(10)
+      : Promise.resolve([]),
+  ]);
   const goals = events.filter((e) => e.type === "GOAL" || e.type === "PENALTY_GOAL").length;
   const cards = events.filter((e) => e.type === "YELLOW_CARD" || e.type === "RED_CARD").length;
   const mine = suspensions.filter((s) => s.c.playerId === player.id);
@@ -90,6 +106,40 @@ export default async function PlayerSpacePage() {
                 {s.c.suspensionUntil ? ` · jusqu'au ${formatDate(new Date(s.c.suspensionUntil))}` : ""}
               </p>
             ))}
+          </section>
+        )}
+
+        <section className="flex flex-col gap-3">
+          <h2>Ma carte de licence</h2>
+          {card ? (
+            <>
+              <LicenseCard data={card} />
+              <div className="flex flex-wrap gap-2">
+                <a href="/admin/espace-joueur/carte/pdf" className="admin-btn admin-btn-primary">
+                  Télécharger ma carte (PDF)
+                </a>
+              </div>
+            </>
+          ) : (
+            <EmptyState icon="document" title="Carte non délivrée" compact>
+              La carte est disponible dès que la fédération a validé votre licence.
+            </EmptyState>
+          )}
+        </section>
+
+        {messages.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2>Notifications sur mon dossier</h2>
+            <ul className="flex flex-col divide-y rounded-lg border text-sm">
+              {messages.map((n) => (
+                <li key={n.id} className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2">
+                  <span>{n.subject ?? "Message de la fédération"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {n.channel === "SMS" ? "SMS" : "E-mail"} · {formatDateTime(n.createdAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

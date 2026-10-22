@@ -29,7 +29,8 @@ import { transferQuery } from "@/lib/queries/transfers";
 import { TRANSFER_STATUS_LABELS, TRANSFER_TYPE_LABELS } from "@/lib/transfers";
 import { latestConsent, loadPlayerFor } from "@/lib/queries/players";
 import { scopedClubOptions } from "@/lib/queries/reference";
-import { openPlayerAccess, requestConsent, requestLicense, updatePlayer } from "../actions";
+import { openPlayerAccess, requestConsent, requestLicense, setPublicationPrefs, updatePlayer } from "../actions";
+import { PublicationForm } from "../../licences/LicenseForms";
 import { ActionForm } from "@/components/admin/action-form";
 import { ConsentRequestButton } from "../ConsentPanel";
 import { LicenseRequestForm, PlayerForm } from "../PlayerForms";
@@ -176,6 +177,16 @@ export default async function PlayerPage({ params }: PageProps<"/admin/joueurs/[
         </section>
 
         {/* Identité */}
+        <section className="flex flex-col gap-3 border-t pt-6">
+          <h2 className="font-semibold">Identité et publication</h2>
+          <p className="text-sm">
+            {player.identityVerifiedAt
+              ? `Identité contrôlée ${player.identityMethod === "BIOMETRIC" ? "par biométrie" : "sur pièces"} le ${formatDate(player.identityVerifiedAt)}.`
+              : "Identité pas encore contrôlée : l'agent la confirme au moment de valider la licence."}
+          </p>
+          {canManage && <PublicationForm action={setPublicationPrefs.bind(null, player.id)} initial={player} />}
+        </section>
+
         {canManage && (
           <section className="flex flex-col gap-3 border-t pt-6">
             <h2 className="font-semibold">Espace personnel</h2>

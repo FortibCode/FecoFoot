@@ -249,3 +249,61 @@
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+
+/*
+ * Impression d'un document seul (carte de licence…) : l'élément marqué `print-only` est la seule chose imprimée.
+ * Tout ce qui ne le contient pas disparaît ; ses conteneurs perdent marges, fonds et décors.
+ */
+@media print {
+  html:has(.print-only) body *:not(:has(.print-only)):not(.print-only):not(.print-only *) {
+    display: none !important;
+  }
+  html:has(.print-only) body,
+  html:has(.print-only) body *:has(.print-only) {
+    display: block !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: auto !important;
+    background: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+  html:has(.print-only) body *:has(.print-only)::before,
+  html:has(.print-only) body *:has(.print-only)::after {
+    display: none !important;
+  }
+  .print-only {
+    margin: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Carte de licence (components/licenses/license-card.tsx) : écusson en filigrane, affichage agrandi sur grand écran. */
+.license-crest {
+  background: #009543;
+  -webkit-mask: url("/fecofoot-mark.svg") center / contain no-repeat;
+  mask: url("/fecofoot-mark.svg") center / contain no-repeat;
+}
+@media (min-width: 900px) {
+  .license-card-view { zoom: 1.35; }
+}
+@media print {
+  .license-card-view { zoom: 1; display: block !important; }
+  .license-face {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    break-after: page;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .license-face:last-child { break-after: auto; }
+}

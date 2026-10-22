@@ -85,7 +85,8 @@ test("supporter : Fan ID, adhésion payée par Mobile Money, interdiction de sta
 
   // La billetterie prononce une interdiction de stade (RG-14) : la session du supporter est fermée.
   await page.goto(`/admin/supporters?q=${encodeURIComponent(phone)}`);
-  await page.getByRole("link", { name: new RegExp(lastName) }).click();
+  // Le nom du supporter (et non le bouton « Voir » de la ligne, qui porte aussi son nom).
+  await page.getByRole("link", { name: new RegExp(`^${lastName}`) }).click();
   await expect(page.locator("main")).toContainText(fanId);
   await page.fill('input[name="reason"]', "Jet de projectiles, match du 12 octobre.");
   await button(page, "Prononcer une interdiction de stade").click();

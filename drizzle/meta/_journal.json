@@ -169,6 +169,13 @@
       "when": 1792649367138,
       "tag": "0023_espace_joueur",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792660488924,
+      "tag": "0024_licences_biometriques",
+      "breakpoints": true
     }
   ]
 }

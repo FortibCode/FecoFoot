@@ -19,6 +19,10 @@ export async function publicLicense(by: { token: string } | { number: string }) 
       firstName: players.firstName,
       federalId: players.federalId,
       club: clubs.name,
+      verifyToken: licenses.verifyToken,
+      publishPhoto: players.publishPhoto,
+      identityVerifiedAt: players.identityVerifiedAt,
+      identityMethod: players.identityMethod,
     })
     .from(licenses)
     .innerJoin(players, eq(licenses.playerId, players.id))
@@ -26,7 +30,14 @@ export async function publicLicense(by: { token: string } | { number: string }) 
     .where(where)
     .limit(1);
   if (!row) return null;
-  return { ...row, status: effectiveStatus(row.status, row.expiresAt) };
+  const { verifyToken, publishPhoto, identityVerifiedAt, identityMethod, ...rest } = row;
+  return {
+    ...rest,
+    status: effectiveStatus(row.status, row.expiresAt),
+    // Photo seulement si le joueur en a autorisé la publication (la route refait ce contrôle).
+    photoUrl: publishPhoto ? `/licences/photo/${verifyToken}` : null,
+    identityVerified: identityVerifiedAt !== null ? (identityMethod ?? "DOCUMENTS") : null,
+  };
 }
 
 export type PublicLicense = NonNullable<Awaited<ReturnType<typeof publicLicense>>>;

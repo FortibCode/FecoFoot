@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ClubLogo } from "@/components/public/club-logo";
 import { hasScore, isLive, MATCH_STATUS_LABELS } from "@/lib/competitions";
 import { formatDateTime } from "@/lib/format";
 import type { MatchRow } from "@/lib/queries/competitions";
@@ -25,7 +26,10 @@ export function MatchLine({ row, href, byeLabel = "exempt", official = false }: 
           "Date à fixer"
         )}
       </span>
-      <span className="min-w-0 truncate text-right font-medium">{name(home) ?? "À déterminer"}</span>
+      <span className="flex min-w-0 items-center justify-end gap-2 font-medium">
+        <span className="truncate">{name(home) ?? "À déterminer"}</span>
+        {home && <ClubLogo src={home.logo} name={home.name} className="size-7 text-[0.6rem]" />}
+      </span>
       <span className={`min-w-16 text-center font-bold tabular-nums ${played ? "rounded-md bg-brand-ink px-2 py-1 font-heading text-base text-white" : ""}`}>
         {home && !away && m.bracketSlot !== null ? (
           <span className="text-xs font-normal text-muted-foreground">{byeLabel}</span>
@@ -46,7 +50,10 @@ export function MatchLine({ row, href, byeLabel = "exempt", official = false }: 
           <span className="text-xs font-normal text-destructive">{MATCH_STATUS_LABELS[m.status]}</span>
         )}
       </span>
-      <span className="min-w-0 truncate font-medium">{home && !away && m.bracketSlot !== null ? "" : (name(away) ?? "À déterminer")}</span>
+      <span className="flex min-w-0 items-center gap-2 font-medium">
+        {away && <ClubLogo src={away.logo} name={away.name} className="size-7 text-[0.6rem]" />}
+        <span className="truncate">{home && !away && m.bracketSlot !== null ? "" : (name(away) ?? "À déterminer")}</span>
+      </span>
     </>
   );
   // Téléphone : date au-dessus, noms tronqués plutôt que de déborder sur la ligne voisine.

@@ -28,7 +28,9 @@ test("connexion : accès protégé, mauvais mot de passe refusé, connexion et j
   await expect(page.locator('input[name="email"]')).toHaveValue(admin().email);
 
   await login(page, admin());
-  await expect(page.getByRole("heading", { name: "Tableau de bord" })).toBeVisible();
+  // Tableau de bord : le menu des modules s'affiche, sur la rubrique « Tableau de bord ».
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.getByRole("navigation", { name: "Modules" }).getByRole("link", { name: "Tableau de bord", exact: true })).toBeVisible();
   await expectNoHorizontalScroll(page);
 
   await page.goto("/admin/journal?action=LOGIN_FAILED");
@@ -82,7 +84,7 @@ test("clubs et comptes : affiliation, dirigeants, périmètre d'une ligue", asyn
   await expect(page.locator('input[name="position"]')).toHaveValue("");
 
   await page.goto(`/admin/clubs?q=${encodeURIComponent(clubName)}`);
-  await expect(page.getByRole("link", { name: clubName })).toBeVisible();
+  await expect(page.getByRole("link", { name: clubName, exact: true })).toBeVisible();
 
   const league = await createUser(page, {
     fullName: "Ligue BZV E2E",
@@ -97,10 +99,10 @@ test("clubs et comptes : affiliation, dirigeants, périmètre d'une ligue", asyn
   await page.goto("/admin/utilisateurs");
   await expect(page).toHaveURL(/\/admin\/acces-refuse$/);
   await page.goto(`/admin/clubs?q=${encodeURIComponent(clubName)}`);
-  await expect(page.getByRole("link", { name: clubName })).toBeVisible();
+  await expect(page.getByRole("link", { name: clubName, exact: true })).toBeVisible();
   await expect(page.locator('select[name="league"]')).toHaveCount(0);
   // Une ligue ne change pas le statut d'affiliation.
-  await page.getByRole("link", { name: clubName }).click();
+  await page.getByRole("link", { name: clubName, exact: true }).click();
   await expect(page.locator('select[name="status"]')).toHaveCount(0);
   await expect(formStatus(page)).toHaveCount(0);
 });

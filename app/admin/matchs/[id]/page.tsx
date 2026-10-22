@@ -7,6 +7,7 @@ import { notFound, redirect } from "next/navigation";
 import { ActionForm } from "@/components/admin/action-form";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { ClubLogo } from "@/components/public/club-logo";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
@@ -116,6 +117,20 @@ export default async function MatchPage({ params }: PageProps<"/admin/matchs/[id
       />
 
       <div className="flex flex-col gap-10">
+        {/* Bandeau : les deux équipes avec leur logo et le score */}
+        <section className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6" aria-label="Rencontre">
+          {[home, away].map((team, i) => (
+            <div key={i} className={`flex min-w-0 items-center gap-3 ${i === 0 ? "order-1 justify-end text-right" : "order-3"}`}>
+              {i === 1 && team && <ClubLogo src={team.logo} name={team.name} className="size-14 text-sm" />}
+              <span className="min-w-0 font-heading text-base leading-tight font-bold uppercase sm:text-xl">{team?.name ?? "À déterminer"}</span>
+              {i === 0 && team && <ClubLogo src={team.logo} name={team.name} className="size-14 text-sm" />}
+            </div>
+          ))}
+          <span className="order-2 rounded-lg bg-brand-ink px-4 py-2 font-heading text-2xl font-bold text-white tabular-nums sm:text-3xl">
+            {played ? `${m.homeScore ?? 0} – ${m.awayScore ?? 0}` : "–"}
+          </span>
+        </section>
+
         {/* Résultat officiel : validation par l'organisateur */}
         {m.status === "FINISHED" && (
           <section className="flex flex-col gap-3" aria-label="Résultat officiel">

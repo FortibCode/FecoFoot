@@ -15,6 +15,9 @@ import {
   seasonLabel,
   seasonOf,
   transition,
+  cardStatus,
+  cardIssued,
+  resubmitStatus,
 } from "@/lib/licenses";
 
 const d = (s: string) => new Date(`${s}T00:00:00Z`);
@@ -101,6 +104,39 @@ describe("Cycle de vie de la licence (EF-LIC-05, RG-05)", () => {
     expect(transition("PAID", "validate", { hasValidConsent: false, expired: false })).toEqual({
       error: expect.stringMatching(/accord/),
     });
+  });
+
+  it("validation : justificatifs obligatoires puis identité contrôlée", () => {
+    expect(transition("PAID", "validate", { ...ok, missingDocuments: ["Acte de naissance"] })).toEqual({ error: expect.stringMatching(/Acte de naissance/) });
+    expect(transition("PAID", "validate", { ...ok, missingDocuments: [], identityVerified: false })).toEqual({ error: expect.stringMatching(/identité/) });
+    expect(transition("PAID", "validate", { ...ok, missingDocuments: [], identityVerified: true })).toEqual({ to: "VALIDATED" });
+  });
+
+  it("corrections demandées puis nouvelle soumission au même stade", () => {
+    expect(transition("PAID", "correct", ok)).toEqual({ to: "TO_CORRECT" });
+    expect(transition("TO_CORRECT", "validate", ok)).toHaveProperty("error");
+    expect(transition("VALIDATED", "correct", ok)).toHaveProperty("error");
+    expect(resubmitStatus(true)).toBe("PAID");
+    expect(resubmitStatus(false)).toBe("PENDING");
+  });
+
+  it("révocation définitive d'une licence délivrée", () => {
+    expect(transition("VALIDATED", "revoke", ok)).toEqual({ to: "REVOKED" });
+    expect(transition("SUSPENDED", "revoke", ok)).toEqual({ to: "REVOKED" });
+    for (const a of ["reactivate", "validate", "suspend"] as const) expect(transition("REVOKED", a, ok)).toHaveProperty("error");
+    expect(transition("PENDING", "revoke", ok)).toHaveProperty("error");
+  });
+
+  it("statut de la carte : active, en attente, expirée, suspendue, révoquée", () => {
+    const future = new Date(Date.now() + 86_400_000);
+    const past = new Date(Date.now() - 86_400_000);
+    expect(cardStatus("VALIDATED", future)).toBe("ACTIVE");
+    expect(cardStatus("VALIDATED", past)).toBe("EXPIRED");
+    expect(cardStatus("TO_CORRECT", future)).toBe("PENDING");
+    expect(cardStatus("SUSPENDED", future)).toBe("SUSPENDED");
+    expect(cardStatus("REVOKED", future)).toBe("REVOKED");
+    expect(cardIssued("PAID")).toBe(false);
+    expect(cardIssued("REVOKED")).toBe(true);
   });
 
   it("rejet possible avant validation uniquement", () => {

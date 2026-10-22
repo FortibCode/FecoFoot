@@ -69,6 +69,9 @@ test("licence d'un joueur mineur : de l'enregistrement à la vérification publi
   const birthCert = page.locator("main li").filter({ hasText: "Acte de naissance" }).getByRole("link", { name: "Consulter" });
   await expect(birthCert).toBeVisible();
   const docUrl = await birthCert.getAttribute("href");
+  // Justificatifs obligatoires complets (la validation de la licence les exige) : certificat médical.
+  await upload("Certificat médical", { name: "certificat.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%%EOF\n") });
+  await expect(page.locator("main li").filter({ hasText: "Certificat médical" }).getByRole("link", { name: "Consulter" })).toBeVisible();
 
   // ── Demande de licence : sous-classement refusé, catégorie d'âge acceptée
   await page.goto(playerUrl);
@@ -120,6 +123,7 @@ test("licence d'un joueur mineur : de l'enregistrement à la vérification publi
   await page.goto(licenseUrl);
   await expect(page.locator("main")).toContainText("Droits encaissés");
   await expect(button(page, "Enregistrer l'encaissement")).toHaveCount(0);
+  await page.check('input[name="identityChecked"]');
   await button(page, "Valider la licence").click();
   await expect(formAlert(page)).toContainText("accord");
 
@@ -147,14 +151,24 @@ test("licence d'un joueur mineur : de l'enregistrement à la vérification publi
 
   // ── Validation, carte de licence, vérification publique
   await page.goto(licenseUrl);
+  // L'agent confirme avoir contrôlé l'identité sur pièces : tracé, puis affiché sur la carte.
+  await page.check('input[name="identityChecked"]');
   await button(page, "Valider la licence").click();
   // Le statut change et le lien vers la carte apparaît.
   await expect(page.locator("main p").filter({ hasText: /^Validée$/ })).toBeVisible();
   await page.getByRole("link", { name: "Carte de licence" }).click();
-  const card = page.getByRole("article", { name: "Carte de licence" });
+  const card = page.getByRole("article", { name: "Carte de licence — recto" });
   await expect(card).toContainText(lastName.toUpperCase());
-  await expect(card.locator("svg")).toHaveCount(1);
+  await expect(card).toContainText("Identité vérifiée");
+  await expect(card).toContainText("Active");
   await expect(card.getByRole("img", { name: /Photo de/ })).toBeVisible();
+  // Verso : le QR code de vérification et les dates de validité.
+  const back = page.getByRole("article", { name: "Carte de licence — verso" });
+  await expect(back).toContainText("Expire le");
+  await expect(back.locator("svg path").first()).toBeAttached();
+  // PDF : recto et verso au format de la carte.
+  const pdf = await page.request.get(page.url().replace(/\/carte$/, "/carte/pdf"));
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
   const box = await card.boundingBox();
   expect(Math.abs(box!.width / box!.height - 85.6 / 54)).toBeLessThan(0.05);
 
@@ -164,6 +178,22 @@ test("licence d'un joueur mineur : de l'enregistrement à la vérification publi
 
   // Avis de validation envoyé au représentant légal (EF-NOT-01).
   expect((await latestNotification("+242 06 000 00 00", "license_validated"))?.body).toContain(licenseNumber!);
+
+  // Suspension puis révocation : signalées à la vérification publique ; plus aucune décision ensuite.
+  await page.goto(licenseUrl);
+  // Deux décisions avec motif sont proposées : chaque motif est saisi dans le formulaire de son bouton.
+  const reasonFor = (label: string) => page.locator("form").filter({ has: button(page, label) }).locator('input[name="reason"]');
+  await reasonFor("Suspendre").fill("Enquête en cours.");
+  await button(page, "Suspendre").click();
+  await expect(page.locator("main")).toContainText("Suspendue");
+  await guardian.goto(`/verifier?numero=${licenseNumber}`);
+  await expect(guardian.getByText("Licence suspendue")).toBeVisible();
+  await reasonFor("Révoquer définitivement").fill("Fraude documentaire.");
+  await button(page, "Révoquer définitivement").click();
+  await expect(page.locator("main")).toContainText("Révoquée");
+  await expect(button(page, "Réactiver")).toHaveCount(0);
+  await guardian.goto(`/verifier?numero=${licenseNumber}`);
+  await expect(guardian.getByText("Licence révoquée")).toBeVisible();
 
   await page.goto("/admin/licences");
   await expectNoHorizontalScroll(page);

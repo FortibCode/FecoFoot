@@ -27,7 +27,8 @@ import { EVENT_KINDS, ORDER_CHANNELS, ORDER_STATUSES, SALES_STATUSES, TICKET_STA
 import { ACCREDITATION_STATUSES, PRESS_ROLES, PRESS_ZONES } from "../accreditations";
 import { ARTICLE_CATEGORIES } from "../articles";
 import { CASE_STATUSES, SANCTION_TYPES } from "../discipline";
-import { CATEGORIES, CONSENT_STATUSES, LICENSE_STATUSES, LICENSE_TYPES, POSITIONS } from "../licenses";
+import { CATEGORIES, CONSENT_STATUSES, IDENTITY_METHODS, LICENSE_STATUSES, LICENSE_TYPES, POSITIONS } from "../licenses";
+import { BIOMETRIC_CHECK_RESULTS } from "../biometrics-rules";
 
 // ─── Sécurité ────────────────────────────────────────────────────────────────
 
@@ -208,6 +209,8 @@ export const licenseNumberSeq = pgSequence("license_number_seq", { startWith: 1 
 export const genderEnum = pgEnum("gender", ["M", "F"]);
 export const positionEnum = pgEnum("player_position", POSITIONS);
 
+export const identityMethodEnum = pgEnum("identity_method", IDENTITY_METHODS);
+
 export const players = pgTable(
   "players",
   {
@@ -230,6 +233,13 @@ export const players = pgTable(
     clubId: integer("club_id").references(() => clubs.id),
     // Compte de l'espace personnel du joueur (consultation de ses propres données).
     userId: integer("user_id").references(() => users.id),
+    // Contrôle d'identité par un agent habilité : sur pièces aujourd'hui, biométrique quand un prestataire sera intégré.
+    identityVerifiedAt: timestamp("identity_verified_at", { withTimezone: true }),
+    identityVerifiedBy: integer("identity_verified_by").references(() => users.id),
+    identityMethod: identityMethodEnum("identity_method"),
+    // Publication (accord du joueur ou de son représentant) : photo sur la vérification publique, date de naissance sur la carte.
+    publishPhoto: boolean("publish_photo").notNull().default(false),
+    showBirthDate: boolean("show_birth_date").notNull().default(true),
     // Contrôle anti-doublon (EF-LIC-02) : nom + prénom normalisés + date de naissance.
     identityKey: varchar("identity_key", { length: 200 }).notNull(),
     createdBy: integer("created_by").references(() => users.id),
@@ -1213,4 +1223,49 @@ export const photos = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("photos_team_idx").on(t.teamId, t.published), index("photos_featured_idx").on(t.featured, t.published)],
+);
+
+// ─── Biométrie (architecture, inactive sans prestataire) ─────────────────────
+
+export const biometricResultEnum = pgEnum("biometric_result", BIOMETRIC_CHECK_RESULTS);
+
+/**
+ * Enrôlement biométrique d'un joueur auprès d'un prestataire. Seule une référence opaque est conservée
+ * (identifiant du gabarit chez le prestataire) : aucune empreinte ni donnée biométrique brute ici.
+ */
+export const biometricEnrollments = pgTable(
+  "biometric_enrollments",
+  {
+    id: serial("id").primaryKey(),
+    playerId: integer("player_id")
+      .notNull()
+      .references(() => players.id),
+    provider: varchar("provider", { length: 40 }).notNull(),
+    providerRef: varchar("provider_ref", { length: 120 }).notNull(),
+    consentAt: timestamp("consent_at", { withTimezone: true }).notNull(),
+    enrolledBy: integer("enrolled_by").references(() => users.id),
+    enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
+    // Retrait (consentement retiré, fin de conservation) : la référence est révoquée chez le prestataire.
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("biometric_enrollments_player_idx").on(t.playerId)],
+);
+
+/** Résultat d'une vérification biométrique (correspondance ou non), tel que renvoyé par le prestataire. */
+export const biometricChecks = pgTable(
+  "biometric_checks",
+  {
+    id: serial("id").primaryKey(),
+    playerId: integer("player_id")
+      .notNull()
+      .references(() => players.id),
+    licenseId: integer("license_id").references(() => licenses.id),
+    provider: varchar("provider", { length: 40 }).notNull(),
+    providerRef: varchar("provider_ref", { length: 120 }),
+    result: biometricResultEnum("result").notNull(),
+    context: varchar("context", { length: 60 }).notNull(),
+    checkedBy: integer("checked_by").references(() => users.id),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("biometric_checks_player_idx").on(t.playerId)],
 );

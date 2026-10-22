@@ -12,9 +12,11 @@ test("portail : ligues départementales, Ligue 1 et Ligue 2 nationales", async (
   await expectNoHorizontalScroll(page);
 
   await page.getByRole("button", { name: "Ouvrir le menu" }).click();
-  await expect(page.getByRole("link", { name: /^Ligue 1/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Ligue 2/ })).toBeVisible();
-  await page.getByRole("link", { name: /^Ligue 2/ }).click();
+  // Entrées du menu (le pied de page propose aussi ces liens : on vise ceux du menu, affichés en premier).
+  const menuLink = (name: RegExp) => page.getByRole("link", { name }).first();
+  await expect(menuLink(/^Ligue 1/)).toBeVisible();
+  await expect(menuLink(/^Ligue 2/)).toBeVisible();
+  await menuLink(/^Ligue 2/).click();
   await expect(page).toHaveURL(/\/championnats\/ligue-2$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Ligue 2/i);
 

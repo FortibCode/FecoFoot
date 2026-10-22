@@ -41,7 +41,7 @@ describe("Matrice des droits (§3.3)", () => {
 
   it("le menu d'un club ne propose ni ligues, ni utilisateurs, ni billetterie", () => {
     const labels = modulesFor("CLUB").map((m) => m.label);
-    expect(labels).toContain("Licences");
+    expect(labels).toContain("Licences des joueurs");
     expect(labels).not.toContain("Ligues");
     expect(labels).not.toContain("Utilisateurs");
     expect(labels).not.toContain("Billetterie");

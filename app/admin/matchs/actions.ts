@@ -119,7 +119,6 @@ export async function updateMatchSheet(matchId: number, _state: ActionState, for
       return { error: `Le score est calculé à partir des buts saisis (${computed.home} – ${computed.away}) : corrigez les buts.` };
     }
   }
-  if (d.status === "FINISHED" && goals.length === 0 && homeScore === null) return { error: "Saisissez le score final ou les buts du match." };
 
   const finished = d.status === "FINISHED";
   const validatedAt = finished && organiser ? (m.match.validatedAt ?? new Date()) : null;

@@ -38,8 +38,8 @@ export function StatusBadge({
 
 export function licenseTone(status: string): Tone {
   if (status === "VALIDATED") return "ok";
-  if (status === "PENDING" || status === "PAID") return "wait";
-  if (status === "REJECTED" || status === "SUSPENDED") return "bad";
+  if (status === "PENDING" || status === "PAID" || status === "TO_CORRECT") return "wait";
+  if (status === "REJECTED" || status === "SUSPENDED" || status === "REVOKED") return "bad";
   return "neutral";
 }
 

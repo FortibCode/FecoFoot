@@ -51,6 +51,8 @@ export const PERMISSIONS = [
   "players.manage",
   "players.read",
   "licenses.validate",
+  // Révocation définitive d'une licence (fédération uniquement).
+  "licenses.revoke",
   "licenses.request",
   "transfers.approve",
   "transfers.review",
@@ -75,6 +77,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 const ADMIN_COMMON: Permission[] = [
   "dashboard.view",
+  "licenses.revoke",
   "leagues.manage",
   "clubs.manage",
   "clubs.affiliate",

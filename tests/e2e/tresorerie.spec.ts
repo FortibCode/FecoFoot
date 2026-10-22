@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "./fixtures";
 import { withDb } from "./db";
-import { admin, button, createUser, e2eEmail, formStatus, login, logout, RUN } from "./helpers";
+import { admin, button, createUser, e2eEmail, login, logout, RUN } from "./helpers";
 
 /** Paiements (M16) et exports (M19) côté administrateur. */
 test("trésorerie : synthèse, filtres, expiration des paiements en attente, exports", async ({ page }) => {
@@ -21,7 +21,7 @@ test("trésorerie : synthèse, filtres, expiration des paiements en attente, exp
   await logout(page);
   await login(page, agent);
   await page.goto("/admin/paiements");
-  await expect(page.getByRole("heading", { name: "Paiements" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Paiements", exact: true })).toBeVisible();
 
   // Recherche par référence : une seule ligne, montant et état.
   await page.goto(`/admin/paiements?q=${ok}`);
@@ -34,7 +34,8 @@ test("trésorerie : synthèse, filtres, expiration des paiements en attente, exp
   await page.goto(`/admin/paiements?q=${stale}`);
   await expect(page.getByTestId("payment-row").first()).toContainText("En attente");
   await button(page, "Expirer les paiements en attente depuis plus de 15 minutes").click();
-  await expect(formStatus(page)).toContainText("expiré");
+  // Plus aucun paiement en attente : le bloc d'expiration disparaît avec son message ; l'état fait foi.
+  await expect(button(page, "Expirer les paiements en attente depuis plus de 15 minutes")).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId("payment-row").first()).toContainText("Expiré");
 
