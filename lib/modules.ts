@@ -29,6 +29,7 @@ export const ADMIN_MODULES: AdminModule[] = [
   { code: "M04", label: "Mon espace joueur", href: "/admin/espace-joueur", anyOf: ["player.self"], group: "Gestion sportive", section: "Licences", ready: true },
   { code: "M07", label: "Championnats nationaux", href: "/admin/championnats", anyOf: ["competitions.manage"], group: "Gestion sportive", section: "Compétitions", ready: true, exceptRoles: ["LEAGUE"] },
   { code: "M07", label: "Compétitions", href: "/admin/competitions", anyOf: ["competitions.manage"], group: "Gestion sportive", section: "Compétitions", ready: true },
+  { code: "M07", label: "Sources externes", href: "/admin/sources", anyOf: ["competitions.manage"], group: "Gestion sportive", section: "Compétitions", ready: true, exceptRoles: ["LEAGUE"] },
   { code: "M07", label: "Matchs", href: "/admin/matchs", anyOf: ["competitions.manage", "refereeing.manage", "lineups.submit", "referee.self"], group: "Gestion sportive", section: "Compétitions", ready: true },
   { code: "M09", label: "Équipes nationales", href: "/admin/selections", anyOf: ["national_teams.manage"], group: "Gestion sportive", section: "Compétitions", ready: true },
   { code: "M08", label: "Arbitres & désignations", href: "/admin/arbitres", anyOf: ["refereeing.manage"], group: "Gestion sportive", section: "Arbitrage", ready: true },

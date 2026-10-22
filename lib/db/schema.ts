@@ -29,6 +29,7 @@ import { ARTICLE_CATEGORIES } from "../articles";
 import { CASE_STATUSES, SANCTION_TYPES } from "../discipline";
 import { CATEGORIES, CONSENT_STATUSES, IDENTITY_METHODS, LICENSE_STATUSES, LICENSE_TYPES, POSITIONS } from "../licenses";
 import { BIOMETRIC_CHECK_RESULTS } from "../biometrics-rules";
+import { EXTERNAL_PROVIDERS, LINK_ENTITIES, SCORE_SOURCES } from "../external-sync-rules";
 
 // ─── Sécurité ────────────────────────────────────────────────────────────────
 
@@ -573,6 +574,8 @@ export const competitionTeams = pgTable(
   (t) => [uniqueIndex("competition_teams_uq").on(t.competitionId, t.clubId)],
 );
 
+export const scoreSourceEnum = pgEnum("score_source", SCORE_SOURCES);
+
 export const matches = pgTable(
   "matches",
   {
@@ -600,6 +603,9 @@ export const matches = pgTable(
     report: text("report"),
     // Résultat officiel : seul un résultat validé compte au classement et s'affiche comme définitif.
     validatedAt: timestamp("validated_at", { withTimezone: true }),
+    // Provenance du statut et du score affichés : saisie officielle, ou source externe synchronisée.
+    scoreSource: scoreSourceEnum("score_source").notNull().default("OFFICIAL"),
+    externalSyncedAt: timestamp("external_synced_at", { withTimezone: true }),
     validatedBy: integer("validated_by").references(() => users.id),
     updatedBy: integer("updated_by").references(() => users.id),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1268,4 +1274,72 @@ export const biometricChecks = pgTable(
     checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("biometric_checks_player_idx").on(t.playerId)],
+);
+
+// ─── Sources sportives externes (scores, calendriers) ────────────────────────
+
+export const externalProviderEnum = pgEnum("external_provider", EXTERNAL_PROVIDERS);
+export const linkEntityEnum = pgEnum("external_link_entity", LINK_ENTITIES);
+
+/**
+ * Correspondance entre une fiche de la plateforme et son identifiant chez un fournisseur :
+ * compétition (ligue + saison du fournisseur), club (équipe), match (rencontre).
+ */
+export const externalLinks = pgTable(
+  "external_links",
+  {
+    id: serial("id").primaryKey(),
+    provider: externalProviderEnum("provider").notNull(),
+    entity: linkEntityEnum("entity").notNull(),
+    entityId: integer("entity_id").notNull(),
+    externalId: varchar("external_id", { length: 64 }).notNull(),
+    // Compétition : saison du fournisseur (année de début) ; 0 pour un club ou un match (unicité sans valeur nulle).
+    externalSeason: integer("external_season").notNull().default(0),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("external_links_external_uq").on(t.provider, t.entity, t.externalId, t.externalSeason),
+    uniqueIndex("external_links_entity_uq").on(t.provider, t.entity, t.entityId),
+  ],
+);
+
+/** Une exécution de synchronisation : compteurs et erreurs (consultables dans l'espace fédéral). */
+export const externalSyncRuns = pgTable(
+  "external_sync_runs",
+  {
+    id: serial("id").primaryKey(),
+    provider: externalProviderEnum("provider").notNull(),
+    competitionId: integer("competition_id").references(() => competitions.id),
+    trigger: varchar("trigger", { length: 20 }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    created: integer("created").notNull().default(0),
+    updated: integer("updated").notNull().default(0),
+    conflicts: integer("conflicts").notNull().default(0),
+    skipped: integer("skipped").notNull().default(0),
+    error: text("error"),
+    notes: jsonb("notes"),
+  },
+  (t) => [index("external_sync_runs_started_idx").on(t.startedAt)],
+);
+
+/** Écart entre la donnée officielle et la source externe : jamais appliqué automatiquement, examiné par un responsable. */
+export const externalConflicts = pgTable(
+  "external_conflicts",
+  {
+    id: serial("id").primaryKey(),
+    matchId: integer("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    provider: externalProviderEnum("provider").notNull(),
+    officialValue: jsonb("official_value").notNull(),
+    externalValue: jsonb("external_value").notNull(),
+    reason: text("reason").notNull(),
+    detectedAt: timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: integer("resolved_by").references(() => users.id),
+    resolution: varchar("resolution", { length: 20 }),
+  },
+  (t) => [index("external_conflicts_open_idx").on(t.resolvedAt, t.matchId)],
 );

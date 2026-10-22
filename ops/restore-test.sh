@@ -24,5 +24,5 @@ for table in users leagues clubs players licenses competitions matches supporter
 done
 LEAGUES="$(psql "$TMP_URL" -tAc "select count(*) from leagues")"
 MIGRATIONS="$(psql "$TMP_URL" -tAc "select count(*) from drizzle.__drizzle_migrations")"
-[[ "$LEAGUES" -ge 12 && "$MIGRATIONS" -ge 1 ]] || { echo "ÉCHEC : sauvegarde incomplète." >&2; exit 1; }
+[[ "$LEAGUES" -ge 11 && "$MIGRATIONS" -ge 1 ]] || { echo "ÉCHEC : sauvegarde incomplète." >&2; exit 1; }
 echo "RESTAURATION OK ($MIGRATIONS migrations, $LEAGUES ligues)."

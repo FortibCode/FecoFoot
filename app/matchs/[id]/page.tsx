@@ -81,6 +81,9 @@ export default async function PublicMatchPage({ params }: PageProps<"/matchs/[id
                 <span className="text-xs font-semibold text-muted-foreground">
                   {awaiting ? "Résultat en attente de validation" : m.status === "FINISHED" ? "Résultat officiel" : MATCH_STATUS_LABELS[m.status]}
                 </span>
+                {showScore && m.scoreSource === "EXTERNAL" && !m.validatedAt && (
+                  <span className="text-[0.7rem] text-muted-foreground">Score fourni par une source externe, non officiel</span>
+                )}
               </div>
             ) : (
               <div key={i} className="flex min-w-0 flex-col items-center gap-2 text-center">

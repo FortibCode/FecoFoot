@@ -23,6 +23,8 @@ export function publicMatch(r: MatchRow) {
     venue: m.venue,
     status: m.status,
     official: m.status === "FINISHED" && Boolean(m.validatedAt),
+    // Provenance : saisie officielle de la fédération, ou source sportive externe (non officielle avant validation).
+    source: m.scoreSource,
     awaitingValidation: awaiting,
     home: r.home ? { id: r.home.id, name: r.home.name, logo: r.home.logo } : null,
     away: r.away ? { id: r.away.id, name: r.away.name, logo: r.away.logo } : null,

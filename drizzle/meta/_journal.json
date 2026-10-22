@@ -176,6 +176,13 @@
       "when": 1792660488924,
       "tag": "0024_licences_biometriques",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792666971012,
+      "tag": "0025_sources_externes",
+      "breakpoints": true
     }
   ]
 }
