@@ -162,7 +162,7 @@ export async function answerSimulatedPayment(reference: string, accept: boolean)
   if (result === "expired") return { error: "Le délai de 15 minutes est dépassé : recommencez." };
   if (result === "not_pending") return { error: "Ce paiement a déjà été traité." };
   await logAudit({ userId: null, action: "PAYMENT_CONFIRMED", entity: "payment", entityId: reference, details: { supporterId: s.id, simulated: true } });
-  redirect("/supporters/espace");
+  redirect(p.purpose === "TICKET_ORDER" ? "/supporters/espace?achat=ok" : "/supporters/espace");
 }
 
 

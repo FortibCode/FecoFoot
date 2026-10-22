@@ -16,6 +16,8 @@ export async function supporterTickets(supporterId: number, token?: string) {
       category: ticketCategories.name,
       gate: ticketCategories.gate,
       event: ticketEvents.title,
+      kind: ticketEvents.kind,
+      orderRef: ticketOrders.reference,
       kickoffAt: ticketEvents.kickoffAt,
       venue: ticketEvents.venue,
     })

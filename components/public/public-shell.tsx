@@ -14,6 +14,7 @@ export function PublicShell({
   subtitle,
   bare = false,
   overlayHeader = false,
+  logo,
 }: {
   /** Rubrique de la page (n'est plus affichée au-dessus du titre). */
   eyebrow: string;
@@ -27,6 +28,8 @@ export function PublicShell({
   bare?: boolean;
   /** L'en-tête se pose sur le bandeau `hero` (page d'accueil) : le bandeau doit lui réserver sa hauteur. */
   overlayHeader?: boolean;
+  /** Logo officiel (championnat, ligue) affiché à côté du titre. */
+  logo?: string | null;
 }) {
   const width = wide ? "max-w-7xl lg:px-8" : "max-w-xl";
   return (
@@ -39,10 +42,18 @@ export function PublicShell({
             <div
               className={`mx-auto flex w-full flex-col items-start gap-3 px-4 py-8 sm:px-6 sm:py-10 ${width}`}
             >
-              <h1 className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
-                {title}
-              </h1>
-              {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+              <div className="flex items-center gap-4 sm:gap-6">
+                {logo && (
+                  // eslint-disable-next-line @next/next/no-img-element -- logo servi par la route des médias
+                  <img src={logo} alt="" className="size-20 shrink-0 rounded-xl border bg-white object-contain p-1.5 sm:size-24" />
+                )}
+                <div className="flex flex-col gap-3">
+                  <h1 className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
+                    {title}
+                  </h1>
+                  {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+                </div>
+              </div>
             </div>
           </div>
         )}

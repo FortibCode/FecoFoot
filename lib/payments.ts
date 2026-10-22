@@ -4,6 +4,7 @@ import { and, eq, lt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { payments } from "@/lib/db/schema";
 import { fulfil } from "@/lib/payment-fulfilment";
+import { sendTicketConfirmation } from "@/lib/ticket-confirmation";
 import { paymentReference, type PaymentMethod, type PaymentPurpose } from "@/lib/payments-rules";
 
 /**
@@ -43,17 +44,20 @@ export async function startPayment(p: {
  * exécution de la commande dans la même transaction — tout ou rien, et une seule fois.
  */
 export async function confirmPayment(reference: string): Promise<"ok" | "not_pending" | "expired"> {
-  return db.transaction(async (tx) => {
+  const outcome = await db.transaction(async (tx) => {
     const [p] = await tx.select().from(payments).where(eq(payments.reference, reference)).for("update").limit(1);
-    if (!p || p.status !== "PENDING") return "not_pending";
+    if (!p || p.status !== "PENDING") return { result: "not_pending" as const };
     if (Date.now() - p.createdAt.getTime() > PAYMENT_TTL_MS) {
       await tx.update(payments).set({ status: "EXPIRED" }).where(eq(payments.id, p.id));
-      return "expired";
+      return { result: "expired" as const };
     }
     await tx.update(payments).set({ status: "SUCCEEDED", confirmedAt: new Date() }).where(eq(payments.id, p.id));
     await fulfil(tx, p.purpose, p.targetId);
-    return "ok";
+    return { result: "ok" as const, purpose: p.purpose, targetId: p.targetId };
   });
+  // Après validation : l'acheteur reçoit ses billets par SMS / e-mail (un échec d'envoi n'annule rien).
+  if (outcome.result === "ok" && outcome.purpose === "TICKET_ORDER") await sendTicketConfirmation(outcome.targetId).catch(() => undefined);
+  return outcome.result;
 }
 
 export async function failPayment(reference: string, reason: string): Promise<void> {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { PublicShell } from "@/components/public/public-shell";
-import { COMPETITION_STATUS_LABELS } from "@/lib/competitions";
+import { publicStatusLabel } from "@/lib/competitions";
 import { leagueLogoUrl } from "@/lib/league-logo";
 import { seasonLabel } from "@/lib/licenses";
 import { leaguesOverview, nationalDivisions } from "@/lib/queries/public-leagues";
@@ -31,13 +31,13 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
             <p className="text-muted-foreground">Aucune division nationale publiée pour le moment.</p>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
-              {divisions.map(({ c, teams }) => (
+              {divisions.map(({ c, teams, played }) => (
                 <li key={c.id}>
                   <Link href={`/competitions/${c.slug}`} className="group flex h-full items-center justify-between gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
                     <span className="flex flex-col gap-1">
                       <span className="font-heading text-xl font-bold uppercase">{c.name}</span>
                       <span className="text-sm text-muted-foreground">
-                        Saison {seasonLabel(c.season)} · {teams} club(s) · {COMPETITION_STATUS_LABELS[c.status]}
+                        Saison {seasonLabel(c.season)} · {teams} club(s) · {publicStatusLabel(c.status, played)}
                       </span>
                     </span>
                     <span aria-hidden className="text-2xl transition-transform group-hover:translate-x-1">

@@ -5,12 +5,14 @@ import Link from "next/link";
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
 import { StatusBadge, transferTone } from "@/components/admin/status-badge";
+import { PlayerPhoto } from "@/components/player-photo";
 import { SelectField } from "@/components/ui/field";
 import { requireAnyPermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
 import { db } from "@/lib/db";
 import { players, transfers } from "@/lib/db/schema";
 import { formatDate, formatFcfa } from "@/lib/format";
+import { playerPhotoUrls } from "@/lib/queries/player-photos";
 import { fromClub, toClub, transferQuery, transferScope } from "@/lib/queries/transfers";
 import { needsRelease, TRANSFER_STATUS_LABELS, TRANSFER_STATUSES, TRANSFER_TYPE_LABELS, type TransferStatus } from "@/lib/transfers";
 
@@ -45,7 +47,8 @@ export default async function TransfersPage({ searchParams }: PageProps<"/admin/
   const byStatus = await db
     .select({ status: transfers.status, n: count() })
     .from(transfers)
-    .innerJoin(fromClub, eq(transfers.fromClubId, fromClub.id))
+    // Club quitté facultatif (joueur sans club) : jointure externe, sinon ces transferts manquent aux compteurs.
+    .leftJoin(fromClub, eq(transfers.fromClubId, fromClub.id))
     .innerJoin(toClub, eq(transfers.toClubId, toClub.id))
     .where(scope)
     .groupBy(transfers.status);
@@ -54,6 +57,7 @@ export default async function TransfersPage({ searchParams }: PageProps<"/admin/
     .where(filters.length ? and(...filters) : undefined)
     .orderBy(desc(transfers.createdAt))
     .limit(200);
+  const photos = await playerPhotoUrls(rows.map((r) => r.player.id), { publicOnly: false });
 
   return (
     <>
@@ -101,23 +105,26 @@ export default async function TransfersPage({ searchParams }: PageProps<"/admin/
         </SelectField>
         <button type="submit">Filtrer</button>
       </form>
-      <DataTable head={["N°", "Joueur", "Mouvement", "Type", "Indemnité", "Date", "Statut", ""]} pageSize={5}>
+      <DataTable head={["Photo", "Joueur", "N°", "Mouvement", "Type", "Indemnité", "Date", "Statut", ""]} pageSize={5}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={8} className="text-center text-muted-foreground">
+            <td colSpan={9} className="text-center text-muted-foreground">
               Aucun transfert ne correspond.
             </td>
           </tr>
         )}
         {rows.map(({ transfer: t, player, fromClub, toClub }) => (
           <tr key={t.id}>
+            <td className="px-3 py-2">
+              <PlayerPhoto src={photos.get(player.id)} firstName={player.firstName} lastName={player.lastName} className="size-12 text-sm" />
+            </td>
+            <td className="px-3 py-2 font-medium">
+              {player.lastName} {player.firstName}
+            </td>
             <td className="px-3 py-2 font-mono text-xs">
               <Link href={`/admin/transferts/${t.id}`} className="underline-offset-2 hover:underline">
                 {t.number}
               </Link>
-            </td>
-            <td className="px-3 py-2 font-medium">
-              {player.lastName} {player.firstName}
             </td>
             <td className="px-3 py-2">
               {fromClub?.name ?? "Sans club"} → {toClub.name}

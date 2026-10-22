@@ -19,8 +19,9 @@ import { logoutSupporter, uploadMyPhoto } from "../actions";
 export const metadata: Metadata = { title: "Mon espace supporter — FECOFOOT", robots: { index: false } };
 
 /** Espace supporter : carte Fan ID, adhésion, points (EF-SUP-02, EF-SUP-05). */
-export default async function SupporterSpacePage() {
+export default async function SupporterSpacePage({ searchParams }: PageProps<"/supporters/espace">) {
   const s = await requireSupporter();
+  const purchased = (await searchParams).achat === "ok";
   const season = seasonOf();
   const [[member], [{ total }]] = await Promise.all([
     db
@@ -87,8 +88,21 @@ export default async function SupporterSpacePage() {
         )}
         {member?.activatedAt && <p className="text-sm text-muted-foreground">Adhésion active depuis le {formatDate(member.activatedAt)}.</p>}
 
-        <section className="flex flex-col gap-3">
-          <h2 className="font-semibold">Mes billets</h2>
+        <section id="billets" className="flex flex-col gap-3">
+          {purchased && (
+            <p role="status" className="rounded-lg border border-[var(--flag-green)] bg-[color-mix(in_oklch,var(--flag-green)_10%,transparent)] px-4 py-3 text-sm">
+              <strong>Paiement confirmé.</strong> Vos billets sont ci-dessous ; une confirmation vous a été envoyée par SMS
+              {s.email ? " et par e-mail" : ""}. Téléchargez-les en PDF pour les avoir même sans réseau au stade.
+            </p>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Mes billets</h2>
+            {myTickets.some((t) => t.status === "VALID") && (
+              <a href="/supporters/espace/billets" className="rounded-md bg-brand-ink px-3 py-2 text-xs font-semibold text-white">
+                Télécharger tous mes billets (PDF)
+              </a>
+            )}
+          </div>
           {myTickets.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Aucun billet pour le moment. <Link href="/billetterie" className="underline">Voir les matchs en vente</Link>
@@ -97,9 +111,19 @@ export default async function SupporterSpacePage() {
             <>
               <p className="text-xs text-muted-foreground">Présentez le QR code à l&apos;entrée (écran ou capture d&apos;écran). Une pièce d&apos;identité peut être demandée. Toute revente est interdite.</p>
               {myTickets.map((t, i) => (
-                <Link key={t.id} href={`/billet/${t.token}`} className="block">
+                <div key={t.id} className="flex flex-col gap-2">
                   <ETicket t={t} qr={qrs[i]} />
-                </Link>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <Link href={`/billet/${t.token}`} className="font-semibold underline">
+                      Afficher en grand
+                    </Link>
+                    {t.status === "VALID" && (
+                      <a href={`/billet/${t.token}/pdf`} className="font-semibold underline">
+                        Télécharger le PDF
+                      </a>
+                    )}
+                  </div>
+                </div>
               ))}
             </>
           )}

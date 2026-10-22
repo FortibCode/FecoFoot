@@ -41,7 +41,7 @@ await db
     { code: "ligue-2", name: "Ligue 2", tier: 2, description: "Championnat national de deuxième division." },
   ])
   .onConflictDoNothing({ target: championships.code });
-// Les six sélections nationales (EF-SEL-01).
+// Les sélections nationales (EF-SEL-01) ; relancer le seed ajoute une nouvelle sélection (ex. U-15).
 await db
   .insert(nationalTeams)
   .values(NATIONAL_TEAMS.map(({ code, name, slug }) => ({ code, name, slug })))

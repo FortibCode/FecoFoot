@@ -7,7 +7,7 @@ import { ClubLogo } from "@/components/public/club-logo";
 import { PublicShell } from "@/components/public/public-shell";
 import { LiveRefresh } from "@/components/live-refresh";
 import { clubLogos } from "@/lib/club-logos";
-import { COMPETITION_CATEGORY_LABELS, COMPETITION_STATUS_LABELS, isLive } from "@/lib/competitions";
+import { COMPETITION_CATEGORY_LABELS, isLive, publicStatusLabel } from "@/lib/competitions";
 import { leagueLogoUrl } from "@/lib/league-logo";
 import { seasonLabel } from "@/lib/licenses";
 import { competitionTables } from "@/lib/queries/competitions";
@@ -129,7 +129,7 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
                       {c.gender === "F" ? " · Féminin" : ""}
                     </p>
                     <p className="font-semibold">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{COMPETITION_STATUS_LABELS[c.status]}</p>
+                    <p className="text-xs text-muted-foreground">{publicStatusLabel(c.status, c.played)}</p>
                   </Link>
                 </li>
               ))}

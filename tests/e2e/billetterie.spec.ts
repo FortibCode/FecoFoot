@@ -92,12 +92,20 @@ test("billetterie : prévente, achat, plafond, jauge, guichet, remboursement et 
   await button(fan, "Réserver et payer").click();
   await expect(fan).toHaveURL(/\/paiement\/PAY-TKT-/);
   await button(fan, "Confirmer le paiement").click();
-  await expect(fan).toHaveURL(/\/supporters\/espace$/);
+  await expect(fan).toHaveURL(/\/supporters\/espace\?achat=ok$/);
+  await expect(fan.getByRole("status")).toContainText("Paiement confirmé");
   const eTickets = fan.getByRole("article", { name: /^Billet TKT-/ });
   await expect(eTickets).toHaveCount(2);
   await expect(eTickets.nth(1)).toContainText("Marie Porteur");
   await expect(eTickets.first()).toContainText("Valide");
-  const ticketHref = (await fan.locator('main a[href^="/billet/"]').first().getAttribute("href"))!;
+  // Billets à imprimer : PDF par billet et PDF de tous les billets.
+  const pdfHref = (await fan.locator('main a[href$="/pdf"]').first().getAttribute("href"))!;
+  for (const href of [pdfHref, "/supporters/espace/billets"]) {
+    const pdf = await fan.request.get(href);
+    expect(pdf.status()).toBe(200);
+    expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  }
+  const ticketHref = (await fan.locator('main a[href^="/billet/"]:not([href$="/pdf"])').first().getAttribute("href"))!;
   const token = ticketHref.split("/").pop()!;
 
   // L'agent compare la photo à la pièce d'identité et la marque vérifiée.
@@ -159,7 +167,7 @@ test("billetterie : prévente, achat, plafond, jauge, guichet, remboursement et 
   await expect(page.getByRole("status").filter({ hasText: /ENTRÉE|REFUSÉ/ })).toContainText("Billet inconnu");
 
   // Deux portes lisent le 2e billet au même instant : une seule entrée acceptée (EF-CTL-02).
-  const secondToken = (await fan.goto("/supporters/espace").then(() => fan.locator('main a[href^="/billet/"]').nth(1).getAttribute("href")))!.split("/").pop()!;
+  const secondToken = (await fan.goto("/supporters/espace").then(() => fan.locator('main a[href^="/billet/"]:not([href$="/pdf"])').nth(1).getAttribute("href")))!.split("/").pop()!;
   const gateB = await (await browser.newContext()).newPage();
   await login(gateB, agent);
   await gateB.goto(page.url());

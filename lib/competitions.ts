@@ -18,6 +18,9 @@ export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
   FINISHED: "Terminée",
 };
 
+/** Statut affiché sur le portail : une compétition publiée dont aucun match n'a commencé est « À venir ». */
+export const publicStatusLabel = (status: CompetitionStatus, played: number) => (status === "ONGOING" && played === 0 ? "À venir" : COMPETITION_STATUS_LABELS[status]);
+
 export const GENDERS = ["M", "F"] as const;
 
 /**

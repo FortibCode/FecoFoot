@@ -457,6 +457,9 @@ export const championships = pgTable(
     // Niveau : 1 = première division ; sert aux montées et descentes entre championnats.
     tier: integer("tier").notNull(),
     description: text("description"),
+    // Logo officiel du championnat (stockage des fichiers), public.
+    logoKey: varchar("logo_key", { length: 255 }),
+    logoType: varchar("logo_type", { length: 64 }),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

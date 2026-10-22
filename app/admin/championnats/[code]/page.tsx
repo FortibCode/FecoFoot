@@ -5,13 +5,15 @@ import { EmptyState } from "@/components/admin/empty-state";
 import { DataTable, PageHeader } from "@/components/admin/page-header";
 import { RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { UploadForm } from "@/components/admin/upload-form";
 import { requirePermission } from "@/lib/auth/guard";
 import { canAccessCompetition } from "@/lib/auth/roles";
 import { COMPETITION_STATUS_LABELS } from "@/lib/competitions";
 import { formatDate } from "@/lib/format";
+import { championshipLogoUrl } from "@/lib/league-logo";
 import { seasonLabel, seasonOf } from "@/lib/licenses";
 import { championshipByCode, championshipDocumentsOf, championshipOfficialsOf, championshipsWithSeasons } from "@/lib/queries/championships";
-import { addOfficial, createSeason, deleteDocument, deleteOfficial, endMandate, updateChampionship, uploadDocument } from "../actions";
+import { addOfficial, createSeason, deleteDocument, deleteOfficial, endMandate, updateChampionship, uploadChampionshipLogo, uploadDocument } from "../actions";
 import { ChampionshipForm, DocumentForm, EndMandateForm, OfficialForm, SeasonForm } from "../ChampionshipForms";
 
 export const metadata: Metadata = { title: "Championnat national — FECOFOOT" };
@@ -26,6 +28,7 @@ export default async function ChampionshipPage({ params }: PageProps<"/admin/cha
   const seasons = all.find((c) => c.id === ch.id)?.seasons ?? [];
   const latest = seasons[0]?.c.season;
   const suggested = latest ? latest + 1 : seasonOf();
+  const logo = championshipLogoUrl(ch);
   const active = officials.filter((o) => o.status === "ACTIVE");
   const ended = officials.filter((o) => o.status === "ENDED");
 
@@ -47,6 +50,19 @@ export default async function ChampionshipPage({ params }: PageProps<"/admin/cha
         }
       />
       <div className="flex flex-col gap-5">
+        <section className="flex flex-col gap-4">
+          <h2>Logo</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt={`Logo — ${ch.name}`} className="size-20 rounded-lg border bg-white object-contain p-1" />
+            ) : (
+              <span className="league-code">{ch.name}</span>
+            )}
+            <UploadForm action={uploadChampionshipLogo.bind(null, ch.id)} accept="image/jpeg,image/png,image/webp" label={logo ? "Remplacer le logo" : "Téléverser le logo"} />
+          </div>
+        </section>
+
         <section className="flex flex-col gap-4">
           <h2>Saisons</h2>
           <p className="text-sm text-muted-foreground">

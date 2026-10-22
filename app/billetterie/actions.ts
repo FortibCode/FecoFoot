@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { startPayment } from "@/lib/payments";
 import { PAYMENT_METHODS } from "@/lib/payments-rules";
 import { createOrder, markOrderPaid } from "@/lib/ticket-sales";
+import { sendTicketConfirmation } from "@/lib/ticket-confirmation";
 
 /** Achat en ligne de billets nominatifs, payés par Mobile Money (EF-BIL-04 à 07). */
 export async function buyTickets(eventId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
@@ -26,7 +27,8 @@ export async function buyTickets(eventId: number, _state: ActionState, formData:
   if (order.total === 0) {
     // Billets gratuits : pas de paiement à attendre.
     await db.transaction((tx) => markOrderPaid(tx, order.orderId));
-    redirect("/supporters/espace");
+    await sendTicketConfirmation(order.orderId).catch(() => undefined);
+    redirect("/supporters/espace?achat=ok");
   }
   const { reference } = await startPayment({ purpose: "TICKET_ORDER", targetId: order.orderId, amount: order.total, method: method.data, phone: s.phone, supporterId: s.id });
   redirect(`/paiement/${reference}`);

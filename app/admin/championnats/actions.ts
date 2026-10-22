@@ -12,7 +12,8 @@ import { canAccessCompetition } from "@/lib/auth/roles";
 import { nextSeasonClubs, type TeamOutcome } from "@/lib/competitions";
 import { db } from "@/lib/db";
 import { championshipDocuments, championshipOfficials, championships, clubs, competitions, competitionTeams } from "@/lib/db/schema";
-import { sniffKind } from "@/lib/documents";
+import { MAX_FILE_SIZE, MIME, sniffKind } from "@/lib/documents";
+import { imageSize } from "@/lib/image-size";
 import { slugify } from "@/lib/format";
 import { seasonLabel } from "@/lib/licenses";
 import { isUniqueViolation } from "@/lib/queries/players";
@@ -37,6 +38,27 @@ function revalidateChampionship(code: string) {
 }
 
 /** Présentation du championnat (le code, qui sert d'adresse publique, ne change pas). */
+/** Logo officiel du championnat : JPEG, PNG ou WebP de 5 Mo au plus, type vérifié d'après le contenu. */
+export async function uploadChampionshipLogo(championshipId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("competitions.manage");
+  if (!national(user)) return FORBIDDEN;
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choisissez une image." };
+  if (file.size > MAX_FILE_SIZE) return { error: "L'image dépasse 5 Mo." };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const kind = sniffKind(bytes);
+  if (!kind || kind === "pdf" || !imageSize(bytes)) return { error: "Format non accepté : JPEG, PNG ou WebP." };
+  const ch = await loadChampionship(championshipId);
+  if (!ch) return { error: "Championnat introuvable." };
+  const logoKey = `championships/${championshipId}/${randomUUID()}.${kind}`;
+  await putFile(logoKey, bytes);
+  await db.update(championships).set({ logoKey, logoType: MIME[kind], updatedAt: new Date() }).where(eq(championships.id, championshipId));
+  if (ch.logoKey) await deleteFile(ch.logoKey);
+  await logAudit({ userId: user.id, action: "LOGO", entity: "championship", entityId: championshipId });
+  revalidateChampionship(ch.code);
+  return { success: "Logo enregistré." };
+}
+
 export async function updateChampionship(championshipId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requirePermission("competitions.manage");
   if (!national(user)) return FORBIDDEN;

@@ -6,6 +6,7 @@ export const NATIONAL_TEAMS = [
   { code: "U23", name: "Diables Rouges U-23", slug: "u23", gender: "M" },
   { code: "U20", name: "Diables Rouges U-20", slug: "u20", gender: "M" },
   { code: "U17", name: "Diables Rouges U-17", slug: "u17", gender: "M" },
+  { code: "U15", name: "Diables Rouges U-15", slug: "u15", gender: "M" },
   { code: "WOMEN", name: "Diables Rouges Dames", slug: "dames", gender: "F" },
 ] as const;
 

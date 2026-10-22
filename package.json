@@ -20,9 +20,13 @@
     "test:load": "tsx --conditions=react-server scripts/load-test.mts",
     "demo:seed": "tsx scripts/seed-demo.mts",
     "demo:purge": "tsx scripts/purge-demo.mts",
+    "demo:transferts": "tsx scripts/seed-demo-transferts.mts",
+    "selection:u15": "tsx scripts/u15-bakou.mts",
     "divisions:nationales": "tsx scripts/divisions-nationales.mts",
+    "saison:2025-2026": "tsx scripts/saison-2025-2026.mts",
     "photos:import": "tsx --conditions=react-server scripts/import-photos.mts",
     "clubs:import": "tsx --conditions=react-server scripts/import-clubs.mts",
+    "logos:officiels": "tsx --conditions=react-server scripts/logos-officiels.mts",
     "sources:import-saison": "tsx --conditions=react-server scripts/import-saison-externe.mts",
     "actualites:import": "tsx --conditions=react-server scripts/import-actualites.mts",
     "start:standalone": "cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && node .next/standalone/server.js"

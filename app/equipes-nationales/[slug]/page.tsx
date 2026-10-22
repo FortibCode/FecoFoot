@@ -25,6 +25,9 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
   if (!data) notFound();
   const { team, staff, fixtures, selections } = data;
   const latest = selections[0];
+  // Prochains matchs d'abord (du plus proche au plus lointain), puis les résultats (du plus récent au plus ancien).
+  const upcoming = fixtures.filter((f) => f.status === "SCHEDULED").reverse();
+  const ordered = [...upcoming, ...fixtures.filter((f) => f.status !== "SCHEDULED")];
   const [list, gallery] = await Promise.all([latest ? calledPlayers(latest.id) : [], teamPhotos(team.id)]);
 
   return (
@@ -39,17 +42,22 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
                 {latest.gatheringDate && ` · regroupement le ${formatDate(latest.gatheringDate)}`}
                 {latest.location && ` · ${latest.location}`}
               </p>
-              <ul className="flex flex-col divide-y rounded-lg border text-sm">
-                {list.map((p) => (
-                  <li key={p.id} className="flex justify-between gap-2 px-3 py-2">
-                    <span>
-                      <span className="inline-block w-8 font-bold tabular-nums">{p.shirtNumber ?? ""}</span>
-                      <strong>{p.name}</strong> <span className="text-muted-foreground">{p.position ? POSITION_LABELS[p.position] : ""}</span>
-                    </span>
-                    <span className="text-right text-muted-foreground">{p.club}</span>
-                  </li>
-                ))}
-              </ul>
+              {latest.purpose && <p className="max-w-3xl text-sm leading-relaxed">{latest.purpose}</p>}
+              {list.length === 0 ? (
+                <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">La liste des joueurs convoqués sera publiée par la fédération.</p>
+              ) : (
+                <ul className="flex flex-col divide-y rounded-lg border text-sm">
+                  {list.map((p) => (
+                    <li key={p.id} className="flex justify-between gap-2 px-3 py-2">
+                      <span>
+                        <span className="inline-block w-8 font-bold tabular-nums">{p.shirtNumber ?? ""}</span>
+                        <strong>{p.name}</strong> <span className="text-muted-foreground">{p.position ? POSITION_LABELS[p.position] : ""}</span>
+                      </span>
+                      <span className="text-right text-muted-foreground">{p.club}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           ) : (
             <p className="text-sm text-muted-foreground">Aucune liste publiée.</p>
@@ -58,18 +66,22 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
         <div className="flex flex-col gap-8">
           <section className="flex flex-col gap-2">
             <h2 className="text-lg font-bold">Staff</h2>
-            <ul className="text-sm">
-              {staff.map((s) => (
-                <li key={s.id}>
-                  <strong>{s.fullName}</strong> — {s.role}
-                </li>
-              ))}
-            </ul>
+            {staff.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Staff technique à communiquer par la fédération.</p>
+            ) : (
+              <ul className="text-sm">
+                {staff.map((s) => (
+                  <li key={s.id}>
+                    <strong>{s.fullName}</strong> — {s.role}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
           <section className="flex flex-col gap-2">
             <h2 className="text-lg font-bold">Calendrier et résultats</h2>
             <ul className="flex flex-col divide-y rounded-lg border text-sm">
-              {fixtures.map((f) => (
+              {ordered.map((f) => (
                 <li key={f.id} className="px-3 py-2">
                   <p className="text-xs text-muted-foreground">
                     {formatMatchDate(f.kickoffAt)}
@@ -82,6 +94,7 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
                     )}
                     {f.status === "CANCELLED" && <span className="ml-2 text-destructive">annulé</span>}
                   </p>
+                  {f.venue && <p className="text-xs text-muted-foreground">{f.venue}</p>}
                 </li>
               ))}
               {fixtures.length === 0 && <li className="px-3 py-2 text-muted-foreground">Aucun match programmé.</li>}

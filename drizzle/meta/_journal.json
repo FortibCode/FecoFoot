@@ -190,6 +190,20 @@
       "when": 1792670324938,
       "tag": "0026_arbitres_divisions_nationales",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792673084724,
+      "tag": "0027_selection_u15",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792675900804,
+      "tag": "0028_logo_championnats",
+      "breakpoints": true
     }
   ]
 }

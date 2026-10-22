@@ -5,11 +5,13 @@ import { and, desc, eq, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ClubLogo } from "@/components/public/club-logo";
 import { PublicShell } from "@/components/public/public-shell";
+import { PlayerPhoto } from "@/components/player-photo";
 import { clubLogos } from "@/lib/club-logos";
 import { db } from "@/lib/db";
 import { clubs, players, transfers } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
 import { seasonLabel } from "@/lib/licenses";
+import { playerPhotoUrls } from "@/lib/queries/player-photos";
 import { TRANSFER_TYPE_LABELS, TRANSFER_TYPES, type TransferType } from "@/lib/transfers";
 
 export const metadata: Metadata = {
@@ -36,6 +38,7 @@ export default async function PublicTransfersPage({ searchParams }: PageProps<"/
     db
       .select({
         t: transfers,
+        playerId: players.id,
         firstName: players.firstName,
         lastName: players.lastName,
         from: { id: fromClub.id, name: fromClub.name, slug: fromClub.slug },
@@ -50,7 +53,11 @@ export default async function PublicTransfersPage({ searchParams }: PageProps<"/
       .limit(200),
     db.selectDistinct({ season: transfers.season }).from(transfers).where(eq(transfers.status, "APPROVED")).orderBy(desc(transfers.season)),
   ]);
-  const logos = await clubLogos(rows.flatMap((r) => [r.to.id, ...(r.from?.id ? [r.from.id] : [])]));
+  const [logos, photos] = await Promise.all([
+    clubLogos(rows.flatMap((r) => [r.to.id, ...(r.from?.id ? [r.from.id] : [])])),
+    // Photo publiée seulement avec l'accord du joueur (licence délivrée).
+    playerPhotoUrls(rows.map((r) => r.playerId), { publicOnly: true }),
+  ]);
   const select = "h-10 w-full min-w-0 rounded-md border bg-background px-2 text-sm";
   const team = (c: { id: number; name: string; slug: string } | null) =>
     c ? (
@@ -96,8 +103,9 @@ export default async function PublicTransfersPage({ searchParams }: PageProps<"/
         <p className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">Aucun transfert homologué pour ces critères.</p>
       ) : (
         <ul className="flex flex-col divide-y rounded-xl border bg-card">
-          {rows.map(({ t, firstName, lastName, from, to }) => (
-            <li key={t.id} className="grid gap-2 p-4 text-sm sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-4">
+          {rows.map(({ t, playerId, firstName, lastName, from, to }) => (
+            <li key={t.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 p-4 text-sm sm:grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+              <PlayerPhoto src={photos.get(playerId)} firstName={firstName} lastName={lastName} className="row-span-2 size-14 text-base sm:row-span-1" />
               <div className="min-w-0">
                 <p className="font-heading text-base font-bold uppercase">
                   {firstName} {lastName}
@@ -108,11 +116,13 @@ export default async function PublicTransfersPage({ searchParams }: PageProps<"/
                   {t.decidedAt && ` · homologué le ${formatDate(t.decidedAt)}`}
                 </p>
               </div>
-              {team(from?.id ? from : null)}
-              <span aria-label="vers" className="hidden text-muted-foreground sm:block">
-                →
-              </span>
-              {team(to)}
+              <div className="col-start-2 flex min-w-0 items-center gap-2 sm:contents">
+                {team(from?.id ? from : null)}
+                <span aria-label="vers" className="text-muted-foreground">
+                  →
+                </span>
+                {team(to)}
+              </div>
             </li>
           ))}
         </ul>

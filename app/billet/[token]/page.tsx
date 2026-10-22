@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ETicket } from "@/components/public/e-ticket";
+import { PrintButton } from "@/components/admin/print-button";
 import { PublicShell } from "@/components/public/public-shell";
 import { requireSupporter } from "@/lib/auth/fan-session";
 import { appUrl, qrSvg } from "@/lib/qr";
@@ -16,11 +17,19 @@ export default async function TicketPage({ params }: PageProps<"/billet/[token]"
   const [t] = /^[A-Za-z0-9_-]{20,100}$/.test(token) ? await supporterTickets(s.id, token) : [];
   if (!t) notFound();
   return (
-    <PublicShell eyebrow="Mon billet" title={t.event}>
+    <PublicShell eyebrow="Mon billet" title={t.event} wide>
       <ETicket t={t} qr={await qrSvg(await appUrl(`/billet/${t.token}`))} />
-      <Link href="/supporters/espace" className="mt-6 inline-block text-sm underline">
-        Tous mes billets
-      </Link>
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <PrintButton label="Imprimer le billet" />
+        {t.status === "VALID" && (
+          <a href={`/billet/${t.token}/pdf`} className="text-sm font-semibold underline">
+            Télécharger le PDF
+          </a>
+        )}
+        <Link href="/supporters/espace" className="text-sm underline">
+          Tous mes billets
+        </Link>
+      </div>
     </PublicShell>
   );
 }

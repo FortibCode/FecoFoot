@@ -9,9 +9,10 @@ import { ClubLogo } from "@/components/public/club-logo";
 import { PublicShell } from "@/components/public/public-shell";
 import { LiveRefresh } from "@/components/live-refresh";
 import { clubLogos } from "@/lib/club-logos";
-import { COMPETITION_CATEGORY_LABELS, COMPETITION_STATUS_LABELS, isLive, TEAM_OUTCOME_LABELS } from "@/lib/competitions";
+import { COMPETITION_CATEGORY_LABELS, hasScore, isLive, publicStatusLabel, TEAM_OUTCOME_LABELS } from "@/lib/competitions";
 import { matches } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
+import { championshipLogoUrl } from "@/lib/league-logo";
 import { seasonLabel } from "@/lib/licenses";
 import { championshipByCode, championshipDocumentsOf, championshipOfficialsOf, championshipSeason, seasonTeams } from "@/lib/queries/championships";
 import { competitionTables, matchQuery } from "@/lib/queries/competitions";
@@ -70,7 +71,8 @@ export default async function PublicChampionshipPage({ params, searchParams }: P
     <PublicShell
       eyebrow="Compétitions nationales"
       title={ch.name}
-      subtitle={current ? `Saison ${seasonLabel(current.season)} · ${COMPETITION_CATEGORY_LABELS[current.category]} · ${COMPETITION_STATUS_LABELS[current.status]}` : "Championnat national"}
+      logo={championshipLogoUrl(ch)}
+      subtitle={current ? `Saison ${seasonLabel(current.season)} · ${COMPETITION_CATEGORY_LABELS[current.category]} · ${publicStatusLabel(current.status, data ? data[1].filter((m) => hasScore(m.match.status)).length : 0)}` : "Championnat national"}
       wide
     >
       <div className="flex flex-col gap-10">

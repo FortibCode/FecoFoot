@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { clubs, competitions, competitionTeams, leagues, matches } from "@/lib/db/schema";
 import { matchQuery } from "@/lib/queries/competitions";
@@ -28,7 +28,7 @@ export async function leaguesOverview() {
 /** Divisions nationales publiées (championnats organisés par la fédération). */
 export async function nationalDivisions() {
   return db
-    .select({ c: competitions, teams: count(competitionTeams.id) })
+    .select({ c: competitions, teams: count(competitionTeams.id), played: sql<number>`(select count(*)::int from ${matches} where ${matches.competitionId} = ${competitions.id} and ${matches.status} in ('FINISHED', 'LIVE', 'HALF_TIME'))` })
     .from(competitions)
     .leftJoin(competitionTeams, eq(competitionTeams.competitionId, competitions.id))
     .where(and(isNull(competitions.leagueId), eq(competitions.type, "LEAGUE"), ne(competitions.status, "DRAFT")))
@@ -51,7 +51,7 @@ export async function leagueDetail(code: string) {
       .where(and(eq(clubs.leagueId, league.id), eq(clubs.status, "AFFILIATED")))
       .orderBy(asc(clubs.name)),
     db
-      .select()
+      .select({ ...getTableColumns(competitions), played: sql<number>`(select count(*)::int from ${matches} where ${matches.competitionId} = ${competitions.id} and ${matches.status} in ('FINISHED', 'LIVE', 'HALF_TIME'))` })
       .from(competitions)
       .where(and(eq(competitions.leagueId, league.id), ne(competitions.status, "DRAFT")))
       .orderBy(desc(competitions.season), asc(competitions.name)),
