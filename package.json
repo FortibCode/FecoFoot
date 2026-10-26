@@ -21,6 +21,8 @@
     "demo:seed": "tsx scripts/seed-demo.mts",
     "demo:purge": "tsx scripts/purge-demo.mts",
     "demo:transferts": "tsx scripts/seed-demo-transferts.mts",
+    "demo:billet": "tsx scripts/seed-demo-billet.mts",
+    "demo:badge": "tsx --conditions=react-server scripts/seed-demo-badge.mts",
     "selection:u15": "tsx scripts/u15-bakou.mts",
     "divisions:nationales": "tsx scripts/divisions-nationales.mts",
     "saison:2025-2026": "tsx scripts/saison-2025-2026.mts",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capError, formatTicketNumber, gateKey, gateLoad, purchaseError, remaining, scanRefusal, ticketTokenFrom, unitPrice } from "@/lib/ticketing";
+import { capError, formatTicketNumber, gateKey, gateLoad, parseEventTitle, purchaseError, remaining, scanRefusal, ticketTokenFrom, unitPrice } from "@/lib/ticketing";
 
 const kickoffAt = new Date("2026-10-18T15:00:00Z");
 const now = new Date("2026-10-10T10:00:00Z");
@@ -95,5 +95,19 @@ describe("Comptage par porte et saturation (EF-CTL-07)", () => {
 
   it("noms de porte comparés sans casse ni espaces superflus", () => {
     expect(gateKey("  Porte   A ")).toBe(gateKey("porte a"));
+  });
+});
+
+describe("titre d'un événement", () => {
+  it("sépare compétition, affiche et précision", () => {
+    expect(parseEventTitle("Éliminatoires CAN 2027 : Congo – Comores (Groupe G · 4e journée)")).toEqual({
+      competition: "Éliminatoires CAN 2027",
+      detail: "Groupe G · 4e journée",
+      match: "Congo – Comores",
+      teams: ["Congo", "Comores"],
+    });
+  });
+  it("accepte un titre sans compétition ni affiche", () => {
+    expect(parseEventTitle("Gala de fin de saison")).toEqual({ competition: null, detail: null, match: "Gala de fin de saison", teams: null });
   });
 });

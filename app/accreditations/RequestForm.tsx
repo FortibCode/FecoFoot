@@ -24,6 +24,12 @@ export function RequestForm({ action }: { action: (s: ActionState, f: FormData) 
         ))}
       </SelectField>
       <TextField label="N° de carte de presse" name="pressCardNumber" required errors={fe?.pressCardNumber} className="sm:col-span-2" />
+      <label className="flex flex-col gap-1 text-sm font-semibold sm:col-span-2">
+        Photo d&apos;identité (pour le badge)
+        <input type="file" name="photo" accept="image/jpeg,image/png" required className="text-sm font-normal file:mr-3 file:rounded-md file:border file:bg-card file:px-3 file:py-2 file:font-semibold" />
+        <span className="text-xs font-normal text-muted-foreground">Photo de face, visage dégagé, comme sur une pièce d&apos;identité. JPEG ou PNG, 5 Mo au plus.</span>
+        {fe?.photo && <span className="text-xs font-normal text-destructive">{fe.photo[0]}</span>}
+      </label>
       <fieldset className="flex flex-col gap-2 sm:col-span-2">
         <legend className="mb-1 text-sm font-semibold">Zones demandées</legend>
         {PRESS_ZONES.map((z) => (

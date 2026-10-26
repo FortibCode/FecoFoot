@@ -117,7 +117,7 @@ test("billetterie : prévente, achat, plafond, jauge, guichet, remboursement et 
 
   // Places décomptées (1 restante) ; plafond de 4 billets par Fan ID (RG-10) ; jauge sans survente.
   await fan.goto(slug);
-  await expect(fan.locator("main ul li").filter({ hasText: "Tribune d'honneur" })).toContainText("1 place(s) disponible(s)");
+  await expect(fan.getByRole("region", { name: "Tribunes et tarifs" }).locator("li").filter({ hasText: "Tribune d'honneur" })).toContainText("1 place(s) disponible(s)");
   await expect(fan.locator('select[name="quantity"] option')).toHaveCount(1); // limité par la jauge restante
 
   // Guichet : nouveau Fan ID créé sur pièce d'identité, dernière place en espèces → tribune complète.
@@ -134,7 +134,7 @@ test("billetterie : prévente, achat, plafond, jauge, guichet, remboursement et 
   await button(page, "Enregistrer").click();
   await expect(formStatus(page).last()).toContainText(/Vente enregistrée : commande CMD-/);
   await fan.reload();
-  await expect(fan.locator("main ul li").filter({ hasText: "Tribune d'honneur" })).toContainText("complet");
+  await expect(fan.getByRole("region", { name: "Tribunes et tarifs" }).locator("li").filter({ hasText: "Tribune d'honneur" })).toContainText(/complet/i);
 
   // Une 2e vente sur la tribune complète est refusée.
   await page.fill('input[name="phone"]', counterPhone);
@@ -148,9 +148,15 @@ test("billetterie : prévente, achat, plafond, jauge, guichet, remboursement et 
   await counterRow.getByRole("button", { name: "Rembourser" }).click();
   await expect(page.locator("main tr").filter({ hasText: `${lastName}GUICHET` })).toContainText("Remboursée");
   await fan.reload();
-  await expect(fan.locator("main ul li").filter({ hasText: "Tribune d'honneur" })).toContainText("1 place(s) disponible(s)");
+  await expect(fan.getByRole("region", { name: "Tribunes et tarifs" }).locator("li").filter({ hasText: "Tribune d'honneur" })).toContainText("1 place(s) disponible(s)");
   // Clôture de caisse : la vente remboursée n'apparaît plus.
   await expect(page.locator("main")).toContainText("Aucune vente au guichet");
+
+  // QR code scanné par un tiers (sans session supporter) : vérification en lecture seule, billet non consommé.
+  const checker = await browser.newPage();
+  await checker.goto(`/billet/${token}`);
+  await expect(checker.locator("main").getByRole("status")).toContainText("Billet valable");
+  await expect(checker.locator("main")).toContainText("payés par");
 
   // Contrôle d'accès : billet accepté, puis refusé au 2e passage ; billet inconnu refusé.
   await page.goto(`/admin/billetterie/controle?event=${eventUrl.split("/").pop()}`);
@@ -163,6 +169,11 @@ test("billetterie : prévente, achat, plafond, jauge, guichet, remboursement et 
   await expect(page.getByTestId("entries")).toHaveText("1");
   await scan(page, token);
   await expect(page.getByRole("status").filter({ hasText: /ENTRÉE|REFUSÉ/ })).toContainText("Billet déjà utilisé");
+  await checker.goto(`/billet/${token}`);
+  await expect(checker.locator("main").getByRole("status")).toContainText("Billet déjà utilisé");
+  await checker.goto(`/billet/${"y".repeat(43)}`);
+  await expect(checker.locator("main").getByRole("alert")).toContainText("Billet inconnu");
+  await checker.close();
   await scan(page, "x".repeat(43));
   await expect(page.getByRole("status").filter({ hasText: /ENTRÉE|REFUSÉ/ })).toContainText("Billet inconnu");
 

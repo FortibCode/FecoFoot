@@ -37,9 +37,9 @@ export default async function AccessControlPage({ searchParams }: PageProps<"/ad
       ) : (
         <div className="flex flex-col gap-6">
           <form className="flex flex-wrap items-end gap-2 text-sm">
-            <label className="flex flex-col gap-1.5 font-medium">
+            <label className="flex min-w-0 max-w-full flex-col gap-1.5 font-medium">
               Match
-              <select name="event" defaultValue={event.id} className="h-10 max-w-full rounded-md border px-2">
+              <select name="event" defaultValue={event.id} className="h-10 w-full max-w-full min-w-0 rounded-md border px-2">
                 {events.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.title} — {formatDateTime(e.kickoffAt)}

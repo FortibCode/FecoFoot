@@ -1,19 +1,10 @@
 import { BrandLogo } from "@/components/brand-logo";
 import { formatFcfa } from "@/lib/format";
-import { EVENT_KIND_LABELS, type EventKind } from "@/lib/ticketing";
+import { EVENT_KIND_LABELS, parseEventTitle, type EventKind } from "@/lib/ticketing";
 
 const TZ = "Africa/Brazzaville";
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
-
-/** « Éliminatoires CAN 2027 : Congo – Comores (…) » → compétition, équipes, précision. */
-function parseTitle(title: string) {
-  const [competition, rest] = title.includes(" : ") ? [title.slice(0, title.indexOf(" : ")), title.slice(title.indexOf(" : ") + 3)] : [null, title];
-  const detail = rest.match(/\(([^)]+)\)\s*$/)?.[1] ?? null;
-  const match = rest.replace(/\s*\([^)]+\)\s*$/, "");
-  const teams = match.split(/\s+[–-]\s+/);
-  return { competition, detail, teams: teams.length === 2 ? (teams as [string, string]) : null, match };
-}
 
 const STAMP: Record<string, string> = { USED: "Utilisé", CANCELLED: "Annulé", REFUNDED: "Remboursé", RESERVED: "Paiement en attente" };
 
@@ -41,7 +32,7 @@ export function ETicket({
     orderRef?: string;
   };
 }) {
-  const { competition, detail, teams, match } = parseTitle(t.event);
+  const { competition, detail, teams, match } = parseEventTitle(t.event);
   const valid = t.status === "VALID";
   const stamp = STAMP[t.status];
   const [stadium, ...city] = t.venue.split(",");

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Oswald, Poppins } from "next/font/google";
 import { connection } from "next/server";
 import "./globals.css";
+import { DevPerformanceGuard } from "@/components/dev-performance-guard";
 import { RevealObserver } from "@/components/reveal-observer";
 
 // next/font auto-héberge la police au build : aucun appel à Google côté visiteur.
@@ -30,6 +31,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${poppins.variable} ${oswald.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
+        <DevPerformanceGuard />
         {children}
         <RevealObserver />
       </body>

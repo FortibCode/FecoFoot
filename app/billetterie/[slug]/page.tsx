@@ -10,9 +10,14 @@ import { formatDateTime, formatFcfa } from "@/lib/format";
 import { methodForOperator } from "@/lib/payments-rules";
 import { operatorOf } from "@/lib/supporters";
 import { isActiveMember, takenByCategory } from "@/lib/ticket-sales";
-import { purchaseError, remaining, SALES_STATUS_LABELS, unitPrice } from "@/lib/ticketing";
+import { EVENT_KIND_LABELS, parseEventTitle, purchaseError, remaining, SALES_STATUS_LABELS, unitPrice } from "@/lib/ticketing";
+import { supporterTickets } from "@/lib/queries/fan-tickets";
 import { buyTickets } from "../actions";
 import { BuyForm } from "../BuyForm";
+
+const TZ = "Africa/Brazzaville";
+const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 
 async function load(slug: string) {
   const [e] = await db.select().from(ticketEvents).where(and(eq(ticketEvents.slug, slug), ne(ticketEvents.salesStatus, "DRAFT"))).limit(1);
@@ -35,51 +40,127 @@ export default async function TicketEventPage({ params }: PageProps<"/billetteri
   ]);
   const member = fan ? await isActiveMember(fan.id) : false;
   const refusal = fan ? purchaseError({ status: event.salesStatus, isMember: member, banned: fan.banned, kickoffAt: event.kickoffAt }) : null;
+  // Billets déjà achetés par le supporter connecté pour ce match.
+  const mine = fan ? (await supporterTickets(fan.id)).filter((t) => t.eventId === event.id && t.status !== "CANCELLED") : [];
+  const { competition, detail, match, teams } = parseEventTitle(event.title);
+  const day = dayFmt.format(event.kickoffAt);
 
   return (
-    <PublicShell eyebrow={SALES_STATUS_LABELS[event.salesStatus]} subtitle={SALES_STATUS_LABELS[event.salesStatus]} title={event.title}>
-      <div className="flex flex-col gap-6">
-        <p className="text-sm">
-          {formatDateTime(event.kickoffAt)} · {event.venue}
-        </p>
-        <ul className="flex flex-col divide-y rounded-lg border text-sm">
-          {categories.map((c) => {
-            const left = remaining(c.capacity, taken.get(c.id) ?? 0);
-            return (
-              <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span>
-                  <strong>{c.name}</strong>
-                  <span className="block text-xs text-muted-foreground">
-                    {c.gate} · {left > 0 ? `${left} place(s) disponible(s)` : "complet"}
-                  </span>
-                </span>
-                <span className="text-right">
-                  <strong>{formatFcfa(c.publicPrice)}</strong>
-                  {c.memberPrice < c.publicPrice && <span className="block text-xs text-[var(--flag-green)]">membre {formatFcfa(c.memberPrice)}</span>}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+    <PublicShell eyebrow="Billetterie" title={teams ? `${teams[0]} – ${teams[1]}` : match} subtitle={[competition ?? EVENT_KIND_LABELS[event.kind], detail].filter(Boolean).join(" · ")} wide>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-6">
+          <dl className="grid gap-3 sm:grid-cols-3">
+            {(
+              [
+                ["Date", day.charAt(0).toUpperCase() + day.slice(1)],
+                ["Coup d'envoi", timeFmt.format(event.kickoffAt)],
+                ["Stade", event.venue],
+              ] as const
+            ).map(([k, v]) => (
+              <div key={k} className="rounded-xl border bg-card p-4">
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{k}</dt>
+                <dd className="mt-1 font-heading text-lg leading-tight font-bold">{v}</dd>
+              </div>
+            ))}
+          </dl>
 
-        {!fan ? (
-          <p className="text-sm">
-            Pour acheter, <Link href="/supporters/connexion" className="font-semibold underline">connectez-vous</Link> ou{" "}
-            <Link href="/supporters/inscription" className="font-semibold underline">créez votre Fan ID</Link>.
-          </p>
-        ) : refusal ? (
-          <p role="alert" className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm">
-            {refusal}
-          </p>
-        ) : (
-          <BuyForm
-            action={buyTickets.bind(null, event.id)}
-            categories={categories.map((c) => ({ id: c.id, name: c.name, gate: c.gate, price: unitPrice(c, member), left: remaining(c.capacity, taken.get(c.id) ?? 0) }))}
-            maxTickets={event.maxTicketsPerFan}
-            buyerName={`${fan.firstName} ${fan.lastName}`}
-            defaultMethod={methodForOperator(operatorOf(fan.phone))}
-          />
-        )}
+          <section aria-labelledby="tribunes" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="tribunes" className="font-heading text-xl font-bold uppercase">
+                Tribunes et tarifs
+              </h2>
+              <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">{SALES_STATUS_LABELS[event.salesStatus]}</span>
+            </div>
+            <ul className="flex flex-col gap-3">
+              {categories.map((c) => {
+                const left = remaining(c.capacity, taken.get(c.id) ?? 0);
+                const filled = Math.min(100, Math.round(((c.capacity - left) / Math.max(1, c.capacity)) * 100));
+                return (
+                  <li key={c.id} className="rounded-xl border bg-card p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{c.name}</p>
+                        <p className="text-sm text-muted-foreground">{c.gate}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-heading text-xl font-bold">{formatFcfa(c.publicPrice)}</p>
+                        {c.memberPrice < c.publicPrice && <p className="text-xs font-semibold text-[var(--flag-green)]">membre : {formatFcfa(c.memberPrice)}</p>}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <div aria-hidden className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-[var(--flag-green)]" style={{ width: `${filled}%` }} />
+                      </div>
+                      <span className="shrink-0 text-xs text-muted-foreground">{left > 0 ? `${left.toLocaleString("fr-FR")} place(s) disponible(s)` : "Complet"}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="text-xs text-muted-foreground">
+              Billets 100 % numériques et nominatifs, avec QR code, payés par Airtel Money ou MTN MoMo. Au plus {event.maxTicketsPerFan} billets par Fan ID.
+            </p>
+          </section>
+        </div>
+
+        <aside className="order-first flex flex-col gap-4 lg:sticky lg:top-24 lg:order-none">
+          {mine.length > 0 && (
+            <div className="rounded-xl border-2 border-[var(--flag-green)] bg-[color-mix(in_oklch,var(--flag-green)_8%,transparent)] p-5">
+              <p className="font-semibold">
+                Vous avez {mine.length} billet{mine.length > 1 ? "s" : ""} pour ce match
+              </p>
+              <ul className="mt-2 text-sm text-muted-foreground">
+                {mine.map((t) => (
+                  <li key={t.id}>
+                    {t.holderName} · {t.category} · {t.number}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/supporters/espace#billets" className="mt-4 inline-block rounded-md bg-brand-ink px-4 py-2 text-sm font-semibold text-white">
+                Voir mes billets →
+              </Link>
+            </div>
+          )}
+
+          <div className="rounded-xl border bg-card p-5">
+            <h2 className="mb-3 font-heading text-xl font-bold uppercase">{mine.length > 0 ? "Acheter d'autres billets" : "Acheter des billets"}</h2>
+            {!fan ? (
+              <div className="flex flex-col gap-3 text-sm">
+                <p>Un Fan ID est nécessaire pour acheter : chaque billet est nominatif.</p>
+                <div className="flex flex-wrap gap-2">
+                  <Link href="/supporters/connexion" className="rounded-md bg-brand-ink px-4 py-2 font-semibold text-white">
+                    Se connecter
+                  </Link>
+                  <Link href="/supporters/inscription" className="rounded-md border px-4 py-2 font-semibold hover:bg-muted">
+                    Créer mon Fan ID
+                  </Link>
+                </div>
+              </div>
+            ) : refusal ? (
+              <div className="flex flex-col gap-3 text-sm">
+                <p role="alert" className="rounded-lg border border-destructive bg-destructive/10 p-3">
+                  {refusal}
+                </p>
+                {event.salesStatus === "PRESALE" && !member && !fan.banned && (
+                  <>
+                    <p>Devenez membre du club des supporters pour acheter dès la prévente, au tarif membre. Sinon, revenez à l&apos;ouverture de la vente au grand public.</p>
+                    <Link href="/supporters/adhesion" className="w-fit rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground">
+                      Rejoindre le club des supporters
+                    </Link>
+                  </>
+                )}
+              </div>
+            ) : (
+              <BuyForm
+                action={buyTickets.bind(null, event.id)}
+                categories={categories.map((c) => ({ id: c.id, name: c.name, gate: c.gate, price: unitPrice(c, member), left: remaining(c.capacity, taken.get(c.id) ?? 0) }))}
+                maxTickets={event.maxTicketsPerFan}
+                buyerName={`${fan.firstName} ${fan.lastName}`}
+                defaultMethod={methodForOperator(operatorOf(fan.phone))}
+              />
+            )}
+          </div>
+        </aside>
       </div>
     </PublicShell>
   );

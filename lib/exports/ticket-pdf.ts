@@ -4,6 +4,7 @@ import path from "node:path";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { formatFcfa } from "@/lib/format";
+import { parseEventTitle } from "@/lib/ticketing";
 
 const MM = 72 / 25.4;
 const GREEN = "#009543";
@@ -37,16 +38,6 @@ function logo(): Buffer | null {
   }
 }
 
-/** « Compétition : Équipe A – Équipe B (précision) » → morceaux affichés. */
-function parseTitle(title: string) {
-  const i = title.indexOf(" : ");
-  const competition = i >= 0 ? title.slice(0, i) : null;
-  const rest = i >= 0 ? title.slice(i + 3) : title;
-  const detail = rest.match(/\(([^)]+)\)\s*$/)?.[1] ?? null;
-  const match = rest.replace(/\s*\([^)]+\)\s*$/, "");
-  return { competition, detail, match: match.replace(/\s+[–-]\s+/, "  vs  ") };
-}
-
 /**
  * Billet à imprimer chez soi (format A4, comme les billets électroniques des grandes rencontres) :
  * en haut le billet avec son talon et le QR code d'entrée, en dessous les consignes ; un billet par page.
@@ -61,7 +52,7 @@ export async function ticketsPdf(list: TicketPdfData[]): Promise<Buffer> {
 
   for (const [n, t] of list.entries()) {
     if (n > 0) doc.addPage();
-    const { competition, detail, match } = parseTitle(t.event);
+    const { competition, detail, match, teams } = parseEventTitle(t.event);
     const x = 12 * MM;
     const y = 14 * MM;
     const w = 186 * MM;
@@ -88,7 +79,7 @@ export async function ticketsPdf(list: TicketPdfData[]): Promise<Buffer> {
     let cy = y + 21 * MM;
     doc.fillColor(GREEN).font("Helvetica-Bold").fontSize(7).text([competition ?? "Rencontre", detail].filter(Boolean).join(" · ").toUpperCase(), x + 6 * MM, cy, { width: mainW - 12 * MM, characterSpacing: 0.8 });
     cy += 4.5 * MM;
-    doc.fillColor(INK).font("Helvetica-Bold").fontSize(20).text(match.toUpperCase(), x + 6 * MM, cy, { width: mainW - 12 * MM, lineBreak: false, ellipsis: true });
+    doc.fillColor(INK).font("Helvetica-Bold").fontSize(20).text((teams ? `${teams[0]}  vs  ${teams[1]}` : match).toUpperCase(), x + 6 * MM, cy, { width: mainW - 12 * MM, lineBreak: false, ellipsis: true });
     cy += 10 * MM;
     doc.moveTo(x + 6 * MM, cy).lineTo(x + mainW - 6 * MM, cy).dash(2, { space: 2 }).strokeColor("#D1D5DB").stroke().undash();
     cy += 3 * MM;

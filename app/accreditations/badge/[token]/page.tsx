@@ -1,44 +1,50 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/admin/print-button";
-import { PRESS_ROLE_LABELS, PRESS_ZONE_LABELS } from "@/lib/accreditations";
-import { formatDateTime } from "@/lib/format";
+import { PressBadge } from "@/components/public/press-badge";
+import { PublicShell } from "@/components/public/public-shell";
+import { pressPhotoUrl } from "@/lib/accreditations";
 import { appUrl, qrSvg } from "@/lib/qr";
 import { accreditationByBadge } from "@/lib/queries/accreditations";
 
 export const metadata: Metadata = { title: "Badge presse — FECOFOOT", robots: { index: false } };
 
-/** Badge numérique imprimable (EF-MED-04), valable uniquement pour le match demandé (RG-16). */
+/**
+ * Badge numérique du journaliste (EF-MED-04), valable uniquement pour le match demandé (RG-16) :
+ * à présenter à l'écran, à imprimer ou à télécharger en PDF. Le QR code mène à la page de vérification
+ * (…/verifier) : la personne qui le scanne voit la photo et la validité, jamais le badge lui-même.
+ */
 export default async function BadgePage({ params }: PageProps<"/accreditations/badge/[token]">) {
   const { token } = await params;
   const row = await accreditationByBadge(token);
   if (!row) notFound();
   const { acc, event } = row;
-  if (acc.status !== "APPROVED") return <main className="p-8 text-center font-semibold text-destructive">Badge non valide.</main>;
-  const qr = await qrSvg(await appUrl(`/accreditations/badge/${token}`));
-
+  if (acc.status !== "APPROVED") {
+    return (
+      <PublicShell eyebrow="Accréditation" title="Badge non valide">
+        <p className="rounded-lg border border-destructive bg-destructive/10 p-4 text-sm">Ce badge n&apos;est pas (ou plus) valide : l&apos;accréditation n&apos;est pas approuvée.</p>
+      </PublicShell>
+    );
+  }
+  const qr = await qrSvg(await appUrl(`/accreditations/badge/${token}/verifier`));
   return (
-    <main className="flex flex-1 flex-col items-center gap-6 px-4 py-8">
-      <article aria-label="Badge presse" className="w-full max-w-sm overflow-hidden rounded-xl border bg-white text-black">
-        <div className="h-2 bg-[linear-gradient(90deg,var(--flag-green)_33%,var(--flag-yellow)_33%_66%,var(--flag-red)_66%)]" />
-        <div className="flex flex-col items-center gap-2 p-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]">FECOFOOT · Presse</p>
-          <p className="text-2xl font-extrabold uppercase">{acc.lastName}</p>
-          <p className="text-lg">{acc.firstName}</p>
-          <p className="text-sm">
-            {acc.outlet} · {PRESS_ROLE_LABELS[acc.role]}
-          </p>
-          <div className="my-3 w-44 [&_svg]:h-full [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: qr }} />
-          <p className="text-sm font-semibold">{(acc.grantedZones ?? []).map((z) => PRESS_ZONE_LABELS[z]).join(" · ")}</p>
-          <p className="text-xs text-gray-600">
-            {event.title} — {formatDateTime(event.kickoffAt)}
-          </p>
-          <p className="font-mono text-xs text-gray-500">{acc.number}</p>
+    <PublicShell eyebrow="Accréditation" title="Mon badge presse">
+      <div className="flex flex-col items-center gap-6">
+        <PressBadge
+          qr={qr}
+          photo={pressPhotoUrl(acc)}
+          a={{ ...acc, grantedZones: acc.grantedZones ?? [], event: event.title, kickoffAt: event.kickoffAt, venue: event.venue }}
+        />
+        <div className="flex flex-wrap items-center justify-center gap-4 print:hidden">
+          <PrintButton label="Imprimer le badge" />
+          <a href={`/accreditations/badge/${token}/pdf`} className="text-sm font-semibold underline">
+            Télécharger le PDF
+          </a>
         </div>
-      </article>
-      <div className="print:hidden">
-        <PrintButton label="Imprimer le badge" />
+        <p className="max-w-md text-center text-xs text-muted-foreground print:hidden">
+          Présentez ce badge au contrôle d&apos;accès avec votre carte de presse. Il n&apos;ouvre que les zones en vert, et uniquement pour ce match.
+        </p>
       </div>
-    </main>
+    </PublicShell>
   );
 }

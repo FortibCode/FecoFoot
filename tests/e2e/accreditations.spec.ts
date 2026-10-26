@@ -3,6 +3,8 @@ import type { Page } from "@playwright/test";
 import { extractLink, latestNotification, withDb } from "./db";
 import { admin, button, createUser, e2eEmail, formAlert, login, logout, RUN } from "./helpers";
 
+const PNG_1PX = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+
 async function createEvent(page: Page, title: string, kickoff: Date) {
   await page.goto("/admin/billetterie");
   await page.fill('input[name="title"]', title);
@@ -34,6 +36,7 @@ async function requestFor(p: Page, title: string, who: { last: string; phone: st
   await p.fill('input[name="pressCardNumber"]', `CP-${who.phone.replace(/\D/g, "")}`);
   for (const box of await p.locator('input[name="zones"]').all()) await box.uncheck();
   for (const z of who.zones) await p.check(`input[name="zones"][value="${z}"]`);
+  await p.locator('input[name="photo"]').setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: PNG_1PX });
   await button(p, "Envoyer la demande").click();
 }
 
@@ -101,7 +104,15 @@ test("accréditations : demande, quotas, validation, badge et contrôle d'accès
   const badge = press.getByRole("article", { name: "Badge presse" });
   await expect(badge).toContainText("Bord terrain (photo)");
   await expect(badge.locator("svg")).toHaveCount(1);
+  await expect(badge.getByRole("img", { name: /^Photo de/ })).toBeVisible();
   const badgeUrl = press.url();
+  // Badge PDF (A6) et page de vérification ouverte au scan du QR code, en lecture seule.
+  const pdf = await press.request.get(`${badgeUrl}/pdf`);
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  await press.goto(`${badgeUrl}/verifier`);
+  await expect(press.locator("main").getByRole("status")).toContainText("Badge presse valable");
+  await expect(press.locator("main")).toContainText("Journal E2E");
 
   // Contrôle d'accès : badge accepté plusieurs fois (EF-CTL-04) ; badge en attente refusé.
   await logout(page);
@@ -118,4 +129,28 @@ test("accréditations : demande, quotas, validation, badge et contrôle d'accès
   await page.fill('input[name="code"]', pendingBadge);
   await button(page, "Contrôler").click();
   await expect(banner).toContainText("Badge presse non validé");
+
+  // Fiche d'un membre de la presse : voir, modifier, supprimer (refusé si le badge a servi au stade).
+  await logout(page);
+  await login(page, com);
+  await page.goto(`/admin/accreditations?event=${eventId}`);
+  const nameA = `Reporter ${`E2EPHOTOA${RUN}`.toUpperCase()}`;
+  await page.getByRole("link", { name: `Voir ${nameA}` }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(nameA);
+  await expect(page.locator("main")).toContainText("Entrées au stade");
+  await page.fill('input[name="outlet"]', "Journal E2E Modifié");
+  await button(page, "Enregistrer").click();
+  await expect(page.locator("main").getByRole("status").filter({ hasText: "Fiche mise à jour" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 }).locator("xpath=..")).toContainText("Journal E2E Modifié");
+  await page.getByRole("button", { name: `Supprimer la demande de ${nameA}` }).click();
+  await page.locator("dialog[open]").getByRole("button", { name: "Supprimer" }).click();
+  await expect(page.locator("dialog[open]").getByRole("alert")).toContainText("déjà servi au stade");
+  await page.locator("dialog[open]").getByRole("button", { name: "Fermer" }).click();
+
+  // Demande en attente : suppression depuis la liste.
+  await page.goto(`/admin/accreditations?event=${eventId}`);
+  const nameWait = `Reporter ${`E2EATTENTE${RUN}`.toUpperCase()}`;
+  await page.getByRole("button", { name: `Supprimer ${nameWait}` }).click();
+  await page.locator("dialog[open]").getByRole("button", { name: "Supprimer" }).click();
+  await expect(page.locator("main")).not.toContainText(nameWait);
 });

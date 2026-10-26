@@ -1,17 +1,28 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import * as z from "zod";
-import type { ActionState } from "@/lib/action-state";
-import { PRESS_ZONE_LABELS, PRESS_ZONES, quotaError, type PressZone } from "@/lib/accreditations";
+import { blankToNull, fromZodError, type ActionState } from "@/lib/action-state";
+import { PRESS_ROLES, PRESS_ZONE_LABELS, PRESS_ZONES, quotaError, type PressZone } from "@/lib/accreditations";
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { accreditationQuotas, accreditations, ticketEvents } from "@/lib/db/schema";
+import { MAX_FILE_SIZE, MIME, sniffKind } from "@/lib/documents";
+import { imageSize } from "@/lib/image-size";
 import { notify } from "@/lib/notify";
+import { isUniqueViolation } from "@/lib/queries/players";
+import { deleteFile, putFile } from "@/lib/storage";
+import { normalizeCongoPhone } from "@/lib/supporters";
 
 const path = (eventId: number) => `/admin/accreditations?event=${eventId}`;
+const done = (acc: { id: number; eventId: number }) => {
+  revalidatePath(path(acc.eventId));
+  revalidatePath(`/admin/accreditations/${acc.id}`);
+};
 
 /**
  * Validation avec choix des zones, ou refus motivé (EF-MED-03), dans le respect des quotas (EF-MED-05).
@@ -76,7 +87,7 @@ export async function decideAccreditation(accreditationId: number, approve: bool
     entityId: accreditationId,
     details: approve ? { zones } : { reason },
   });
-  revalidatePath(path(acc.eventId));
+  done(acc);
   return { success: approve ? "Accréditation approuvée." : "Demande refusée." };
 }
 
@@ -100,4 +111,81 @@ export async function saveQuotas(eventId: number, _state: ActionState, formData:
   await logAudit({ userId: user.id, action: "ACCREDITATION_QUOTAS", entity: "ticket_event", entityId: eventId, details: values });
   revalidatePath(path(eventId));
   return { success: "Quotas enregistrés." };
+}
+
+const EditSchema = z.object({
+  lastName: z.string().trim().min(2, { error: "Nom requis." }).max(80),
+  firstName: z.string().trim().min(2, { error: "Prénom requis." }).max(80),
+  phone: z.string(),
+  email: z.preprocess(blankToNull, z.email({ error: "Adresse e-mail invalide." }).nullable()),
+  outlet: z.string().trim().min(2, { error: "Organe de presse requis." }).max(160),
+  role: z.enum(PRESS_ROLES, { error: "Fonction requise." }),
+  pressCardNumber: z.string().trim().toUpperCase().min(3, { error: "Numéro de carte de presse requis." }).max(40),
+});
+
+/** Correction de la fiche d'un membre de la presse (identité, média, fonction, carte, contacts). */
+export async function updateAccreditation(accreditationId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("communication.manage");
+  const parsed = EditSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  const phone = normalizeCongoPhone(parsed.data.phone);
+  if (!phone) return { error: "Numéro de téléphone congolais invalide.", fieldErrors: { phone: ["Numéro invalide (ex. 06 123 45 67)."] } };
+  try {
+    const [acc] = await db
+      .update(accreditations)
+      .set({ ...parsed.data, lastName: parsed.data.lastName.toUpperCase(), phone })
+      .where(eq(accreditations.id, accreditationId))
+      .returning({ id: accreditations.id, eventId: accreditations.eventId });
+    if (!acc) return { error: "Demande introuvable." };
+    await logAudit({ userId: user.id, action: "UPDATE", entity: "accreditation", entityId: accreditationId, details: { outlet: parsed.data.outlet, role: parsed.data.role } });
+    done(acc);
+  } catch (e) {
+    if (isUniqueViolation(e, "accreditations_event_phone_uq")) return { error: "Une autre demande existe déjà avec ce numéro pour ce match." };
+    throw e;
+  }
+  return { success: "Fiche mise à jour." };
+}
+
+/** Remplacement de la photo du badge : JPEG ou PNG de 5 Mo au plus, type vérifié d'après le contenu. */
+export async function replaceAccreditationPhoto(accreditationId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("communication.manage");
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choisissez une photo." };
+  if (file.size > MAX_FILE_SIZE) return { error: "La photo dépasse 5 Mo." };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const kind = sniffKind(bytes);
+  if ((kind !== "jpeg" && kind !== "png") || !imageSize(bytes)) return { error: "Photo non acceptée : JPEG ou PNG." };
+  const [acc] = await db.select().from(accreditations).where(eq(accreditations.id, accreditationId)).limit(1);
+  if (!acc) return { error: "Demande introuvable." };
+  const photoKey = `accreditations/${acc.eventId}/${randomUUID()}.${kind}`;
+  await putFile(photoKey, bytes);
+  await db.update(accreditations).set({ photoKey, photoType: MIME[kind] }).where(eq(accreditations.id, accreditationId));
+  if (acc.photoKey) await deleteFile(acc.photoKey);
+  await logAudit({ userId: user.id, action: "ACCREDITATION_PHOTO", entity: "accreditation", entityId: accreditationId });
+  done(acc);
+  return { success: "Photo remplacée." };
+}
+
+/**
+ * Suppression d'une demande (doublon, erreur de saisie). Refusée si le badge a déjà servi au stade :
+ * les entrées restent dans l'historique, on retire alors l'accréditation (refus motivé) au lieu de la supprimer.
+ */
+export async function deleteAccreditation(accreditationId: number): Promise<ActionState> {
+  const user = await requirePermission("communication.manage");
+  const [acc] = await db.select().from(accreditations).where(eq(accreditations.id, accreditationId)).limit(1);
+  if (!acc) return { error: "Demande introuvable." };
+  if (acc.entries > 0) return { error: `Ce badge a déjà servi au stade (${acc.entries} entrée(s)) : retirez l'accréditation au lieu de la supprimer.` };
+  await db.delete(accreditations).where(eq(accreditations.id, accreditationId));
+  if (acc.photoKey) await deleteFile(acc.photoKey);
+  await logAudit({ userId: user.id, action: "DELETE", entity: "accreditation", entityId: accreditationId, details: { number: acc.number, name: `${acc.firstName} ${acc.lastName}`, outlet: acc.outlet } });
+  revalidatePath(path(acc.eventId));
+  return { success: "Demande supprimée." };
+}
+
+/** Suppression depuis la fiche : retour à la liste du match. */
+export async function deleteAccreditationAndReturn(accreditationId: number, eventId: number): Promise<ActionState> {
+  await requirePermission("communication.manage");
+  const result = await deleteAccreditation(accreditationId);
+  if (result?.error) return result;
+  redirect(path(eventId));
 }

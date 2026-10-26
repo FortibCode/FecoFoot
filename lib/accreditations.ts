@@ -53,3 +53,18 @@ export function quotaError(zones: PressZone[], granted: Partial<Record<PressZone
 }
 
 export const formatAccreditationNumber = (n: number) => `ACC-${String(n).padStart(5, "0")}`;
+
+/** Adresse de la photo d'un badge (route /accreditations/photo/[jeton]) ; la clé de version change avec le fichier. */
+export const pressPhotoUrl = (a: { badgeToken: string; photoKey: string | null }) => (a.photoKey ? `/accreditations/photo/${a.badgeToken}?v=${a.photoKey.slice(-12, -4)}` : null);
+
+/**
+ * Validité d'un badge au scan (page de vérification) : approuvé, match non annulé et pas encore terminé
+ * (jusqu'à 4 h après le coup d'envoi). Le badge n'est valable que pour son match (RG-16).
+ */
+export function badgeValidity(ctx: { status: AccreditationStatus; kickoffAt: Date; eventCancelled: boolean; now: Date }): { ok: boolean; reason: string } {
+  if (ctx.status === "REFUSED") return { ok: false, reason: "Accréditation refusée." };
+  if (ctx.status !== "APPROVED") return { ok: false, reason: "Accréditation pas encore validée par le service communication." };
+  if (ctx.eventCancelled) return { ok: false, reason: "Le match a été annulé." };
+  if (ctx.kickoffAt.getTime() + 4 * 3_600_000 < ctx.now.getTime()) return { ok: false, reason: "Le match est terminé : le badge n'est valable que pour ce match." };
+  return { ok: true, reason: "Badge authentique, valable pour ce match." };
+}

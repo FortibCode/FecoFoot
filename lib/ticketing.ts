@@ -138,3 +138,17 @@ export function gateLoad(g: { entries: number; recentEntries: number; capacity: 
 
 /** Nom de porte normalisé : « porte a », « Porte A » et « PORTE  A » désignent la même porte. */
 export const gateKey = (gate: string) => gate.trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * Titre d'un événement « Compétition : Équipe A – Équipe B (précision) » → morceaux pour l'affichage
+ * (billet, portefeuille, page de vente). Sans « : », pas de compétition ; sans « – », pas d'affiche.
+ */
+export function parseEventTitle(title: string): { competition: string | null; detail: string | null; match: string; teams: [string, string] | null } {
+  const i = title.indexOf(" : ");
+  const competition = i >= 0 ? title.slice(0, i) : null;
+  const rest = i >= 0 ? title.slice(i + 3) : title;
+  const detail = rest.match(/\(([^)]+)\)\s*$/)?.[1] ?? null;
+  const match = rest.replace(/\s*\([^)]+\)\s*$/, "");
+  const teams = match.split(/\s+[–-]\s+/);
+  return { competition, detail, match, teams: teams.length === 2 ? [teams[0], teams[1]] : null };
+}

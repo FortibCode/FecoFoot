@@ -1088,6 +1088,9 @@ export const accreditations = pgTable(
     outlet: varchar("outlet", { length: 160 }).notNull(),
     role: pressRoleEnum("role").notNull(),
     pressCardNumber: varchar("press_card_number", { length: 40 }).notNull(),
+    // Photo d'identité du badge (stockage des fichiers) ; absente pour les demandes antérieures à son introduction.
+    photoKey: varchar("photo_key", { length: 255 }),
+    photoType: varchar("photo_type", { length: 64 }),
     requestedZones: pressZoneEnum("requested_zones").array().notNull(),
     grantedZones: pressZoneEnum("granted_zones").array(),
     status: accreditationStatusEnum("status").notNull().default("PENDING"),

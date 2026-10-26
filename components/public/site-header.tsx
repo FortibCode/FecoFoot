@@ -48,7 +48,20 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
             <span className="mt-1 hidden text-[0.65rem] uppercase tracking-[0.18em] text-white/60 sm:block">Fédération Congolaise de Football</span>
           </span>
         </Link>
-        <PublicNav />
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Accès direct aux billets achetés (connexion demandée si besoin, puis retour à l'espace). */}
+          <Link
+            href="/supporters/espace#billets"
+            className="flex items-center gap-2 rounded-md border border-white/25 px-3 py-2 text-sm font-semibold transition-colors hover:border-[var(--flag-yellow)] hover:text-[var(--flag-yellow)]"
+          >
+            <svg aria-hidden viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z" />
+              <path d="M14 6v12" strokeDasharray="2 2" />
+            </svg>
+            <span>Mes billets</span>
+          </Link>
+          <PublicNav />
+        </div>
       </nav>
       <div className={`flag-stripe h-1 transition-opacity duration-300 ${solid ? "opacity-100" : "opacity-0"}`} />
     </header>

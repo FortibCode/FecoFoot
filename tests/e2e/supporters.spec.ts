@@ -68,7 +68,8 @@ test("supporter : Fan ID, adhésion payée par Mobile Money, interdiction de sta
   await expect(fan).toHaveURL(/\/paiement\/PAY-MBR-/);
   await expect(fan.locator("main")).toContainText(/5\s000\sFCFA/);
   await button(fan, "Confirmer le paiement").click();
-  await expect(fan).toHaveURL(/\/supporters\/espace$/);
+  await expect(fan).toHaveURL(/\/supporters\/espace\?adhesion=ok$/);
+  await expect(fan.locator("main").getByRole("status")).toContainText("Adhésion confirmée");
   await expect(card).toContainText("Membre");
   await expect(fan.getByTestId("fan-points")).toHaveText("1");
 
