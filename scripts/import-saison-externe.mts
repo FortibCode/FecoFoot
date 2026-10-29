@@ -2,6 +2,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { formatAffiliationNumber } from "../lib/clubs";
+import { divisionName } from "../lib/competitions";
 import { db } from "../lib/db";
 import { auditLogs, championships, clubAffiliationSeq, clubs, competitions, competitionTeams, documents, externalLinks, matches } from "../lib/db/schema";
 import { checkUpload, MIME } from "../lib/documents";
@@ -107,7 +108,7 @@ let [comp] = await db.select().from(competitions).where(and(eq(competitions.cham
 if (!comp) {
   [comp] = await db
     .insert(competitions)
-    .values({ name: `${ch.name} National`, slug: `${ch.code}-national-${season}-${season + 1}`, season, category: "SENIOR", gender: "M", type: "LEAGUE", status: "DRAFT", championshipId: ch.id })
+    .values({ name: divisionName(ch.name), slug: `${ch.code}-national-${season}-${season + 1}`, season, category: "SENIOR", gender: "M", type: "LEAGUE", status: "DRAFT", championshipId: ch.id })
     .returning();
   await logAudit({ userId: null, action: "CREATE", entity: "competition", entityId: comp.id, details: { source: "API_FOOTBALL", externalLeague, season } });
   console.log(`✓ Compétition créée : ${comp.name} ${season}-${season + 1}`);

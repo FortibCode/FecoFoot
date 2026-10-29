@@ -19,6 +19,7 @@ import { isLive, MATCH_STATUS_LABELS } from "@/lib/competitions";
 import { seasonLabel } from "@/lib/licenses";
 import { nationalFixturesOverview } from "@/lib/queries/national";
 import { NationalFixtures } from "@/components/public/national-fixtures";
+import { NationalTeamCards } from "@/components/public/national-team-cards";
 import { featuredPhotos, latestPhotos, photoUrl } from "@/lib/photos";
 import { CountUp } from "@/components/count-up";
 import { HeroSlideshow } from "@/components/public/hero-slideshow";
@@ -45,7 +46,7 @@ function MatchListRow({ row }: { row: MatchRow }) {
         href={`/matchs/${m.id}`}
         className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b py-4 transition-colors hover:bg-accent/60 sm:px-2"
       >
-        <span className="flex min-w-0 items-center gap-3 font-heading text-lg font-semibold uppercase sm:text-xl">
+        <span className="flex min-w-0 items-center gap-3 font-display text-lg font-semibold uppercase sm:text-xl">
           {row.home && <ClubLogo src={row.home.logo} name={row.home.name} className="size-8 text-xs" />}
           <span className="truncate">{teamName(row.home)}</span>
           {played ? (
@@ -105,6 +106,12 @@ export default async function HomePage() {
     elite ? competitionTables(elite.competition.id) : null,
   ]);
   const slides = featured.map((p) => ({ src: photoUrl(p), caption: p.caption }));
+  // Lien « toutes les photos » : la galerie de la sélection si toutes les photos en viennent, sinon les sélections.
+  const galleryTeams = [...new Set(gallery.map((p) => p.teamSlug).filter(Boolean))];
+  const galleryLink =
+    galleryTeams.length === 1
+      ? { href: `/equipes-nationales/${galleryTeams[0]}#photos`, label: `Toutes les photos des ${gallery[0].team}` }
+      : { href: "/equipes-nationales", label: "Toutes les sélections" };
   const cover = slides.length > 0;
   const figures = [
     [d.clubsCount, "Clubs affiliés"],
@@ -173,7 +180,7 @@ export default async function HomePage() {
           {/* Transparent ; au survol, un fond blanc balaie le bouton de gauche à droite et le texte passe en vert foncé. */}
           <Link
             href="/billetterie"
-            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md border border-white/80 px-6 py-3 text-sm font-semibold text-white backdrop-blur-[2px] transition-[color,border-color,box-shadow,transform] duration-300 ease-out hover:-translate-y-0.5 hover:border-white hover:text-brand-ink hover:shadow-[0_10px_30px_rgb(255_255_255/0.25)] focus-visible:text-brand-ink focus-visible:outline-white active:translate-y-0"
+            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md border border-white/80 px-6 py-3 text-sm font-semibold text-white backdrop-blur-[2px] transition-[color,border-color,box-shadow,transform] duration-300 ease-out motion-safe:hover:-translate-y-0.5 hover:border-white hover:text-brand-ink hover:shadow-[0_10px_30px_rgb(255_255_255/0.25)] focus-visible:text-brand-ink focus-visible:outline-white active:translate-y-0"
           >
             <span
               aria-hidden
@@ -227,7 +234,7 @@ export default async function HomePage() {
                     <ClubLogo
                       src={eliteLogos.get(t.id)}
                       name={t.name}
-                      className="size-11 grayscale-[15%] transition-transform duration-300 group-hover:scale-110 group-hover:grayscale-0 sm:size-12"
+                      className="size-11 grayscale-[15%] transition-transform duration-300 motion-safe:group-hover:scale-110 group-hover:grayscale-0 sm:size-12"
                     />
                     <span className="w-full truncate text-center text-[0.65rem] font-semibold">{t.shortName ?? t.name}</span>
                   </Link>
@@ -318,7 +325,7 @@ export default async function HomePage() {
             aside={
               d.latestSelection
                 ? `Dernière liste publiée : ${d.latestSelection.s.title} (${d.latestSelection.team.name}), le ${formatDate(d.latestSelection.s.publishedAt)}.`
-                : "Les six sélections nationales, des U-17 à l'équipe A, et les Diables Rouges Dames."
+                : `Les ${NATIONAL_TEAMS.length} sélections nationales : de l'équipe A aux U-15, et les Diables Rouges Dames.`
             }
             action={
               d.latestSelection ? (
@@ -330,40 +337,40 @@ export default async function HomePage() {
           />
           <NationalFixtures {...nationalGames} />
           {gallery.length > 0 && (
-            <Carousel label="En images" tone="light">
+            <Carousel
+              label="En images"
+              tone="light"
+              heading={
+                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                  <h3 className="font-heading text-2xl font-bold">En images</h3>
+                  <Link href={galleryLink.href} className="text-sm font-semibold text-flag-green underline-offset-4 hover:underline">
+                    {galleryLink.label} →
+                  </Link>
+                </div>
+              }
+            >
               {gallery.map((p, i) => (
                 <li key={p.id} data-reveal="up" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
-                  <Link href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"} className="group relative block overflow-hidden rounded-2xl shadow-sm">
+                  <Link
+                    href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"}
+                    className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-brand-ink shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green"
+                  >
+                    {/* Image illustrative : la légende, juste en dessous, donne le nom du lien. Fond sombre si l'image ne charge pas. */}
                     {/* eslint-disable-next-line @next/next/no-img-element -- image servie par la route des médias */}
-                    <img src={photoUrl(p)} alt={p.caption} loading="lazy" className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                    <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-[linear-gradient(0deg,rgb(0_0_0/0.75),transparent)] p-4 pt-12 text-white">
-                      <span className="flex flex-col gap-1">
-                        {p.team && <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--flag-yellow)]">{p.team}</span>}
-                        <span className="font-heading text-lg leading-tight font-semibold uppercase">{p.caption}</span>
-                      </span>
-                      <ArrowCircle tone="dark" />
+                    <img src={photoUrl(p)} alt="" loading="lazy" className="absolute inset-0 size-full object-cover text-transparent transition-transform duration-500 motion-safe:group-hover:scale-[1.04]" />
+                    <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-[linear-gradient(to_top,rgb(0_0_0/0.88)_0%,rgb(0_0_0/0.55)_45%,transparent_100%)]" />
+                    {/* Flèche en haut : le bas des photos porte souvent le filigrane du photographe. */}
+                    <ArrowCircle tone="dark" className="absolute top-3 right-3 bg-black/35 backdrop-blur-sm" />
+                    <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4 text-white">
+                      {p.team && <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-flag-yellow">{p.team}</span>}
+                      <span className="line-clamp-2 font-display text-lg leading-tight font-semibold uppercase">{p.caption}</span>
                     </span>
                   </Link>
                 </li>
               ))}
             </Carousel>
           )}
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {NATIONAL_TEAMS.map((t, i) => (
-              <li key={t.slug} data-reveal="up" style={{ ["--rd" as string]: `${i * 70}ms` }}>
-                <Link
-                  href={`/equipes-nationales/${t.slug}`}
-                  className="group flex items-center justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <span className="flex items-center gap-4">
-                    <span aria-hidden className="h-10 w-1.5 rounded-full bg-[linear-gradient(180deg,var(--flag-green)_0_33.33%,var(--flag-yellow)_33.33%_66.66%,var(--flag-red)_66.66%)]" />
-                    <span className="font-heading text-xl font-bold uppercase">{t.name}</span>
-                  </span>
-                  <ArrowCircle />
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <NationalTeamCards teams={NATIONAL_TEAMS} reveal />
         </Container>
       </section>
     </PublicShell>

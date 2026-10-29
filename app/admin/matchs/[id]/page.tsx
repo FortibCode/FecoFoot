@@ -122,7 +122,7 @@ export default async function MatchPage({ params }: PageProps<"/admin/matchs/[id
           {[home, away].map((team, i) => (
             <div key={i} className={`flex min-w-0 items-center gap-3 ${i === 0 ? "order-1 justify-end text-right" : "order-3"}`}>
               {i === 1 && team && <ClubLogo src={team.logo} name={team.name} className="size-14 text-sm" />}
-              <span className="min-w-0 font-heading text-base leading-tight font-bold uppercase sm:text-xl">{team?.name ?? "À déterminer"}</span>
+              <span className="min-w-0 font-display text-base leading-tight font-bold uppercase sm:text-xl">{team?.name ?? "À déterminer"}</span>
               {i === 0 && team && <ClubLogo src={team.logo} name={team.name} className="size-14 text-sm" />}
             </div>
           ))}

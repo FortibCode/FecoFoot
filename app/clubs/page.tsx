@@ -32,10 +32,10 @@ export default async function PublicClubsPage() {
                     <li key={c.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 8) * 60}ms` }}>
                       <Link
                         href={`/clubs/${c.slug}`}
-                        className="group flex h-full flex-col items-center gap-3 rounded-xl border bg-card p-5 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        className="group flex h-full flex-col items-center gap-3 rounded-xl border bg-card p-5 text-center shadow-sm transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-md"
                       >
-                        <ClubLogo src={logos.get(c.id)} name={c.name} className="size-20 transition-transform duration-300 group-hover:scale-105 sm:size-24" />
-                        <span className="font-heading text-lg leading-tight font-bold uppercase">{c.name}</span>
+                        <ClubLogo src={logos.get(c.id)} name={c.name} className="size-20 transition-transform duration-300 motion-safe:group-hover:scale-105 sm:size-24" />
+                        <span className="font-display text-lg leading-tight font-bold uppercase">{c.name}</span>
                         {(c.stadium || c.foundedYear) && (
                           <span className="text-xs text-muted-foreground">{[c.stadium, c.foundedYear && `Fondé en ${c.foundedYear}`].filter(Boolean).join(" · ")}</span>
                         )}

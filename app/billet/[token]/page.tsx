@@ -30,6 +30,8 @@ export default async function TicketPage({ params }: PageProps<"/billet/[token]"
   }
   return (
     <PublicShell eyebrow="Mon billet" title={t.event} wide>
+      {/* Impression au format d'un billet de stade (203 × 82 mm), le billet seul. */}
+      <style>{`@page { size: 203mm 82mm; margin: 0; } @media print { .ticket-print { max-width: none !important; width: 203mm !important; } .ticket-print > div { aspect-ratio: auto !important; height: 82mm; border-radius: 0 !important; box-shadow: none !important; } }`}</style>
       <ETicket t={t} qr={await qrSvg(await appUrl(`/billet/${t.token}`))} />
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <PrintButton label="Imprimer le billet" />

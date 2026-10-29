@@ -40,7 +40,10 @@ export const ADMIN_MODULES: AdminModule[] = [
   { code: "M13", label: "Accréditations médias", href: "/admin/accreditations", anyOf: ["communication.manage"], group: "Communication", ready: true },
   { code: "M10", label: "Billetterie", href: "/admin/billetterie", anyOf: ["ticketing.manage"], group: "Services et finances", ready: true },
   { code: "M11", label: "Supporters (Fan ID)", href: "/admin/supporters", anyOf: ["ticketing.manage"], group: "Services et finances", ready: true },
+  { code: "M21", label: "Formations", href: "/admin/formations", anyOf: ["programs.manage", "programs.participate"], group: "Services et finances", ready: true },
+  { code: "M21", label: "Subventions aux clubs", href: "/admin/subventions", anyOf: ["programs.manage", "programs.participate"], group: "Services et finances", ready: true, exceptRoles: ["LEAGUE"] },
   { code: "M16", label: "Paiements", href: "/admin/paiements", anyOf: ["payments.manage"], group: "Services et finances", ready: true },
+  { code: "M20", label: "Instances et commissions", href: "/admin/instances", anyOf: ["governance.manage"], group: "Administration système", ready: true },
   { code: "M02", label: "Utilisateurs", href: "/admin/utilisateurs", anyOf: ["users.manage"], group: "Administration système", ready: true },
   { code: "M17", label: "Notifications", href: "/admin/notifications", anyOf: ["users.manage"], group: "Administration système", ready: true },
   {

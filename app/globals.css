@@ -7,9 +7,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-poppins);
+  /* Charte typographique : Inter pour l'interface, les titres et les chiffres ; Oswald pour les affiches. */
+  --font-sans: var(--font-inter);
   --font-mono: ui-monospace, monospace;
-  --font-heading: var(--font-oswald);
+  --font-heading: var(--font-inter);
+  --font-display: var(--font-oswald);
   --color-brand-ink: var(--brand-ink);
   --color-brand-ink-soft: var(--brand-ink-soft);
   --color-flag-green: var(--flag-green);
@@ -135,17 +137,30 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Les blocs qui apparaissent en glissant (data-reveal="right"…) partent hors de l'écran : sans ce
+       rognage, la page défilerait à l'horizontale sur téléphone. « clip » ne crée pas de zone de
+       défilement, les éléments collants (en-tête, colonnes sticky) continuent de fonctionner. */
+    overflow-x: clip;
   }
   html {
     @apply font-sans;
+    /* Le filigrane (élément fixe, décalé hors du bord) ne doit pas élargir la page sur téléphone. */
+    overflow-x: clip;
     /* L'en-tête reste fixé en haut : les ancres (#photos…) s'arrêtent dessous. */
     scroll-padding-top: 5rem;
   }
-  /* Titres : Oswald, condensée et sportive. */
+  /* Titres importants : Inter 800, approche resserrée. */
   h1,
   h2 {
     font-family: var(--font-heading);
-    letter-spacing: 0.01em;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  /* Scores, classements, statistiques : chiffres alignés (largeur fixe). */
+  table,
+  time,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
   :focus-visible {
     outline: 2px solid var(--ring);

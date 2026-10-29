@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { UploadForm } from "@/components/admin/upload-form";
 import { requirePermission } from "@/lib/auth/guard";
 import { canAccessCompetition } from "@/lib/auth/roles";
-import { COMPETITION_STATUS_LABELS } from "@/lib/competitions";
+import { COMPETITION_STATUS_LABELS, divisionName } from "@/lib/competitions";
 import { formatDate } from "@/lib/format";
 import { championshipLogoUrl } from "@/lib/league-logo";
 import { seasonLabel, seasonOf } from "@/lib/licenses";
@@ -98,7 +98,7 @@ export default async function ChampionshipPage({ params }: PageProps<"/admin/cha
 
         <section id="ajouter" className="flex flex-col gap-4">
           <h2>Nouvelle saison</h2>
-          <SeasonForm action={createSeason.bind(null, ch.id)} suggested={suggested} defaultName={`${ch.name} National`} hasPrevious={seasons.length > 0} />
+          <SeasonForm action={createSeason.bind(null, ch.id)} suggested={suggested} defaultName={divisionName(ch.name)} hasPrevious={seasons.length > 0} />
         </section>
 
         <section className="flex flex-col gap-4">

@@ -107,7 +107,7 @@ export default async function PublicMatchPage({ params }: PageProps<"/matchs/[id
                 {team ? (
                   <>
                     <ClubLogo src={logos.get(team.id)} name={team.name} className="size-16 sm:size-24" />
-                    <span className="font-heading text-base leading-tight font-bold uppercase sm:text-xl">{team.name}</span>
+                    <span className="font-display text-base leading-tight font-bold uppercase sm:text-xl">{team.name}</span>
                   </>
                 ) : (
                   <span className="text-muted-foreground">À déterminer</span>

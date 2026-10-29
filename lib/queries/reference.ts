@@ -1,5 +1,6 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
+import { divisionName } from "@/lib/competitions";
 import { db } from "@/lib/db";
 import { championships, clubs, leagues } from "@/lib/db/schema";
 
@@ -12,7 +13,7 @@ export async function leagueOptions() {
 /** Divisions nationales (Ligue 1, Ligue 2…), nommées comme dans le module Ligues : « Ligue 1 National ». */
 export async function nationalDivisionOptions() {
   const rows = await db.select({ id: championships.id, name: championships.name }).from(championships).orderBy(asc(championships.tier));
-  return rows.map((c) => ({ id: c.id, name: `${c.name} National` }));
+  return rows.map((c) => ({ id: c.id, name: divisionName(c.name) }));
 }
 
 /** Ligues actives : seules à recevoir de nouveaux clubs ou de nouvelles compétitions. */

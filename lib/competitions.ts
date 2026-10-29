@@ -18,8 +18,21 @@ export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
   FINISHED: "Terminée",
 };
 
-/** Statut affiché sur le portail : une compétition publiée dont aucun match n'a commencé est « À venir ». */
-export const publicStatusLabel = (status: CompetitionStatus, played: number) => (status === "ONGOING" && played === 0 ? "À venir" : COMPETITION_STATUS_LABELS[status]);
+/**
+ * Statut affiché sur le portail : celui enregistré par l'organisateur, jamais déduit des dates.
+ * Seule nuance : une compétition publiée dont aucun match n'a commencé est « À venir ».
+ */
+export type PublicStatus = "UPCOMING" | CompetitionStatus;
+export const publicStatus = (status: CompetitionStatus, played: number): PublicStatus => (status === "ONGOING" && played === 0 ? "UPCOMING" : status);
+export const PUBLIC_STATUS_LABELS: Record<PublicStatus, string> = { ...COMPETITION_STATUS_LABELS, UPCOMING: "À venir" };
+export const publicStatusLabel = (status: CompetitionStatus, played: number) => PUBLIC_STATUS_LABELS[publicStatus(status, played)];
+
+/** Format d'une compétition, tel que configuré : championnat à points, poules, ou élimination directe. */
+export function formatLabel(c: { type: CompetitionType; doubleRound: boolean }, pools: number): string {
+  if (c.type === "CUP") return "Coupe à élimination directe";
+  const legs = c.doubleRound ? "aller-retour" : "aller simple";
+  return pools > 1 ? `Championnat en ${pools} poules (${legs})` : `Championnat à points (${legs})`;
+}
 
 export const GENDERS = ["M", "F"] as const;
 
@@ -398,3 +411,9 @@ export function lineupError(entries: LineupEntry[], ctx: { eligible: Set<number>
   if (new Set(numbers).size !== numbers.length) return "Deux joueurs ont le même numéro.";
   return null;
 }
+
+/**
+ * Nom d'une division nationale à partir du championnat : « Ligue 2 » → « Ligue 2 National » ;
+ * un nom déjà officiel (« Direct Ligue 1 », « … National ») est gardé tel quel.
+ */
+export const divisionName = (championshipName: string) => (/\b(national|direct)\b/i.test(championshipName) ? championshipName : `${championshipName} National`);

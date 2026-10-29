@@ -25,7 +25,7 @@ export function AuthLayout({ title, intro, children }: { title: string; intro?: 
             <BrandLogo size={150} decorative className="w-28 drop-shadow-[0_12px_24px_rgb(0_0_0/0.35)] md:w-36" />
           </Link>
           <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:delay-150 motion-safe:duration-700 motion-safe:fill-mode-both">
-            <p className="font-heading text-3xl font-bold tracking-wide uppercase md:text-4xl">Bienvenue</p>
+            <p className="font-display text-3xl font-bold tracking-wide uppercase md:text-4xl">Bienvenue</p>
             <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-white uppercase [text-shadow:0_1px_6px_rgb(0_0_0/0.45)]">Espace fédéral</p>
           </div>
         </aside>

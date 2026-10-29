@@ -39,16 +39,16 @@ function UpcomingCard({ row, index }: { row: Row; index: number }) {
   const [home, away] = f.isHome ? ["Congo", f.opponent] : [f.opponent, "Congo"];
   return (
     <li data-reveal="left" style={{ ["--rd" as string]: `${index * 120}ms` }}>
-      <Link href={`/equipes-nationales/${row.teamSlug}`} className="group block overflow-hidden rounded-2xl bg-brand-ink transition-transform duration-300 hover:-translate-y-1 text-white shadow-md transition-shadow hover:shadow-xl">
+      <Link href={`/equipes-nationales/${row.teamSlug}`} className="group block overflow-hidden rounded-2xl bg-brand-ink transition-transform duration-300 motion-safe:hover:-translate-y-1 text-white shadow-md transition-shadow hover:shadow-xl">
         <div className="flex items-center gap-3">
-          <span className="shrink-0 whitespace-nowrap bg-[var(--flag-red)] px-4 py-2 font-heading text-lg font-bold uppercase [clip-path:polygon(0_0,100%_0,calc(100%-0.75rem)_100%,0_100%)] pr-6">
+          <span className="shrink-0 whitespace-nowrap bg-[var(--flag-red)] px-4 py-2 font-display text-lg font-bold uppercase [clip-path:polygon(0_0,100%_0,calc(100%-0.75rem)_100%,0_100%)] pr-6">
             {formatDayMonth(f.kickoffAt)}
           </span>
           {f.competition && <span className="font-heading text-sm font-semibold whitespace-nowrap uppercase tracking-wide text-[var(--flag-yellow)]">{f.competition}</span>}
           <span className="ml-auto hidden pr-4 text-[0.65rem] whitespace-nowrap sm:inline font-semibold uppercase tracking-[0.14em] text-white/50">{row.team}</span>
         </div>
         <div className="flex flex-col gap-2 px-5 pt-4 pb-5">
-          <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-heading text-[1.35rem] font-bold uppercase sm:gap-x-3 sm:text-3xl">
+          <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-display text-[1.35rem] font-bold uppercase sm:gap-x-3 sm:text-3xl">
             <Team name={home} />
             <span className="rounded bg-[var(--flag-yellow)] px-1.5 py-0.5 text-sm text-brand-ink italic">VS</span>
             <Team name={away} />
@@ -79,7 +79,7 @@ function ResultRow({ row, index }: { row: Row; index: number }) {
   const venue = splitVenue(f.venue);
   return (
     <li data-reveal="right" style={{ ["--rd" as string]: `${index * 120}ms` }} className="border-b py-4 last:border-b-0">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 font-heading text-lg font-bold uppercase sm:text-xl">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 font-display text-lg font-bold uppercase sm:text-xl">
         <span className="min-w-0 justify-self-end">
           <Team name={f.isHome ? "Congo" : f.opponent} flagAfter />
         </span>

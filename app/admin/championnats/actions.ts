@@ -9,7 +9,7 @@ import { blankToNull, fromZodError, type ActionState } from "@/lib/action-state"
 import { logAudit } from "@/lib/audit";
 import { requirePermission, type CurrentUser } from "@/lib/auth/guard";
 import { canAccessCompetition } from "@/lib/auth/roles";
-import { nextSeasonClubs, type TeamOutcome } from "@/lib/competitions";
+import { divisionName, nextSeasonClubs, type TeamOutcome } from "@/lib/competitions";
 import { db } from "@/lib/db";
 import { championshipDocuments, championshipOfficials, championships, clubs, competitions, competitionTeams } from "@/lib/db/schema";
 import { MAX_FILE_SIZE, MIME, sniffKind } from "@/lib/documents";
@@ -104,7 +104,7 @@ export async function createSeason(championshipId: number, _state: ActionState, 
 
   const editions = await db.select().from(competitions).where(eq(competitions.championshipId, championshipId));
   const previous = editions.filter((e) => e.season < season).sort((a, b) => b.season - a.season)[0];
-  const name = parsed.data.name ?? `${ch.name} National`;
+  const name = parsed.data.name ?? divisionName(ch.name);
   const slug = slugify(`${name} ${seasonLabel(season)}`);
 
   // Clubs proposés : à partir des statuts sportifs de la saison précédente, ici et aux niveaux voisins.

@@ -6,7 +6,6 @@ import { MonthLine } from "@/components/admin/month-line";
 import { ClubLogo } from "@/components/public/club-logo";
 import { requirePermission } from "@/lib/auth/guard";
 import { can, ROLE_LABELS, type Permission } from "@/lib/auth/roles";
-import { formatFcfa } from "@/lib/format";
 import { seasonLabel } from "@/lib/licenses";
 import { modulesFor } from "@/lib/modules";
 import { MODULE_ICONS } from "@/lib/module-icons";
@@ -402,7 +401,8 @@ export default async function AdminDashboard() {
                   <Icon d={k.icon} size={20} />
                 </span>
                 <span className="db-kpi-value">
-                  {k.money ? formatFcfa(k.value) : nf.format(k.value)}
+                  {nf.format(k.value)}
+                  {k.money && <span className="db-kpi-unit">FCFA</span>}
                 </span>
                 <span className="db-kpi-label">{k.label}</span>
                 {k.progress && (

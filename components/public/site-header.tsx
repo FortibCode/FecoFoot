@@ -44,7 +44,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
         <Link href="/" className="flex shrink-0 items-center gap-3">
           <BrandLogo size={48} decorative className={`transition-[width,height] duration-300 ${solid ? "size-10" : "size-12"}`} />
           <span className="flex flex-col leading-none">
-            <span className="font-heading text-xl font-bold tracking-wide">FECOFOOT</span>
+            <span className="font-display text-xl font-bold tracking-wide">FECOFOOT</span>
             <span className="mt-1 hidden text-[0.65rem] uppercase tracking-[0.18em] text-white/60 sm:block">Fédération Congolaise de Football</span>
           </span>
         </Link>

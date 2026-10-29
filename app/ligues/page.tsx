@@ -33,9 +33,9 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
             <ul className="grid gap-3 sm:grid-cols-2">
               {divisions.map(({ c, teams, played }) => (
                 <li key={c.id}>
-                  <Link href={`/competitions/${c.slug}`} className="group flex h-full items-center justify-between gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <Link href={`/competitions/${c.slug}`} className="group flex h-full items-center justify-between gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-md">
                     <span className="flex flex-col gap-1">
-                      <span className="font-heading text-xl font-bold uppercase">{c.name}</span>
+                      <span className="font-display text-xl font-bold uppercase">{c.name}</span>
                       <span className="text-sm text-muted-foreground">
                         Saison {seasonLabel(c.season)} · {teams} club(s) · {publicStatusLabel(c.status, played)}
                       </span>
@@ -78,7 +78,7 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
                   <li key={l.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 8) * 50}ms` }}>
                     <Link
                       href={`/ligues/${l.code.toLowerCase()}`}
-                      className="group flex h-full flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                      className="group flex h-full flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-md"
                       data-testid="public-league"
                     >
                       <span className="flex items-center gap-3">
@@ -89,7 +89,7 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
                           <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-brand-ink font-heading text-lg font-bold text-[#fbde4a]">{l.code}</span>
                         )}
                         <span className="flex min-w-0 flex-col">
-                          <span className="font-heading text-lg leading-tight font-bold uppercase">{l.name}</span>
+                          <span className="font-display text-lg leading-tight font-bold uppercase">{l.name}</span>
                           {l.department && <span className="text-xs text-muted-foreground">Département : {l.department}</span>}
                         </span>
                       </span>

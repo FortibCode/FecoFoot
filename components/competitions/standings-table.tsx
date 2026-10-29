@@ -100,7 +100,7 @@ export function StandingsTable({
                   <span className="flex items-center gap-3">
                     {logos && (logos[r.clubId] ? (
                       // eslint-disable-next-line @next/next/no-img-element -- logo servi par la route des médias
-                      <img src={logos[r.clubId]} alt="" loading="lazy" className="size-8 shrink-0 object-contain transition-transform duration-300 group-hover:scale-110" />
+                      <img src={logos[r.clubId]} alt="" loading="lazy" className="size-8 shrink-0 object-contain transition-transform duration-300 motion-safe:group-hover:scale-110" />
                     ) : (
                       <span className="size-8 shrink-0" />
                     ))}

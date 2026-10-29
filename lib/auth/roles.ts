@@ -69,6 +69,11 @@ export const PERMISSIONS = [
   "player.self",
   "lineups.submit",
   "discipline.manage",
+  // Instances et commissions de la fédération (Comex, commissions, Assemblée générale).
+  "governance.manage",
+  // Formations des dirigeants et subventions aux clubs : organisation (fédération) / participation (club, ligue).
+  "programs.manage",
+  "programs.participate",
   "users.manage",
   "audit.read",
 ] as const;
@@ -94,6 +99,8 @@ const ADMIN_COMMON: Permission[] = [
   "payments.manage",
   "refereeing.manage",
   "discipline.manage",
+  "governance.manage",
+  "programs.manage",
   "audit.read",
 ];
 
@@ -111,9 +118,10 @@ const MATRIX: Record<Role, readonly Permission[]> = {
     "players.read",
     "licenses.validate",
     "transfers.review",
+    "programs.participate",
   ],
   // transfers.release : accord de sortie du club quitté (EF-TRF-05) ; lineups.submit : compositions d'équipe (EF-CMP-07).
-  CLUB: ["dashboard.view", "clubs.read", "players.manage", "players.read", "licenses.request", "transfers.release", "lineups.submit"],
+  CLUB: ["dashboard.view", "clubs.read", "players.manage", "players.read", "licenses.request", "transfers.release", "lineups.submit", "programs.participate"],
   DTN: ["dashboard.view", "players.read", "national_teams.manage"],
   COMMUNICATION: ["dashboard.view", "communication.manage"],
   TICKETING: ["dashboard.view", "ticketing.manage", "payments.manage"],

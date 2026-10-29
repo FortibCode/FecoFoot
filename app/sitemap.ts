@@ -18,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
   const page = (path: string, lastModified?: Date) => ({ url: `${base}${path}`, ...(lastModified && { lastModified }) });
   return [
-    ...["/", "/actualites", "/competitions", "/championnats/ligue-1", "/championnats/ligue-2", "/ligues", "/clubs", "/equipes-nationales", "/billetterie", "/supporters", "/accreditations", "/verifier"].map((p) => page(p)),
+    ...["/", "/federation", "/actualites", "/matchs", "/transferts", "/competitions", "/championnats/ligue-1", "/championnats/ligue-2", "/ligues", "/clubs", "/equipes-nationales", "/billetterie", "/supporters", "/accreditations", "/verifier"].map((p) => page(p)),
     ...news.map((a) => page(`/actualites/${a.slug}`, a.updatedAt)),
     ...comps.map((c) => page(`/competitions/${c.slug}`)),
     ...clubRows.map((c) => page(`/clubs/${c.slug}`, c.updatedAt)),

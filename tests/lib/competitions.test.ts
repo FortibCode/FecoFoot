@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildBracket,
+  divisionName,
+  formatLabel,
+  publicStatus,
+  publicStatusLabel,
   knockoutWinner,
   lineupError,
   nextSlot,
@@ -239,5 +243,29 @@ describe("Compositions d'équipe (EF-CMP-07)", () => {
 
   it("verrouillée au coup d'envoi", () => {
     expect(check(team(11, 0), { now: new Date("2026-10-10T15:00:00Z") })).toMatch(/commencé/);
+  });
+});
+
+describe("nom d'une division nationale", () => {
+  it("ajoute « National » sauf à un nom déjà officiel", () => {
+    expect(divisionName("Ligue 2")).toBe("Ligue 2 National");
+    expect(divisionName("Direct Ligue 1")).toBe("Direct Ligue 1");
+    expect(divisionName("Ligue 1 National")).toBe("Ligue 1 National");
+  });
+});
+
+describe("statut et format affichés sur le portail", () => {
+  it("respecte le statut enregistré ; « à venir » tant qu'aucun match n'a commencé", () => {
+    expect(publicStatus("ONGOING", 0)).toBe("UPCOMING");
+    expect(publicStatus("ONGOING", 3)).toBe("ONGOING");
+    // Terminée par l'organisateur : jamais « à venir », même sans match joué.
+    expect(publicStatus("FINISHED", 0)).toBe("FINISHED");
+    expect(publicStatusLabel("ONGOING", 0)).toBe("À venir");
+  });
+
+  it("décrit le format configuré", () => {
+    expect(formatLabel({ type: "LEAGUE", doubleRound: true }, 1)).toBe("Championnat à points (aller-retour)");
+    expect(formatLabel({ type: "LEAGUE", doubleRound: false }, 2)).toBe("Championnat en 2 poules (aller simple)");
+    expect(formatLabel({ type: "CUP", doubleRound: true }, 0)).toBe("Coupe à élimination directe");
   });
 });

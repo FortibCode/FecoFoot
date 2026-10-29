@@ -23,7 +23,7 @@ function Tile({ a, className = "", index = 0 }: { a: NewsItem; className?: strin
   return (
     <li data-reveal="up" style={{ ["--rd" as string]: `${index * 110}ms` }} className={`min-h-60 ${className}`}>
       <Link href={`/actualites/${a.slug}`} className="group relative flex h-full overflow-hidden rounded-xl bg-brand-ink shadow-sm">
-        <Cover a={a} className="absolute inset-0 size-full transition-transform duration-500 ease-out group-hover:scale-[1.04]" />
+        <Cover a={a} className="absolute inset-0 size-full transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]" />
         <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgb(0_0_0/0.82)_100%)]" />
         <span className="relative mt-auto flex flex-col items-start gap-2.5 p-5">
           <span className="rounded bg-primary px-2 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-white">{ARTICLE_CATEGORY_LABELS[a.category]}</span>

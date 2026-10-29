@@ -71,7 +71,7 @@ export function SiteFooter() {
           <Link href="/" className="flex items-center gap-4">
             <BrandLogo size={64} decorative />
             <span className="flex flex-col leading-tight">
-              <span className="font-heading text-2xl font-bold tracking-wide text-white">FECOFOOT</span>
+              <span className="font-display text-2xl font-bold tracking-wide text-white">FECOFOOT</span>
               <span className="text-xs uppercase tracking-[0.16em] text-white/55">Fédération Congolaise de Football</span>
             </span>
           </Link>
@@ -88,7 +88,7 @@ export function SiteFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`FECOFOOT sur ${s.name}`}
-                    className="flex size-10 items-center justify-center rounded-md border border-white/20 text-white transition hover:-translate-y-0.5 hover:border-[var(--flag-yellow)] hover:bg-[var(--flag-yellow)] hover:text-brand-ink focus-visible:outline-white"
+                    className="flex size-10 items-center justify-center rounded-md border border-white/20 text-white transition motion-safe:hover:-translate-y-0.5 hover:border-[var(--flag-yellow)] hover:bg-[var(--flag-yellow)] hover:text-brand-ink focus-visible:outline-white"
                   >
                     <svg viewBox="0 0 24 24" aria-hidden className="size-[1.15rem]" fill="currentColor">
                       <path d={s.path} />

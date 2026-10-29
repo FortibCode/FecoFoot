@@ -51,7 +51,7 @@ export function LoginForm() {
           {state.error}
         </p>
       )}
-      <Button type="submit" size="lg" disabled={pending} className="h-12 rounded-lg text-base font-semibold shadow-md transition hover:-translate-y-0.5 hover:shadow-lg">
+      <Button type="submit" size="lg" disabled={pending} className="h-12 rounded-lg text-base font-semibold shadow-md transition motion-safe:hover:-translate-y-0.5 hover:shadow-lg">
         {pending ? "Connexion…" : "Se connecter"}
       </Button>
     </form>

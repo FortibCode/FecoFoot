@@ -11,6 +11,7 @@ const NATIONAL = [
 ] as const;
 
 const LINKS = [
+  ["/federation", "La Fédération"],
   ["/actualites", "Actualités"],
   ["/matchs", "Matchs"],
   ["/competitions", "Compétitions"],

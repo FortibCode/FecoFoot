@@ -30,6 +30,9 @@ export default async function teardown() {
       await tx`delete from national_staff where full_name like 'E2E %'`;
       await tx`delete from national_fixtures where opponent like 'E2E %'`;
 
+      // Instances de test (membres en cascade).
+      await tx`delete from governance_bodies where name like 'E2E %'`;
+
       // Actualités de test (et leurs visuels).
       const covers = await tx<{ cover_key: string | null }[]>`delete from articles where title like 'E2E %' returning cover_key`;
       keys.push(...covers.map((c) => c.cover_key).filter((k): k is string => k !== null));
@@ -61,6 +64,14 @@ export default async function teardown() {
 
       const clubs = tx`select id from clubs where name like 'E2E %'`;
       const players = tx`select id from players where club_id in (${clubs})`;
+      // Formations et subventions de test (justificatifs en cascade) et leurs pièces.
+      const grantFiles = await tx<{ k: string | null }[]>`
+        select unnest(array[convention_key, signed_convention_key]) as k from club_grants where club_id in (${clubs})
+        union all select document_key from grant_expenses where grant_id in (select id from club_grants where club_id in (${clubs}))`;
+      keys.push(...grantFiles.map((f) => f.k).filter((k): k is string => k !== null));
+      await tx`delete from club_grants where club_id in (${clubs})`;
+      await tx`delete from training_registrations where club_id in (${clubs}) or training_id in (select id from trainings where title like 'E2E %')`;
+      await tx`delete from trainings where title like 'E2E %'`;
       const docs = await tx<{ storage_key: string }[]>`
         delete from documents
         where (owner_type = 'club' and owner_id in (${clubs})) or (owner_type = 'player' and owner_id in (${players}))

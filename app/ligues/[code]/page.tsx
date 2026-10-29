@@ -145,9 +145,9 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {clubs.map((c) => (
                 <li key={c.id}>
-                  <Link href={`/clubs/${c.slug}`} className="flex h-full flex-col items-center gap-2 rounded-xl border bg-card p-4 text-center transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <Link href={`/clubs/${c.slug}`} className="flex h-full flex-col items-center gap-2 rounded-xl border bg-card p-4 text-center transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-md">
                     <ClubLogo src={logos.get(c.id)} name={c.name} className="size-16" />
-                    <span className="font-heading leading-tight font-bold uppercase">{c.name}</span>
+                    <span className="font-display leading-tight font-bold uppercase">{c.name}</span>
                     <span className="text-xs text-muted-foreground">{c.city}</span>
                   </Link>
                 </li>

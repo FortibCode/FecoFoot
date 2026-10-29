@@ -55,7 +55,7 @@ export function TicketWallet({ tickets, qrs, now }: { tickets: WalletTicket[]; q
               {competition ?? EVENT_KIND_LABELS[e.kind]}
               {detail && ` · ${detail}`}
             </p>
-            <p className="mt-1 flex flex-wrap items-baseline gap-x-2 font-heading text-2xl leading-none font-bold uppercase sm:text-3xl">
+            <p className="mt-1 flex flex-wrap items-baseline gap-x-2 font-display text-2xl leading-none font-bold uppercase sm:text-3xl">
               {teams ? (
                 <>
                   {teams[0]} <span className="text-sm font-semibold text-white/50">vs</span> {teams[1]}

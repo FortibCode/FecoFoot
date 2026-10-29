@@ -1,80 +1,71 @@
 import type { Metadata } from "next";
-import { and, asc, eq, ne } from "drizzle-orm";
-import { notFound } from "next/navigation";
-import { MatchLine } from "@/components/competitions/match-line";
-import { ScorersList } from "@/components/competitions/standings-table";
-import { PaginatedStandings } from "@/components/competitions/paginated-standings";
-import { clubLogos } from "@/lib/club-logos";
+import Link from "next/link";
+import { and, eq, ne } from "drizzle-orm";
+import { notFound, redirect } from "next/navigation";
+import { CompetitionFacts, loadSeason, SeasonView } from "@/components/competitions/season-view";
 import { PublicShell } from "@/components/public/public-shell";
-import { LiveRefresh } from "@/components/live-refresh";
-import { COMPETITION_CATEGORY_LABELS, isLive, roundLabel } from "@/lib/competitions";
+import { COMPETITION_CATEGORY_LABELS, COMPETITION_GENDER_LABELS, hasScore, publicStatusLabel } from "@/lib/competitions";
 import { db } from "@/lib/db";
-import { competitions, matches } from "@/lib/db/schema";
+import { championships, competitions, leagues } from "@/lib/db/schema";
+import { leagueLogoUrl } from "@/lib/league-logo";
 import { seasonLabel } from "@/lib/licenses";
-import { competitionTables, matchQuery } from "@/lib/queries/competitions";
 
 async function load(slug: string) {
-  const [c] = await db.select().from(competitions).where(and(eq(competitions.slug, slug), ne(competitions.status, "DRAFT"))).limit(1);
-  return c ?? null;
+  const [row] = await db
+    .select({ c: competitions, league: leagues, championshipCode: championships.code })
+    .from(competitions)
+    .leftJoin(leagues, eq(competitions.leagueId, leagues.id))
+    .leftJoin(championships, eq(competitions.championshipId, championships.id))
+    .where(and(eq(competitions.slug, slug), ne(competitions.status, "DRAFT")))
+    .limit(1);
+  return row ?? null;
 }
 
 export async function generateMetadata({ params }: PageProps<"/competitions/[slug]">): Promise<Metadata> {
-  const c = await load((await params).slug);
-  return c ? { title: `${c.name} — FECOFOOT`, description: `Calendrier, résultats et classement — ${c.name}, saison ${seasonLabel(c.season)}.` } : {};
+  const row = await load((await params).slug);
+  return row ? { title: `${row.c.name} — FECOFOOT`, description: `Calendrier, résultats et classement — ${row.c.name}, saison ${seasonLabel(row.c.season)}.` } : {};
 }
 
-/** Calendrier, résultats, classement détaillé et meilleurs buteurs (EF-PUB-03). */
+/**
+ * Compétition (coupe, championnat départemental, tournoi de jeunes ou féminin) : présentation,
+ * règlement, clubs, calendrier, résultats, classement et buteurs (EF-PUB-03).
+ * Une saison de championnat national s'affiche sur la page du championnat (zones, documents, responsables).
+ */
 export default async function PublicCompetitionPage({ params }: PageProps<"/competitions/[slug]">) {
-  const c = await load((await params).slug);
-  if (!c) notFound();
-  const [data, allMatches] = await Promise.all([
-    competitionTables(c.id),
-    matchQuery().where(eq(matches.competitionId, c.id)).orderBy(asc(matches.round), asc(matches.bracketSlot), asc(matches.kickoffAt)),
-  ]);
-  const logos = Object.fromEntries(await clubLogos(data?.tables.flatMap((t) => t.rows.map((r) => r.clubId)) ?? []));
-  const rounds = [...new Set(allMatches.map((m) => m.match.round))];
-  const totalRounds = Math.max(0, ...rounds);
+  const row = await load((await params).slug);
+  if (!row) notFound();
+  const { c, league, championshipCode } = row;
+  if (championshipCode) redirect(`/championnats/${championshipCode}?saison=${c.season}`);
+  const data = await loadSeason(c.id);
+  const status = publicStatusLabel(c.status, data.matches.filter((m) => hasScore(m.match.status)).length);
+  const organiser = league?.name ?? "Fédération Congolaise de Football";
 
   return (
-    <PublicShell eyebrow={`${seasonLabel(c.season)} · ${COMPETITION_CATEGORY_LABELS[c.category]}`} subtitle={`${seasonLabel(c.season)} · ${COMPETITION_CATEGORY_LABELS[c.category]}`} title={c.name} wide>
-      <div className="flex flex-col gap-8">
-        {allMatches.some((m) => isLive(m.match.status)) && <LiveRefresh />}
-        {c.type === "LEAGUE" && data && (
-          <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <div className="flex min-w-0 flex-col gap-4">
-              <h2 className="text-lg font-bold">Classement</h2>
-              {data.tables.map((t) => (
-                <PaginatedStandings
-                  key={t.pool}
-                  rows={t.rows}
-                  title={t.pool ? `Poule ${t.pool}` : undefined}
-                  logos={logos}
-                  zones={{ promotion: c.promotionSpots, relegation: c.relegationSpots }}
-                />
-              ))}
-            </div>
-            <div className="flex min-w-0 flex-col gap-4">
-              <h2 className="text-lg font-bold">Meilleurs buteurs</h2>
-              <ScorersList scorers={data.scorers} />
-            </div>
-          </section>
-        )}
-        <section className="flex flex-col gap-4">
-          <h2 className="text-lg font-bold">{c.type === "CUP" ? "Tableau" : "Calendrier et résultats"}</h2>
-          {rounds.map((r) => (
-            <div key={r} className="overflow-hidden rounded-lg border">
-              <p className="border-b bg-muted/50 px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                {c.type === "CUP" ? roundLabel(r, totalRounds) : `Journée ${r}`}
-              </p>
-              <div className="divide-y">
-                {allMatches
-                  .filter((m) => m.match.round === r)
-                  .map((m) => (
-                    <MatchLine key={m.match.id} row={m} href={`/matchs/${m.match.id}`} official />
-                  ))}
-              </div>
-            </div>
-          ))}
+    <PublicShell
+      eyebrow="Compétitions"
+      title={c.name}
+      logo={league ? leagueLogoUrl(league) : null}
+      subtitle={[organiser, `Saison ${seasonLabel(c.season)}`, COMPETITION_CATEGORY_LABELS[c.category], COMPETITION_GENDER_LABELS[c.gender], status].join(" · ")}
+      wide
+    >
+      <div className="flex flex-col gap-10">
+        <SeasonView c={c} data={data} />
+        <section className="flex flex-col gap-3" aria-labelledby="reglement">
+          <h2 id="reglement" className="text-lg font-bold">
+            Présentation et règlement
+          </h2>
+          <p className="text-sm">
+            Organisée par{" "}
+            {league ? (
+              <Link href={`/ligues/${league.code.toLowerCase()}`} className="font-semibold underline underline-offset-2">
+                {league.name}
+              </Link>
+            ) : (
+              <strong>la Fédération Congolaise de Football</strong>
+            )}
+            .
+          </p>
+          <CompetitionFacts c={c} pools={data.pools.length} />
         </section>
       </div>
     </PublicShell>

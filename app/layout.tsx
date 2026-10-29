@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
-import { Oswald, Poppins } from "next/font/google";
+import { Inter, Oswald } from "next/font/google";
 import { connection } from "next/server";
 import "./globals.css";
 import { DevPerformanceGuard } from "@/components/dev-performance-guard";
 import { RevealObserver } from "@/components/reveal-observer";
 
 // next/font auto-héberge la police au build : aucun appel à Google côté visiteur.
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
+// Inter : toute l'interface, titres (700-800) et chiffres (scores, statistiques en chiffres alignés).
+// Police variable : un seul fichier pour toutes les graisses, léger en 3G (ENF-01).
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
+// Oswald, étroite : affiches et visuels sportifs (noms d'équipes, « Congo vs Comores », billet, badge).
 const oswald = Oswald({ variable: "--font-oswald", subsets: ["latin"], weight: ["500", "600", "700"], display: "swap" });
 
 export const metadata: Metadata = {
@@ -29,7 +27,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Rendu à chaque requête : nécessaire pour que Next applique le nonce CSP de la requête à ses scripts (ENF-09).
   await connection();
   return (
-    <html lang="fr" className={`${poppins.variable} ${oswald.variable} h-full antialiased`}>
+    <html lang="fr" className={`${inter.variable} ${oswald.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <DevPerformanceGuard />
         {children}

@@ -9,6 +9,7 @@ import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { championships, leagues, referees } from "@/lib/db/schema";
 import { leagueOptions, nationalDivisionOptions } from "@/lib/queries/reference";
+import { divisionName } from "@/lib/competitions";
 import { NATIONAL_LEVEL, parseScope, REFEREE_GRADE_LABELS, REFEREE_GRADES, scopeValue } from "@/lib/referees";
 import { SelectField } from "@/components/ui/field";
 import { textMatch } from "@/lib/text-search";
@@ -118,7 +119,7 @@ export default async function RefereesPage({ searchParams }: PageProps<"/admin/a
               </Link>
             </td>
             <td className="px-3 py-2">{REFEREE_GRADE_LABELS[r.grade]}</td>
-            <td className="px-3 py-2">{division ? `${division} National` : (league ?? NATIONAL_LEVEL)}</td>
+            <td className="px-3 py-2">{division ? divisionName(division) : (league ?? NATIONAL_LEVEL)}</td>
             <td className="px-3 py-2 text-xs">{[r.phone, r.email].filter(Boolean).join(" · ") || "—"}</td>
             <td className="px-3 py-2">{r.active ? "Actif" : "Inactif"}</td>
             <td>

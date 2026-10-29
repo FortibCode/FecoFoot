@@ -30,11 +30,11 @@ export function PressBadge({
       <header className="flex items-center gap-3 bg-[#0b1f17] px-4 pt-3 pb-3 text-white">
         <BrandLogo size={36} decorative />
         <div className="min-w-0 leading-tight">
-          <p className="font-heading text-sm font-bold tracking-wider">FECOFOOT</p>
+          <p className="font-display text-sm font-bold tracking-wider">FECOFOOT</p>
           <p className="text-[0.55rem] uppercase tracking-[0.16em] text-white/70">Fédération Congolaise de Football</p>
         </div>
       </header>
-      <p className="bg-[#fbde4a] py-1.5 text-center font-heading text-3xl leading-none font-bold tracking-[0.3em] text-[#0b1f17]">PRESSE</p>
+      <p className="bg-[#fbde4a] py-1.5 text-center font-display text-3xl leading-none font-bold tracking-[0.3em] text-[#0b1f17]">PRESSE</p>
       <div aria-hidden className="flex h-1.5">
         <span className="flex-1 bg-[#009543]" />
         <span className="flex-1 bg-[#fbde4a]" />
@@ -51,7 +51,7 @@ export function PressBadge({
           </span>
         )}
         <div>
-          <p className="font-heading text-2xl leading-tight font-bold uppercase">{a.lastName}</p>
+          <p className="font-display text-2xl leading-tight font-bold uppercase">{a.lastName}</p>
           <p className="text-lg leading-tight">{a.firstName}</p>
         </div>
         <p className="rounded-full bg-[#0b1f17] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white">{PRESS_ROLE_LABELS[a.role]}</p>
@@ -82,7 +82,7 @@ export function PressBadge({
             {competition ?? "Rencontre"}
             {detail && ` · ${detail}`}
           </p>
-          <p className="font-heading text-lg leading-tight font-bold uppercase">{teams ? `${teams[0]} – ${teams[1]}` : match}</p>
+          <p className="font-display text-lg leading-tight font-bold uppercase">{teams ? `${teams[0]} – ${teams[1]}` : match}</p>
           <p className="text-xs text-gray-600 first-letter:uppercase">
             {dayFmt.format(a.kickoffAt)} · {timeFmt.format(a.kickoffAt)}
           </p>

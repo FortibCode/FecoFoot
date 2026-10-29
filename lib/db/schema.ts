@@ -30,6 +30,8 @@ import { CASE_STATUSES, SANCTION_TYPES } from "../discipline";
 import { CATEGORIES, CONSENT_STATUSES, IDENTITY_METHODS, LICENSE_STATUSES, LICENSE_TYPES, POSITIONS } from "../licenses";
 import { BIOMETRIC_CHECK_RESULTS } from "../biometrics-rules";
 import { EXTERNAL_PROVIDERS, LINK_ENTITIES, SCORE_SOURCES } from "../external-sync-rules";
+import { GOVERNANCE_BODY_KINDS } from "../governance";
+import { EXPENSE_STATUSES, GRANT_STATUSES, REGISTRATION_STATUSES, TRAINING_ROLES } from "../programs";
 
 // ─── Sécurité ────────────────────────────────────────────────────────────────
 
@@ -1351,3 +1353,154 @@ export const externalConflicts = pgTable(
   },
   (t) => [index("external_conflicts_open_idx").on(t.resolvedAt, t.matchId)],
 );
+
+// ─── Instances et commissions de la fédération (gouvernance) ─────────────────
+
+export const governanceBodyKindEnum = pgEnum("governance_body_kind", GOVERNANCE_BODY_KINDS);
+
+/** Comité exécutif, Assemblée générale, commissions juridictionnelles, permanentes, indépendantes. */
+export const governanceBodies = pgTable(
+  "governance_bodies",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 120 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    kind: governanceBodyKindEnum("kind").notNull(),
+    description: text("description"),
+    // Ordre d'affichage sur la page publique « La Fédération ».
+    sortOrder: integer("sort_order").notNull().default(0),
+    published: boolean("published").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("governance_bodies_slug_uq").on(t.slug)],
+);
+
+/**
+ * Membres d'une instance et leur mandat. Un mandat qui prend fin passe dans l'historique (ENDED) ;
+ * `startDate` peut être inconnue ; `source` cite le texte de référence (ex. communiqué du Comex).
+ */
+export const governanceMembers = pgTable(
+  "governance_members",
+  {
+    id: serial("id").primaryKey(),
+    bodyId: integer("body_id")
+      .notNull()
+      .references(() => governanceBodies.id, { onDelete: "cascade" }),
+    fullName: varchar("full_name", { length: 160 }).notNull(),
+    position: varchar("position", { length: 120 }).notNull(),
+    startDate: date("start_date"),
+    endDate: date("end_date"),
+    status: officialStatusEnum("status").notNull().default("ACTIVE"),
+    source: varchar("source", { length: 200 }),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("governance_members_body_idx").on(t.bodyId, t.status)],
+)
+;
+
+// ─── Formations des dirigeants et subventions aux clubs ──────────────────────
+
+export const trainingRoleEnum = pgEnum("training_role", TRAINING_ROLES);
+export const registrationStatusEnum = pgEnum("registration_status", REGISTRATION_STATUSES);
+export const grantStatusEnum = pgEnum("grant_status", GRANT_STATUSES);
+export const expenseStatusEnum = pgEnum("expense_status", EXPENSE_STATUSES);
+export const grantNumberSeq = pgSequence("grant_number_seq", { startWith: 1 });
+
+/** Formation organisée par la fédération (ex. formation FIFA des dirigeants, 16-18 novembre 2026). */
+export const trainings = pgTable(
+  "trainings",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 160 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    organizer: varchar("organizer", { length: 120 }).notNull(),
+    description: text("description"),
+    location: varchar("location", { length: 160 }).notNull(),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date").notNull(),
+    // Places disponibles ; null = sans limite.
+    capacity: integer("capacity"),
+    modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
+    registrationOpen: boolean("registration_open").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("trainings_slug_uq").on(t.slug)],
+);
+
+/** Dirigeant inscrit par son club, sa ligue ou la fédération ; présence pointée jour par jour. */
+export const trainingRegistrations = pgTable(
+  "training_registrations",
+  {
+    id: serial("id").primaryKey(),
+    trainingId: integer("training_id")
+      .notNull()
+      .references(() => trainings.id, { onDelete: "cascade" }),
+    clubId: integer("club_id").references(() => clubs.id),
+    leagueId: integer("league_id").references(() => leagues.id),
+    fullName: varchar("full_name", { length: 160 }).notNull(),
+    role: trainingRoleEnum("role").notNull(),
+    phone: varchar("phone", { length: 32 }),
+    email: varchar("email", { length: 255 }),
+    status: registrationStatusEnum("status").notNull().default("REGISTERED"),
+    presentDays: date("present_days").array().notNull().default(sql`'{}'::date[]`),
+    registeredBy: integer("registered_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("training_registrations_training_idx").on(t.trainingId, t.status), index("training_registrations_club_idx").on(t.clubId)],
+);
+
+/**
+ * Subvention à un club, sous convention : la fédération dépose la convention, le club la renvoie signée,
+ * la fédération verse puis contrôle l'utilisation des fonds (justificatifs) avant de clôturer.
+ */
+export const clubGrants = pgTable(
+  "club_grants",
+  {
+    id: serial("id").primaryKey(),
+    number: varchar("number", { length: 16 }).notNull(),
+    clubId: integer("club_id")
+      .notNull()
+      .references(() => clubs.id),
+    // Formation à l'issue de laquelle la subvention est allouée (communiqué du 28 octobre 2026).
+    trainingId: integer("training_id").references(() => trainings.id),
+    programme: varchar("programme", { length: 160 }).notNull(),
+    amount: integer("amount").notNull(),
+    status: grantStatusEnum("status").notNull().default("DRAFT"),
+    conventionKey: varchar("convention_key", { length: 255 }),
+    signedConventionKey: varchar("signed_convention_key", { length: 255 }),
+    signedAt: timestamp("signed_at", { withTimezone: true }),
+    paidAt: date("paid_at"),
+    paymentRef: varchar("payment_ref", { length: 80 }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    note: text("note"),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("club_grants_number_uq").on(t.number), index("club_grants_club_idx").on(t.clubId)],
+);
+
+/** Justificatif de dépense déposé par le club, accepté ou refusé par la fédération. */
+export const grantExpenses = pgTable(
+  "grant_expenses",
+  {
+    id: serial("id").primaryKey(),
+    grantId: integer("grant_id")
+      .notNull()
+      .references(() => clubGrants.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 200 }).notNull(),
+    amount: integer("amount").notNull(),
+    spentOn: date("spent_on").notNull(),
+    documentKey: varchar("document_key", { length: 255 }).notNull(),
+    documentType: varchar("document_type", { length: 64 }).notNull(),
+    status: expenseStatusEnum("status").notNull().default("SUBMITTED"),
+    reviewNote: text("review_note"),
+    reviewedBy: integer("reviewed_by").references(() => users.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    submittedBy: integer("submitted_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("grant_expenses_grant_idx").on(t.grantId)],
+)
+;

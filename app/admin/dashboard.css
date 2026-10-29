@@ -142,7 +142,10 @@
 .db-kpi-ink::before { background: var(--fcf-ink); }
 a.db-kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(10, 31, 21, 0.1); border-color: #c8ddd3; }
 .db-kpi-icon { width: 42px; height: 42px; margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
-.db-kpi-value { font-family: var(--font-heading); font-size: 2.1rem; font-weight: 700; line-height: 1.05; color: #0f1a14; font-variant-numeric: tabular-nums; }
+/* Chiffre clé : taille adaptée à la largeur de la carte (Inter, chiffres alignés), unité en petit. */
+.db-kpi { container-type: inline-size; }
+.db-kpi-value { font-family: var(--font-heading); font-size: clamp(1.35rem, 17cqi, 2.1rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; color: #0f1a14; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.db-kpi-unit { display: block; margin-top: 0.15rem; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; color: #4b5d53; }
 .db-kpi-label { font-size: 0.86rem; font-weight: 600; color: #2f4a3c; }
 .db-kpi-foot { margin-top: auto; padding-top: 0.6rem; border-top: 1px solid #eef3f0; font-size: 0.76rem; color: #6b8c7b; }
 .db-delta { display: inline-block; padding: 0.05rem 0.45rem; border-radius: 6px; background: #eef3f0; color: #4a6659; font-weight: 700; }
@@ -286,7 +289,7 @@ a.db-kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(10, 3
   .db-kpis { gap: 0.6rem; }
   .db-kpi { padding: 1rem 0.9rem 0.85rem; }
   .db-kpi-icon { width: 36px; height: 36px; margin-bottom: 0.4rem; }
-  .db-kpi-value { font-size: 1.6rem; }
+  .db-kpi-value { font-size: clamp(1.25rem, 17cqi, 1.6rem); }
   .db-kpi-label { font-size: 0.78rem; }
   .db-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0.85rem; }
   .db-shortcut { flex-direction: column; align-items: flex-start; }
