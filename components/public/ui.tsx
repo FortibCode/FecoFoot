@@ -34,12 +34,15 @@ export function PillLink({ href, children, variant = "yellow" }: { href: string;
 
 /** En-tête de section : étiquette, titre bicolore à gauche ; texte et action à droite. */
 export function SectionHead({
+  id,
   title,
   highlight,
   aside,
   action,
   tone = "light",
 }: {
+  /** Identifiant du titre (aria-labelledby de la section). */
+  id?: string;
   title: string;
   highlight?: string;
   aside?: string;
@@ -49,7 +52,7 @@ export function SectionHead({
   return (
     <div className="grid gap-5 md:grid-cols-2 md:items-end">
       <div data-reveal="left" className="flex flex-col gap-3">
-        <h2 className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
+        <h2 id={id} className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
           {title}
           {highlight && (
             <>

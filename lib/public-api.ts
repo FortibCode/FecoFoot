@@ -1,5 +1,5 @@
 import "server-only";
-import { hasScore } from "@/lib/competitions";
+import { hasScore, liveMinute, type MatchPeriod } from "@/lib/competitions";
 import type { MatchRow } from "@/lib/queries/competitions";
 
 /** En-têtes des réponses de l'API publique (lecture seule, mise en cache courte). */
@@ -22,6 +22,8 @@ export function publicMatch(r: MatchRow) {
     kickoffAt: m.kickoffAt,
     venue: m.venue,
     status: m.status,
+    // Minute de jeu d'un match en cours (« 63' », « 45+2' ») ; null hors du jeu ou chronomètre inconnu.
+    minute: m.status === "LIVE" ? liveMinute(m.period as MatchPeriod | null, m.periodStartedAt) : null,
     official: m.status === "FINISHED" && Boolean(m.validatedAt),
     // Provenance : saisie officielle de la fédération, ou source sportive externe (non officielle avant validation).
     source: m.scoreSource,

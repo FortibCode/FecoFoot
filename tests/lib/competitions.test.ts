@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildBracket,
   divisionName,
+  competitionFamily,
   formatLabel,
+  liveMinute,
+  matchHistory,
+  publicMatchStatus,
+  nextPeriod,
   publicStatus,
   publicStatusLabel,
   knockoutWinner,
@@ -267,5 +272,75 @@ describe("statut et format affichés sur le portail", () => {
     expect(formatLabel({ type: "LEAGUE", doubleRound: true }, 1)).toBe("Championnat à points (aller-retour)");
     expect(formatLabel({ type: "LEAGUE", doubleRound: false }, 2)).toBe("Championnat en 2 poules (aller simple)");
     expect(formatLabel({ type: "CUP", doubleRound: true }, 0)).toBe("Coupe à élimination directe");
+  });
+});
+
+describe("minute de jeu en direct", () => {
+  it("passe d'une période à l'autre au coup d'envoi et à la reprise", () => {
+    expect(nextPeriod({ status: "SCHEDULED", period: null }, { status: "LIVE", period: null })).toEqual({ period: 1, restart: true });
+    expect(nextPeriod({ status: "HALF_TIME", period: 1 }, { status: "LIVE", period: null })).toEqual({ period: 2, restart: true });
+    // Mise à jour du score pendant le jeu : le chronomètre continue.
+    expect(nextPeriod({ status: "LIVE", period: 2 }, { status: "LIVE", period: null })).toEqual({ period: 2, restart: false });
+    // Prolongation choisie par l'officiel.
+    expect(nextPeriod({ status: "HALF_TIME", period: 2 }, { status: "LIVE", period: 3 })).toEqual({ period: 3, restart: true });
+    // Pause : la période est conservée, le chronomètre s'arrête.
+    expect(nextPeriod({ status: "LIVE", period: 1 }, { status: "HALF_TIME", period: null })).toEqual({ period: 1, restart: false });
+  });
+
+  it("affiche la minute, avec le temps additionnel", () => {
+    const start = new Date("2026-11-13T13:00:00Z");
+    const at = (min: number) => new Date(start.getTime() + min * 60_000);
+    expect(liveMinute(1, start, at(0))).toBe("1'");
+    expect(liveMinute(1, start, at(36.5))).toBe("37'");
+    expect(liveMinute(1, start, at(46))).toBe("45+2'");
+    expect(liveMinute(2, start, at(10))).toBe("56'");
+    expect(liveMinute(4, start, at(3))).toBe("109'");
+    expect(liveMinute(null, start, at(3))).toBeNull();
+  });
+});
+
+describe("statut public et historique d'un match", () => {
+  it("regroupe la mi-temps avec le direct", () => {
+    expect(publicMatchStatus("HALF_TIME")).toBe("LIVE");
+    expect(publicMatchStatus("SCHEDULED")).toBe("UPCOMING");
+    expect(publicMatchStatus("POSTPONED")).toBe("POSTPONED");
+  });
+
+  it("raconte le match sans détail interne", () => {
+    const t = (h: number) => new Date(Date.UTC(2026, 10, 13, h));
+    const history = matchHistory([
+      { action: "MATCH_SHEET", createdAt: t(13), details: { before: { status: "SCHEDULED" }, after: { status: "LIVE", score: [0, 0] }, validated: false } },
+      { action: "SCHEDULE", createdAt: t(9), details: { before: { kickoffAt: null }, after: { kickoffAt: "2026-11-13T13:00:00.000Z" } } },
+      { action: "MATCH_SHEET", createdAt: t(14), details: { before: { status: "LIVE" }, after: { status: "HALF_TIME", score: [1, 0] }, validated: false } },
+      { action: "MATCH_SHEET", createdAt: t(15), details: { before: { status: "HALF_TIME" }, after: { status: "FINISHED", score: [2, 1] }, validated: false } },
+      { action: "RESULT_VALIDATED", createdAt: t(16), details: { score: [2, 1] } },
+      { action: "RESULT_CORRECTION", createdAt: t(17), details: { before: { status: "FINISHED" }, after: { status: "FINISHED", score: [2, 2] }, validated: true } },
+      { action: "LINEUP", createdAt: t(12), details: { clubId: 1 } },
+    ]);
+    expect(history.map((h) => h.label)).toEqual([
+      "Match programmé",
+      "Coup d'envoi",
+      "Mi-temps",
+      "Fin du match",
+      "Résultat validé par l'organisateur",
+      "Résultat corrigé par l'organisateur : 2 – 2",
+    ]);
+    expect(history[0].kickoffAt?.toISOString()).toBe("2026-11-13T13:00:00.000Z");
+  });
+});
+
+describe("catégories de matchs du portail", () => {
+  const base = { gender: "M" as const, category: "SENIOR" as const, leagueId: null, type: "LEAGUE" as const, tier: null };
+  it("classe chaque compétition selon sa configuration", () => {
+    expect(competitionFamily({ ...base, tier: 1 })).toBe("ligue-1");
+    expect(competitionFamily({ ...base, tier: 2 })).toBe("ligue-2");
+    expect(competitionFamily({ ...base, leagueId: 4 })).toBe("departementales");
+    expect(competitionFamily({ ...base, type: "CUP" })).toBe("coupes");
+    expect(competitionFamily(base)).toBe("autres");
+  });
+  it("ne confond pas féminin, jeunes et divisions", () => {
+    expect(competitionFamily({ ...base, gender: "F", tier: 1 })).toBe("feminin");
+    expect(competitionFamily({ ...base, category: "U17", leagueId: 4 })).toBe("jeunes");
+    expect(competitionFamily({ ...base, category: "VETERAN", leagueId: 4 })).toBe("departementales");
   });
 });

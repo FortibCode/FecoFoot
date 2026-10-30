@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FormMessage, SelectField, TextField } from "@/components/ui/field";
 import type { ActionState } from "@/lib/action-state";
-import { EVENT_TYPE_LABELS, EVENT_TYPES, MATCH_STATUS_LABELS, MATCH_STATUSES } from "@/lib/competitions";
+import { EVENT_TYPE_LABELS, EVENT_TYPES, MATCH_PERIOD_LABELS, MATCH_PERIODS, MATCH_STATUS_LABELS, MATCH_STATUSES, type MatchPeriod } from "@/lib/competitions";
 import { OFFICIAL_ROLE_LABELS, OFFICIAL_ROLES } from "@/lib/referees";
 import { useActionForm } from "@/lib/use-action-form";
 
@@ -37,6 +37,7 @@ export function SheetForm({
   action: Action;
   values: {
     status: string;
+    period: number | null;
     homeScore: number | null;
     awayScore: number | null;
     attendance: number | null;
@@ -56,6 +57,15 @@ export function SheetForm({
         {MATCH_STATUSES.map((s) => (
           <option key={s} value={s}>
             {MATCH_STATUS_LABELS[s]}
+          </option>
+        ))}
+      </SelectField>
+      {/* Minute de jeu publique : le chronomètre part au coup d'envoi et à chaque reprise. */}
+      <SelectField label="Période en cours" name="period" defaultValue="" hint={values.period ? `Actuellement : ${MATCH_PERIOD_LABELS[values.period as MatchPeriod]}` : "Coup d'envoi puis reprise : période suivante"}>
+        <option value="">Automatique</option>
+        {MATCH_PERIODS.filter((p) => cup || p <= 2).map((p) => (
+          <option key={p} value={p}>
+            {MATCH_PERIOD_LABELS[p]}
           </option>
         ))}
       </SelectField>

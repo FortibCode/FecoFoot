@@ -18,7 +18,8 @@ import { formatDateTime } from "@/lib/format";
 import { entityHistory } from "@/lib/queries/audit";
 import { canEditMatchSheet, canManageMatch, eligiblePlayers, matchQuery, refereeOf } from "@/lib/queries/competitions";
 import { OFFICIAL_ROLE_LABELS, OFFICIAL_ROLES, REFEREE_GRADE_LABELS } from "@/lib/referees";
-import { addMatchEvent, deleteMatchEvent, designateOfficial, removeOfficial, scheduleMatch, updateMatchSheet, validateResult } from "../actions";
+import { addMatchEvent, deleteMatchEvent, designateOfficial, removeOfficial, scheduleMatch, setMatchFeatured, updateMatchSheet, validateResult } from "../actions";
+import { FeaturedToggle } from "@/components/featured-toggle";
 import { DesignationForm, EventForm, ScheduleForm, SheetForm } from "../MatchForms";
 
 export const metadata: Metadata = { title: "Feuille de match — FECOFOOT" };
@@ -109,9 +110,12 @@ export default async function MatchPage({ params }: PageProps<"/admin/matchs/[id
         description={`${m.kickoffAt ? formatDateTime(m.kickoffAt) : "Date à fixer"}${m.venue ? ` · ${m.venue}` : ""} · ${MATCH_STATUS_LABELS[m.status]}${m.attendance ? ` · ${m.attendance} spectateurs` : ""}`}
         actions={
           manage && (
-            <Link href={`/admin/competitions/${c.id}`} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">
-              Compétition
-            </Link>
+            <>
+              <FeaturedToggle action={setMatchFeatured.bind(null, id)} featured={m.featured} />
+              <Link href={`/admin/competitions/${c.id}`} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">
+                Compétition
+              </Link>
+            </>
           )
         }
       />

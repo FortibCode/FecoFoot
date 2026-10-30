@@ -599,6 +599,12 @@ export const matches = pgTable(
     kickoffAt: timestamp("kickoff_at", { withTimezone: true }),
     venue: varchar("venue", { length: 160 }),
     status: matchStatusEnum("status").notNull().default("SCHEDULED"),
+    // Match en cours : période (1, 2 : mi-temps ; 3, 4 : prolongations) et heure de son coup d'envoi,
+    // d'où la minute de jeu affichée au public.
+    period: integer("period"),
+    periodStartedAt: timestamp("period_started_at", { withTimezone: true }),
+    // Mis en avant sur la page d'accueil (« À la une »), sur décision de l'organisateur.
+    featured: boolean("featured").notNull().default(false),
     // Score calculé à partir des buts saisis (EF-CMP-05, RG-07).
     homeScore: integer("home_score"),
     awayScore: integer("away_score"),
@@ -798,6 +804,8 @@ export const nationalFixtures = pgTable(
     goalsFor: integer("goals_for"),
     goalsAgainst: integer("goals_against"),
     status: fixtureStatusEnum("status").notNull().default("SCHEDULED"),
+    // Mis en avant sur la page d'accueil (« À la une »), sur décision de la fédération.
+    featured: boolean("featured").notNull().default(false),
   },
   (t) => [index("national_fixtures_team_idx").on(t.teamId, t.kickoffAt)],
 );

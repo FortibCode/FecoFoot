@@ -12,7 +12,12 @@ import { eliteClubs, homeData } from "@/lib/queries/portal";
 import { competitionTables } from "@/lib/queries/competitions";
 import { clubLogos } from "@/lib/club-logos";
 import { ClubLogo } from "@/components/public/club-logo";
-import { MatchList, MiniStandings, PreSeason } from "@/components/public/match-centre";
+import { MiniStandings, PreSeason } from "@/components/public/match-centre";
+import { FeaturedMatch } from "@/components/matches/featured-match";
+import { FixtureGroups } from "@/components/matches/fixture-groups";
+import type { FixtureItem } from "@/components/matches/match-card";
+import { MatchTabs } from "@/components/matches/match-tabs";
+import { familyTabs, featuredFixtures, homeFixtures } from "@/lib/queries/matches";
 import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
@@ -36,10 +41,14 @@ function Container({ children, className = "" }: { children: ReactNode; classNam
 export default async function HomePage() {
   await connection();
   const [d, featured, gallery, nationalGames, elite] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), nationalFixturesOverview(3), eliteClubs()]);
-  const [eliteLogos, standing] = await Promise.all([
+  const [eliteLogos, standing, spotlight, tabs] = await Promise.all([
     clubLogos(elite?.teams.map((t) => t.id) ?? []),
     elite ? competitionTables(elite.competition.id) : null,
+    featuredFixtures(3),
+    familyTabs(),
   ]);
+  // Quelques matchs par catégorie réellement configurée : l'accueil n'affiche jamais tout le calendrier.
+  const panels = await Promise.all(tabs.map((t) => homeFixtures(t.family, 4)));
   const slides = featured.map((p) => ({ src: photoUrl(p), caption: p.caption }));
   // Lien « toutes les photos » : la galerie de la sélection si toutes les photos en viennent, sinon les sélections.
   const galleryTeams = [...new Set(gallery.map((p) => p.teamSlug).filter(Boolean))];
@@ -56,8 +65,15 @@ export default async function HomePage() {
     : "/competitions";
   const eliteLogo = elite?.competition.championship ? championshipLogoUrl(elite.competition.championship) : null;
   const table = standing?.tables[0]?.rows ?? [];
-  // Aucun match de club joué ni programmé : un encart d'avant-saison remplace les listes vides.
-  const quiet = d.live.length === 0 && d.results.length === 0 && d.upcoming.length === 0;
+  const started = table.some((r) => r.played > 0);
+  const hasLive = (items: FixtureItem[]) => items.some((i) => i.status === "LIVE");
+  // Onglet ouvert : celui d'un match en direct, sinon du prochain match, sinon du dernier résultat.
+  const soonest = tabs
+    .map((t, i) => ({ t, next: panels[i].upcoming[0]?.kickoffAt?.getTime() }))
+    .filter((x) => x.next !== undefined)
+    .sort((a, b) => a.next! - b.next!)[0];
+  const initialTab =
+    tabs.find((_, i) => hasLive(panels[i].upcoming))?.family ?? soonest?.t.family ?? tabs.find((_, i) => panels[i].recent.length > 0)?.family ?? tabs[0]?.family ?? "";
   const figures = [
     [d.clubsCount, "Clubs affiliés"],
     [d.licensesCount, "Licences validées"],
@@ -193,35 +209,81 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Résultats et calendrier */}
-      <section className="py-12 sm:py-14">
+      {/* Matchs et résultats : à la une, puis une sélection courte par catégorie */}
+      <section aria-labelledby="matchs-title" className="py-12 sm:py-14">
         <Container className="flex flex-col gap-8">
           <SectionHead
-            title="Résultats et"
-            highlight="calendrier"
-            aside="Les derniers scores et les prochaines affiches des championnats et coupes du Congo."
+            id="matchs-title"
+            title="Matchs et"
+            highlight="résultats"
+            aside="Sélections, divisions nationales, ligues, coupes, jeunes et football féminin : les rencontres officielles, scores validés par les organisateurs."
             action={
-              <PillLink href="/competitions" variant="green">
-                Toutes les compétitions
+              <PillLink href="/matchs" variant="green">
+                Voir tous les matchs
               </PillLink>
             }
           />
-          {d.live.length > 0 && (
-            <div className="flex flex-col gap-2 rounded-xl border-2 border-[var(--flag-red,#dc241f)]/40 p-4">
-              <MatchList title="En direct" rows={d.live} empty="" more="/matchs?vue=direct" />
-              <LiveRefresh />
+          {(hasLive(spotlight) || panels.some((p) => hasLive(p.upcoming))) && <LiveRefresh seconds={20} />}
+
+          {spotlight.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <h3 className="flex items-center gap-2 font-heading text-xl font-bold uppercase">
+                <span aria-hidden className="text-[var(--flag-yellow)]">★</span> À la une
+              </h3>
+              <ul className={`grid gap-4 md:grid-cols-2 ${spotlight.length >= 3 ? "xl:grid-cols-3" : ""}`}>
+                {spotlight.map((item, i) => (
+                  <FeaturedMatch key={item.key} item={item} index={i} />
+                ))}
+              </ul>
             </div>
           )}
-          {quiet && elite ? (
-            <PreSeason competition={elite.competition} teams={elite.teams.length} logo={eliteLogo} href={eliteHref} />
+
+          {tabs.length > 0 ? (
+            <MatchTabs
+              initial={initialTab}
+              tabs={tabs.map((t, i) => {
+                const p = panels[i];
+                const elitePanel = t.family === "ligue-1" && elite;
+                const all = `/matchs?categorie=${t.family}`;
+                const column = (title: string, items: FixtureItem[], empty: string) => (
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <h3 className="border-b-2 border-foreground pb-2 font-heading text-lg font-bold uppercase">{title}</h3>
+                    {items.length === 0 ? <p className="py-2 text-sm text-muted-foreground">{empty}</p> : <FixtureGroups items={items} showDate />}
+                  </div>
+                );
+                let panel: ReactNode;
+                if (p.upcoming.length === 0 && p.recent.length === 0) {
+                  panel = elitePanel ? (
+                    <PreSeason competition={elite.competition} teams={elite.teams.length} logo={eliteLogo} href={eliteHref} />
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed p-8 text-center">
+                      <p className="font-semibold">Aucun match publié pour « {t.label} » pour le moment.</p>
+                      <p className="max-w-md text-sm text-muted-foreground">Les rencontres apparaîtront ici dès la publication du calendrier par l&apos;organisateur.</p>
+                      <Link href="/matchs" className="rounded-md border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted">
+                        Voir le calendrier complet
+                      </Link>
+                    </div>
+                  );
+                } else {
+                  panel = (
+                    <div className="flex flex-col gap-6">
+                      <div className={`grid gap-8 ${elitePanel && started ? "lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_20rem]" : "lg:grid-cols-2"}`}>
+                        {column("Prochains matchs", p.upcoming, "Aucun match programmé pour le moment.")}
+                        {column("Derniers résultats", p.recent, "Aucun résultat publié pour le moment.")}
+                        {elitePanel && started && <MiniStandings rows={table} logos={eliteLogos} season={elite.competition.season} href={eliteHref} />}
+                      </div>
+                      <Link href={all} className="group inline-flex items-center gap-2 self-start text-sm font-semibold text-flag-green underline-offset-4 hover:underline">
+                        Tout le calendrier : {t.label}
+                        <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
+                      </Link>
+                    </div>
+                  );
+                }
+                return { id: t.family, label: t.label, live: hasLive(p.upcoming), panel };
+              })}
+            />
           ) : (
-            <div className={`grid gap-8 ${table.length > 0 ? "xl:grid-cols-[minmax(0,1fr)_22rem]" : ""}`}>
-              <div className="grid gap-8 lg:grid-cols-2">
-                <MatchList title="Derniers résultats" rows={d.results} empty="Aucun résultat officiel pour le moment." more="/matchs?vue=resultats" />
-                <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé pour le moment." from="right" more="/matchs?vue=calendrier" />
-              </div>
-              {table.length > 0 && elite && <MiniStandings rows={table} logos={eliteLogos} season={elite.competition.season} href={eliteHref} />}
-            </div>
+            <p className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">Aucune compétition publiée pour le moment.</p>
           )}
         </Container>
       </section>

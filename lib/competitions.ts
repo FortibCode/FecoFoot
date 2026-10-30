@@ -110,6 +110,150 @@ export const hasScore = (status: MatchStatus) => isLive(status) || status === "F
 /** Date, heure, stade et équipes ne se modifient plus une fois le match commencé (reporté : reprogrammable). */
 export const canReschedule = (status: MatchStatus) => status === "SCHEDULED" || status === "POSTPONED";
 
+// ─── Catégories de matchs (portail) ──────────────────────────────────────────
+
+/** Familles de rencontres proposées au public, dans l'ordre des onglets. */
+export const MATCH_FAMILIES = ["selections", "ligue-1", "ligue-2", "departementales", "coupes", "feminin", "jeunes", "autres"] as const;
+export type MatchFamily = (typeof MATCH_FAMILIES)[number];
+export const MATCH_FAMILY_LABELS: Record<MatchFamily, string> = {
+  selections: "Sélections nationales",
+  "ligue-1": "Ligue 1",
+  "ligue-2": "Ligue 2",
+  departementales: "Ligues départementales",
+  coupes: "Coupes",
+  feminin: "Football féminin",
+  jeunes: "Jeunes",
+  autres: "Autres compétitions",
+};
+
+/**
+ * Famille d'une compétition, d'après sa configuration : le football féminin et les jeunes d'abord
+ * (une Ligue départementale U17 est une compétition de jeunes), puis les divisions nationales (niveau
+ * du championnat), les compétitions des ligues, les coupes nationales, et le reste.
+ */
+export function competitionFamily(c: { gender: "M" | "F"; category: CompetitionCategory; leagueId: number | null; type: CompetitionType; tier: number | null }): Exclude<MatchFamily, "selections"> {
+  if (c.gender === "F") return "feminin";
+  if (c.category !== "SENIOR" && c.category !== "VETERAN") return "jeunes";
+  if (c.tier === 1) return "ligue-1";
+  if (c.tier === 2) return "ligue-2";
+  if (c.leagueId !== null) return "departementales";
+  if (c.type === "CUP") return "coupes";
+  return "autres";
+}
+
+// ─── Statut public et historique d'un match ──────────────────────────────────
+
+/** Statuts présentés au public : la mi-temps fait partie du direct. */
+export const PUBLIC_MATCH_STATUSES = ["LIVE", "UPCOMING", "FINISHED", "POSTPONED", "SUSPENDED", "CANCELLED"] as const;
+export type PublicMatchStatus = (typeof PUBLIC_MATCH_STATUSES)[number];
+export const PUBLIC_MATCH_STATUS_LABELS: Record<PublicMatchStatus, string> = {
+  LIVE: "En direct",
+  UPCOMING: "À venir",
+  FINISHED: "Terminé",
+  POSTPONED: "Reporté",
+  SUSPENDED: "Suspendu",
+  CANCELLED: "Annulé",
+};
+/** Statuts enregistrés correspondant à chaque statut public. */
+export const MATCH_STATUSES_OF: Record<PublicMatchStatus, MatchStatus[]> = {
+  LIVE: ["LIVE", "HALF_TIME"],
+  UPCOMING: ["SCHEDULED"],
+  FINISHED: ["FINISHED"],
+  POSTPONED: ["POSTPONED"],
+  SUSPENDED: ["SUSPENDED"],
+  CANCELLED: ["CANCELLED"],
+};
+export const publicMatchStatus = (status: MatchStatus): PublicMatchStatus => (isLive(status) ? "LIVE" : status === "SCHEDULED" ? "UPCOMING" : status);
+
+type AuditEntry = { action: string; details: unknown; createdAt: Date };
+type SheetDetails = { before?: { status?: MatchStatus; kickoffAt?: string | null }; after?: { status?: MatchStatus; score?: (number | null)[]; kickoffAt?: string | null }; validated?: boolean };
+
+const STATUS_STEP: Partial<Record<MatchStatus, string>> = {
+  HALF_TIME: "Mi-temps",
+  FINISHED: "Fin du match",
+  POSTPONED: "Match reporté",
+  SUSPENDED: "Match suspendu",
+  CANCELLED: "Match annulé",
+};
+
+/**
+ * Historique public d'un match, tiré du journal : programmation, coup d'envoi, mi-temps, report,
+ * suspension, fin, validation et correction du résultat. Ni auteur ni détail interne.
+ */
+export function matchHistory(entries: AuditEntry[]): { at: Date; label: string; kickoffAt?: Date }[] {
+  const out: { at: Date; label: string; kickoffAt?: Date }[] = [];
+  let validated = false;
+  for (const e of [...entries].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
+    const d = (e.details ?? {}) as SheetDetails;
+    if (e.action === "SCHEDULE" && d.after?.kickoffAt) {
+      out.push({ at: e.createdAt, label: d.before?.kickoffAt ? "Match reprogrammé" : "Match programmé", kickoffAt: new Date(d.after.kickoffAt) });
+    } else if (e.action === "MATCH_SHEET" || e.action === "RESULT_CORRECTION") {
+      const before = d.before?.status;
+      const after = d.after?.status;
+      if (after && after !== before) {
+        const label = after === "LIVE" ? (before === "HALF_TIME" ? "Reprise du jeu" : "Coup d'envoi") : STATUS_STEP[after];
+        if (label) out.push({ at: e.createdAt, label });
+      }
+      if (e.action === "RESULT_CORRECTION" && d.after?.score?.every((x) => x !== null)) {
+        out.push({ at: e.createdAt, label: `Résultat corrigé par l'organisateur : ${d.after.score.join(" – ")}` });
+      } else if (d.validated && !validated) {
+        out.push({ at: e.createdAt, label: "Résultat validé par l'organisateur" });
+      }
+      validated = Boolean(d.validated);
+    } else if (e.action === "RESULT_VALIDATED" && !validated) {
+      out.push({ at: e.createdAt, label: "Résultat validé par l'organisateur" });
+      validated = true;
+    }
+  }
+  return out;
+}
+
+// ─── Minute de jeu en direct ─────────────────────────────────────────────────
+
+/** Périodes d'un match : deux mi-temps, puis deux prolongations (coupes). */
+export const MATCH_PERIODS = [1, 2, 3, 4] as const;
+export type MatchPeriod = (typeof MATCH_PERIODS)[number];
+export const MATCH_PERIOD_LABELS: Record<MatchPeriod, string> = {
+  1: "1re mi-temps",
+  2: "2e mi-temps",
+  3: "1re prolongation",
+  4: "2e prolongation",
+};
+/** Minutes de jeu au début et à la fin réglementaire de chaque période. */
+const PERIOD_BOUNDS: Record<MatchPeriod, [number, number]> = { 1: [0, 45], 2: [45, 90], 3: [90, 105], 4: [105, 120] };
+
+/**
+ * Période en cours après une mise à jour de la feuille de match, et redémarrage ou non du chronomètre.
+ * Coup d'envoi (programmé → en direct) : 1re mi-temps. Reprise après la pause : période suivante.
+ * Une période choisie explicitement par l'officiel prime. Le chronomètre ne repart qu'au changement de période.
+ */
+export function nextPeriod(
+  before: { status: MatchStatus; period: MatchPeriod | null },
+  after: { status: MatchStatus; period: MatchPeriod | null },
+): { period: MatchPeriod | null; restart: boolean } {
+  if (after.status !== "LIVE") return { period: before.period, restart: false };
+  const wasLive = before.status === "LIVE";
+  const automatic: MatchPeriod = wasLive
+    ? (before.period ?? 1)
+    : before.status === "HALF_TIME" && before.period
+      ? (Math.min(4, before.period + 1) as MatchPeriod)
+      : 1;
+  const period = after.period ?? automatic;
+  return { period, restart: !wasLive || period !== before.period };
+}
+
+/**
+ * Minute affichée d'un match en cours : « 37' », ou « 45+2' » au-delà du temps réglementaire de la période.
+ * Null sans période ni heure de reprise (score fourni par une source externe, par exemple).
+ */
+export function liveMinute(period: MatchPeriod | null, startedAt: Date | null, now: Date = new Date()): string | null {
+  if (!period || !startedAt) return null;
+  const [start, end] = PERIOD_BOUNDS[period];
+  const elapsed = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 60_000));
+  const minute = start + elapsed + 1;
+  return minute > end ? `${end}+${Math.min(minute - end, 30)}'` : `${minute}'`;
+}
+
 export const EVENT_TYPES = ["GOAL", "PENALTY_GOAL", "OWN_GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {

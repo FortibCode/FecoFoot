@@ -84,6 +84,18 @@ export async function setFixtureResult(code: string, fixtureId: number, _state: 
   return { success: "Résultat enregistré." };
 }
 
+/** Mise en avant d'un match des sélections sur la page d'accueil (« À la une »), tracée au journal. */
+export async function setFixtureFeatured(code: string, fixtureId: number, featured: boolean): Promise<ActionState> {
+  const user = await requirePermission("national_teams.manage");
+  const t = await team(code);
+  if (!t) return { error: "Sélection introuvable." };
+  await db.update(nationalFixtures).set({ featured }).where(and(eq(nationalFixtures.id, fixtureId), eq(nationalFixtures.teamId, t.id)));
+  await logAudit({ userId: user.id, action: featured ? "FEATURE" : "UNFEATURE", entity: "national_fixture", entityId: fixtureId });
+  revalidateTeam(code, t.slug);
+  revalidatePath("/");
+  return { success: featured ? "Match mis à la une de la page d'accueil." : "Match retiré de la une." };
+}
+
 /** Nouvelle liste de convoqués (EF-SEL-02). */
 export async function createSelection(code: string, _state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requirePermission("national_teams.manage");

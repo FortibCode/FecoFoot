@@ -7,7 +7,7 @@ import { blankToNull, type ActionState } from "@/lib/action-state";
 import { logAudit } from "@/lib/audit";
 import { requirePermission, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
-import { canReschedule, EVENT_TYPES, GOAL_EVENTS, lineupError, MATCH_STATUSES, scoreFromEvents, type LineupEntry } from "@/lib/competitions";
+import { canReschedule, EVENT_TYPES, GOAL_EVENTS, lineupError, MATCH_STATUSES, nextPeriod, scoreFromEvents, type LineupEntry, type MatchPeriod } from "@/lib/competitions";
 import { db } from "@/lib/db";
 import { competitions, matchEvents, matches, matchLineups, matchOfficials, players, referees } from "@/lib/db/schema";
 import { isUniqueViolation } from "@/lib/queries/players";
@@ -104,10 +104,16 @@ export async function updateMatchSheet(matchId: number, _state: ActionState, for
       report: z.preprocess(blankToNull, z.string().trim().max(5000).nullable()),
       homePenalties: z.preprocess(blankToNull, z.coerce.number().int().min(0).max(50).nullable()),
       awayPenalties: z.preprocess(blankToNull, z.coerce.number().int().min(0).max(50).nullable()),
+      // Vide : période déduite (coup d'envoi, reprise).
+      period: z.preprocess(blankToNull, z.coerce.number().int().min(1).max(4).nullable()),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
-  const { homeScore, awayScore, ...d } = parsed.data;
+  const { homeScore, awayScore, period: requested, ...d } = parsed.data;
+  const clock = nextPeriod(
+    { status: m.match.status, period: m.match.period as MatchPeriod | null },
+    { status: d.status, period: requested as MatchPeriod | null },
+  );
   if ((homeScore === null) !== (awayScore === null)) return { error: "Saisissez le score des deux équipes." };
 
   // Score saisi directement (buteurs inconnus) : refusé s'il contredit les buts déjà saisis.
@@ -127,6 +133,8 @@ export async function updateMatchSheet(matchId: number, _state: ActionState, for
     .set({
       ...d,
       ...(homeScore !== null && goals.length === 0 && { homeScore, awayScore }),
+      period: clock.period,
+      ...(clock.restart && { periodStartedAt: new Date() }),
       validatedAt,
       validatedBy: validatedAt ? (m.match.validatedBy ?? user.id) : null,
       updatedBy: user.id,
@@ -150,7 +158,7 @@ export async function updateMatchSheet(matchId: number, _state: ActionState, for
     entityId: matchId,
     details: {
       before: { status: m.match.status, score: [m.match.homeScore, m.match.awayScore] },
-      after: { status: after.status, score: [after.homeScore, after.awayScore] },
+      after: { status: after.status, score: [after.homeScore, after.awayScore], period: after.period },
       validated: Boolean(after.validatedAt),
     },
   });
@@ -318,4 +326,17 @@ export async function submitOfficialReport(officialId: number, _state: ActionSta
   await logAudit({ userId: user.id, action: "OFFICIAL_REPORT", entity: "match", entityId: updated[0].matchId });
   revalidatePath("/admin/espace-arbitre");
   return { success: "Rapport transmis." };
+}
+
+/** Mise en avant d'un match sur la page d'accueil (« À la une ») : décision de l'organisateur, tracée au journal. */
+export async function setMatchFeatured(matchId: number, featured: boolean): Promise<ActionState> {
+  const user = await requirePermission("competitions.manage");
+  if (!(await canManageMatch(user, matchId))) return OUT_OF_SCOPE;
+  const m = await loadMatch(matchId);
+  if (!m) return { error: "Match introuvable." };
+  await db.update(matches).set({ featured, updatedBy: user.id, updatedAt: new Date() }).where(eq(matches.id, matchId));
+  await logAudit({ userId: user.id, action: featured ? "FEATURE" : "UNFEATURE", entity: "match", entityId: matchId });
+  revalidateMatch(matchId, m.match.competitionId);
+  revalidatePath("/");
+  return { success: featured ? "Match mis à la une de la page d'accueil." : "Match retiré de la une." };
 }

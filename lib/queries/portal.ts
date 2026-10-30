@@ -1,32 +1,14 @@
 import "server-only";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { articles, championships, clubs, competitions, competitionTeams, licenses, matches, nationalTeams, selections, ticketEvents } from "@/lib/db/schema";
+import { articles, championships, clubs, competitions, competitionTeams, licenses, nationalTeams, selections } from "@/lib/db/schema";
 import { seasonOf } from "@/lib/licenses";
-import { competitionTables, matchQuery } from "@/lib/queries/competitions";
 
 /** Données de la page d'accueil du portail (EF-PUB-01). */
 export async function homeData() {
-  const now = new Date();
   const season = seasonOf();
-  const [live, results, upcoming, onSale, news, latestSelection, [{ clubsCount }], [{ licensesCount }], main] = await Promise.all([
-    // Matchs en cours (saisie officielle du commissaire), compétitions publiées.
-    matchQuery()
-      .where(and(inArray(matches.status, ["LIVE", "HALF_TIME"]), ne(competitions.status, "DRAFT")))
-      .orderBy(asc(matches.kickoffAt))
-      .limit(8),
-    // Résultats officiels uniquement (validés par l'organisateur).
-    matchQuery().where(and(eq(matches.status, "FINISHED"), isNotNull(matches.validatedAt))).orderBy(desc(matches.kickoffAt)).limit(6),
-    matchQuery()
-      .where(and(eq(matches.status, "SCHEDULED"), gte(matches.kickoffAt, now), isNotNull(matches.homeClubId), isNotNull(matches.awayClubId)))
-      .orderBy(asc(matches.kickoffAt))
-      .limit(6),
-    db
-      .select()
-      .from(ticketEvents)
-      .where(and(inArray(ticketEvents.salesStatus, ["PRESALE", "OPEN"]), gt(ticketEvents.kickoffAt, now)))
-      .orderBy(asc(ticketEvents.kickoffAt))
-      .limit(3),
+  // Les matchs de l'accueil viennent de la section « Matchs et résultats » (lib/queries/matches.ts).
+  const [news, latestSelection, [{ clubsCount }], [{ licensesCount }]] = await Promise.all([
     db.select().from(articles).where(eq(articles.status, "PUBLISHED")).orderBy(desc(articles.publishedAt), desc(articles.id)).limit(9),
     db
       .select({ s: selections, team: nationalTeams })
@@ -37,26 +19,8 @@ export async function homeData() {
       .limit(1),
     db.select({ clubsCount: count() }).from(clubs).where(eq(clubs.status, "AFFILIATED")),
     db.select({ licensesCount: count() }).from(licenses).where(and(eq(licenses.season, season), eq(licenses.status, "VALIDATED"))),
-    // Championnat mis en avant : le championnat national senior masculin en cours qui compte le plus d'équipes.
-    db
-      .select({ id: competitions.id, n: count(competitionTeams.id) })
-      .from(competitions)
-      .leftJoin(competitionTeams, eq(competitionTeams.competitionId, competitions.id))
-      .where(
-        and(
-          eq(competitions.type, "LEAGUE"),
-          isNull(competitions.leagueId),
-          or(eq(competitions.status, "ONGOING"), eq(competitions.status, "FINISHED")),
-          eq(competitions.category, "SENIOR"),
-          eq(competitions.gender, "M"),
-        ),
-      )
-      .groupBy(competitions.id)
-      .orderBy(desc(competitions.season), desc(count(competitionTeams.id)))
-      .limit(1),
   ]);
-  const table = main[0] ? await competitionTables(main[0].id) : null;
-  return { live, results, upcoming, onSale, news, latestSelection: latestSelection[0] ?? null, clubsCount, licensesCount, table };
+  return { news, latestSelection: latestSelection[0] ?? null, clubsCount, licensesCount };
 }
 
 /**

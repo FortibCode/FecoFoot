@@ -11,7 +11,8 @@ import { SELECTION_STATUS_LABELS } from "@/lib/national-teams";
 import { teamPage } from "@/lib/queries/national";
 import { can } from "@/lib/auth/roles";
 import { photoUrl, teamPhotos } from "@/lib/photos";
-import { addFixture, addStaff, createSelection, removeStaff, setFixtureResult } from "../actions";
+import { addFixture, addStaff, createSelection, removeStaff, setFixtureFeatured, setFixtureResult } from "../actions";
+import { FeaturedToggle } from "@/components/featured-toggle";
 import { FixtureForm, FixtureResultForm, SelectionCreateForm, StaffForm } from "../SelectionForms";
 
 export const metadata: Metadata = { title: "Sélection nationale — FECOFOOT" };
@@ -83,7 +84,10 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
                   <strong>{f.isHome ? `Congo – ${f.opponent}` : `${f.opponent} – Congo`}</strong>
                   {f.competition && <span className="text-muted-foreground"> · {f.competition}</span>}
                 </span>
-                <FixtureResultForm action={setFixtureResult.bind(null, team.code, f.id)} current={f} />
+                <span className="flex flex-wrap items-center gap-2">
+                  <FeaturedToggle action={setFixtureFeatured.bind(null, team.code, f.id)} featured={f.featured} />
+                  <FixtureResultForm action={setFixtureResult.bind(null, team.code, f.id)} current={f} />
+                </span>
               </li>
             ))}
             {fixtures.length === 0 && <li className="px-3 py-2 text-muted-foreground">Aucun match.</li>}

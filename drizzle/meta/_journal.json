@@ -225,6 +225,20 @@
       "when": 1793284085259,
       "tag": "0031_formations_subventions",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793352614453,
+      "tag": "0032_match_live_period",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793354035297,
+      "tag": "0033_featured_matches",
+      "breakpoints": true
     }
   ]
 }
