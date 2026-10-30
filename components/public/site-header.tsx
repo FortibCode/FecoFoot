@@ -52,7 +52,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           {/* Accès direct aux billets achetés (connexion demandée si besoin, puis retour à l'espace). */}
           <Link
             href="/supporters/espace#billets"
-            className="flex items-center gap-2 rounded-md border border-white/25 px-3 py-2 text-sm font-semibold transition-colors hover:border-[var(--flag-yellow)] hover:text-[var(--flag-yellow)]"
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors hover:text-[var(--flag-yellow)]"
           >
             <svg aria-hidden viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z" />
