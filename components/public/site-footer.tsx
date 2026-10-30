@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
+import { DivisionFooterLinks } from "@/components/public/divisions";
 
 /** Comptes officiels de la FECOFOOT (repris du site fecofoot.cg). */
 const SOCIALS = [
@@ -30,8 +31,8 @@ const COLUMNS = [
     title: "Compétitions",
     links: [
       ["/competitions", "Résultats et classements"],
-      ["/championnats/ligue-1", "Ligue 1"],
-      ["/championnats/ligue-2", "Ligue 2"],
+      // Divisions nationales : noms lus en base (DivisionFooterLinks).
+      ["divisions", ""],
       ["/ligues", "Ligues départementales"],
       ["/clubs", "Clubs affiliés"],
       ["/discipline", "Décisions disciplinaires"],
@@ -104,13 +105,17 @@ export function SiteFooter() {
             <div key={c.title} data-reveal="up" style={{ ["--rd" as string]: `${120 + i * 100}ms` }} className="flex flex-col gap-3">
               <p className="font-heading text-base font-semibold uppercase tracking-wide text-white">{c.title}</p>
               <ul className="flex flex-col gap-2">
-                {c.links.map(([href, label]) => (
-                  <li key={href}>
-                    <Link href={href} className="transition-colors hover:text-[var(--flag-yellow)]">
-                      {label}
-                    </Link>
-                  </li>
-                ))}
+                {c.links.map(([href, label]) =>
+                  href === "divisions" ? (
+                    <DivisionFooterLinks key={href} />
+                  ) : (
+                    <li key={href}>
+                      <Link href={href} className="transition-colors hover:text-[var(--flag-yellow)]">
+                        {label}
+                      </Link>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           ))}

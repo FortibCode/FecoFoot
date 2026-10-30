@@ -7,6 +7,7 @@ import {
   liveMinute,
   matchHistory,
   publicMatchStatus,
+  pitchLines,
   nextPeriod,
   publicStatus,
   publicStatusLabel,
@@ -342,5 +343,25 @@ describe("catégories de matchs du portail", () => {
     expect(competitionFamily({ ...base, gender: "F", tier: 1 })).toBe("feminin");
     expect(competitionFamily({ ...base, category: "U17", leagueId: 4 })).toBe("jeunes");
     expect(competitionFamily({ ...base, category: "VETERAN", leagueId: 4 })).toBe("departementales");
+  });
+});
+
+describe("composition sur le terrain", () => {
+  const xi = (gk: number, d: number, m: number, f: number) =>
+    [
+      ...Array(gk).fill("GOALKEEPER"),
+      ...Array(d).fill("DEFENDER"),
+      ...Array(m).fill("MIDFIELDER"),
+      ...Array(f).fill("FORWARD"),
+    ].map((position, i) => ({ id: i, position }));
+  it("déduit le système des postes des titulaires", () => {
+    expect(pitchLines(xi(1, 4, 4, 2)).formation).toBe("4-4-2");
+    expect(pitchLines(xi(1, 4, 3, 3)).formation).toBe("4-3-3");
+    expect(pitchLines(xi(1, 4, 3, 3)).lines[0]).toHaveLength(1);
+  });
+  it("place un poste inconnu au milieu et ne devine rien sur une liste incomplète", () => {
+    const r = pitchLines([...xi(1, 4, 3, 2), { id: 99, position: null }]);
+    expect(r.formation).toBe("4-4-2");
+    expect(pitchLines(xi(1, 2, 1, 0)).formation).toBeNull();
   });
 });

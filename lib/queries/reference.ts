@@ -37,3 +37,18 @@ export async function scopedClubOptions(user: { role: string; leagueId: number |
   if (user.role === "LEAGUE") return all.filter((c) => c.leagueId === user.leagueId);
   return all;
 }
+
+/**
+ * Divisions nationales du menu et du pied de page du portail, avec le nom saisi dans le module
+ * Championnats. Base injoignable : les adresses restent valables, avec un nom générique.
+ */
+export async function publicDivisions(): Promise<{ code: string; name: string }[]> {
+  try {
+    return await db.select({ code: championships.code, name: championships.name }).from(championships).where(eq(championships.active, true)).orderBy(asc(championships.tier));
+  } catch {
+    return [
+      { code: "ligue-1", name: "Ligue 1" },
+      { code: "ligue-2", name: "Ligue 2" },
+    ];
+  }
+}

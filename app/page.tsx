@@ -13,11 +13,12 @@ import { competitionTables } from "@/lib/queries/competitions";
 import { clubLogos } from "@/lib/club-logos";
 import { ClubLogo } from "@/components/public/club-logo";
 import { MiniStandings, PreSeason } from "@/components/public/match-centre";
+import { FollowedMarks } from "@/components/matches/favorites";
 import { FeaturedMatch } from "@/components/matches/featured-match";
 import { FixtureGroups } from "@/components/matches/fixture-groups";
 import type { FixtureItem } from "@/components/matches/match-card";
 import { MatchTabs } from "@/components/matches/match-tabs";
-import { familyTabs, featuredFixtures, homeFixtures } from "@/lib/queries/matches";
+import { departmentalLeagues, familyTabs, featuredFixtures, homeFixtures } from "@/lib/queries/matches";
 import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
@@ -48,7 +49,10 @@ export default async function HomePage() {
     familyTabs(),
   ]);
   // Quelques matchs par catégorie réellement configurée : l'accueil n'affiche jamais tout le calendrier.
-  const panels = await Promise.all(tabs.map((t) => homeFixtures(t.family, 4)));
+  const [panels, departments] = await Promise.all([
+    Promise.all(tabs.map((t) => (t.configured ? homeFixtures(t.family, 4) : { upcoming: [] as FixtureItem[], recent: [] as FixtureItem[] }))),
+    departmentalLeagues(),
+  ]);
   const slides = featured.map((p) => ({ src: photoUrl(p), caption: p.caption }));
   // Lien « toutes les photos » : la galerie de la sélection si toutes les photos en viennent, sinon les sélections.
   const galleryTeams = [...new Set(gallery.map((p) => p.teamSlug).filter(Boolean))];
@@ -77,7 +81,7 @@ export default async function HomePage() {
   const figures = [
     [d.clubsCount, "Clubs affiliés"],
     [d.licensesCount, "Licences validées"],
-    [12, "Ligues départementales"],
+    [d.leaguesCount, "Ligues départementales"],
     [NATIONAL_TEAMS.length, "Sélections nationales"],
   ] as const;
 
@@ -224,6 +228,7 @@ export default async function HomePage() {
             }
           />
           {(hasLive(spotlight) || panels.some((p) => hasLive(p.upcoming))) && <LiveRefresh seconds={20} />}
+          <FollowedMarks />
 
           {spotlight.length > 0 && (
             <div className="flex flex-col gap-4">
@@ -256,11 +261,35 @@ export default async function HomePage() {
                   panel = elitePanel ? (
                     <PreSeason competition={elite.competition} teams={elite.teams.length} logo={eliteLogo} href={eliteHref} />
                   ) : (
-                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed p-8 text-center">
-                      <p className="font-semibold">Aucun match publié pour « {t.label} » pour le moment.</p>
-                      <p className="max-w-md text-sm text-muted-foreground">Les rencontres apparaîtront ici dès la publication du calendrier par l&apos;organisateur.</p>
-                      <Link href="/matchs" className="rounded-md border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted">
-                        Voir le calendrier complet
+                    <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed p-8 text-center">
+                      <p className="font-semibold">
+                        {t.configured ? `Aucun match publié pour « ${t.label} » pour le moment.` : `Aucune compétition « ${t.label} » n'est encore publiée.`}
+                      </p>
+                      <p className="max-w-lg text-sm text-muted-foreground">Les rencontres apparaîtront ici dès la publication du calendrier par l&apos;organisateur.</p>
+                      {/* Accès utiles en attendant : pages existantes de la catégorie. */}
+                      {t.family === "departementales" && departments.length > 0 && (
+                        <ul className="grid w-full max-w-3xl grid-cols-2 gap-2 text-left text-sm sm:grid-cols-3 lg:grid-cols-4">
+                          {departments.map((l) => (
+                            <li key={l.code}>
+                              <Link href={`/ligues/${l.code.toLowerCase()}`} className="flex h-full items-center gap-2 rounded-lg border bg-card px-3 py-2 font-medium hover:bg-muted">
+                                <span aria-hidden className="h-4 w-1 shrink-0 rounded-full bg-[linear-gradient(180deg,var(--flag-green)_0_33.33%,var(--flag-yellow)_33.33%_66.66%,var(--flag-red)_66.66%)]" />
+                                {l.department ?? l.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {(t.family === "feminin" || t.family === "jeunes") && (
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {NATIONAL_TEAMS.filter((n) => (t.family === "feminin" ? n.gender === "F" : ["U23", "U20", "U17", "U15"].includes(n.code))).map((n) => (
+                            <Link key={n.slug} href={`/equipes-nationales/${n.slug}`} className="rounded-full border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted">
+                              {n.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      <Link href={t.family === "departementales" ? "/ligues" : "/matchs"} className="text-sm font-semibold text-flag-green underline-offset-4 hover:underline">
+                        {t.family === "departementales" ? "Toutes les ligues départementales →" : "Voir le calendrier complet →"}
                       </Link>
                     </div>
                   );

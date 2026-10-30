@@ -1,7 +1,7 @@
 "use server";
 
 import { randomInt } from "node:crypto";
-import { and, count, eq, like } from "drizzle-orm";
+import { and, count, desc, eq, like } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
@@ -21,7 +21,7 @@ import {
 } from "@/lib/competitions";
 import { db } from "@/lib/db";
 import { blockedMessage, competitionBlockers, deleteCompetitionRecord } from "@/lib/deletion";
-import { clubs, competitions, competitionTeams, leagues, matches } from "@/lib/db/schema";
+import { championships, clubs, competitions, competitionTeams, leagues, matches } from "@/lib/db/schema";
 import { slugify } from "@/lib/format";
 import { seasonLabel } from "@/lib/licenses";
 import { advanceWinner, competitionFor } from "@/lib/queries/competitions";
@@ -113,10 +113,19 @@ export async function updateCompetition(competitionId: number, _state: ActionSta
   }
   if (started && c.season !== current.season) return { error: "Le calendrier est généré : la saison ne peut plus changer." };
   const tiebreakers = tiebreakersOf(formData);
-  await db
-    .update(competitions)
-    .set({ ...c, tiebreakers })
-    .where(eq(competitions.id, competitionId));
+  // Saison en cours d'une division nationale renommée : la division prend le même nom (menu, onglets, page du
+  // championnat). Une saison passée renommée ne change pas la division.
+  const latest =
+    current.championshipId !== null && c.name !== current.name && current.status !== "FINISHED"
+      ? (await db.select({ id: competitions.id }).from(competitions).where(eq(competitions.championshipId, current.championshipId)).orderBy(desc(competitions.season)).limit(1))[0]?.id === competitionId
+      : false;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(competitions)
+      .set({ ...c, tiebreakers })
+      .where(eq(competitions.id, competitionId));
+    if (latest) await tx.update(championships).set({ name: c.name, updatedAt: new Date() }).where(eq(championships.id, current.championshipId!));
+  });
   await logAudit({
     userId: user.id,
     action: "UPDATE",
@@ -131,11 +140,13 @@ export async function updateCompetition(competitionId: number, _state: ActionSta
         spots: [current.promotionSpots, current.relegationSpots],
       },
       after: { name: c.name, leagueId: c.leagueId, points: [c.pointsWin, c.pointsDraw, c.pointsLoss], tiebreakers, spots: [c.promotionSpots, c.relegationSpots] },
+      ...(latest && { championshipRenamed: current.championshipId }),
     },
   });
   revalidatePath(path(competitionId));
   revalidatePath("/competitions", "layout");
-  return { success: "Compétition mise à jour." };
+  if (latest) revalidatePath("/", "layout");
+  return { success: latest ? "Compétition mise à jour ; la division porte désormais le même nom." : "Compétition mise à jour." };
 }
 
 export async function setCompetitionStatus(competitionId: number, _state: ActionState, formData: FormData): Promise<ActionState> {

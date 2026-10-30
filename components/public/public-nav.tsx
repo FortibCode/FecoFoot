@@ -3,12 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import { useDivisions } from "@/components/public/divisions";
 
-/** Rubrique principale « Compétitions nationales » : ses deux championnats, en tête du menu. */
-const NATIONAL = [
-  ["/championnats/ligue-1", "Ligue 1"],
-  ["/championnats/ligue-2", "Ligue 2"],
-] as const;
 
 const LINKS = [
   ["/federation", "La Fédération"],
@@ -32,6 +28,7 @@ const LINKS = [
  */
 export function PublicNav() {
   const pathname = usePathname();
+  const divisions = useDivisions();
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -95,7 +92,9 @@ export function PublicNav() {
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 pt-5 sm:flex-row sm:items-center sm:px-6 lg:px-8">
           <p className="px-3 font-heading text-xs font-semibold tracking-[0.2em] text-white/50 uppercase sm:w-56">Compétitions nationales</p>
           <ul className="grid flex-1 grid-cols-2 gap-1 sm:max-w-md">
-            {NATIONAL.map(([href, label]) => {
+            {/* Rubrique « Compétitions nationales » : les divisions avec le nom saisi dans le module Championnats. */}
+            {divisions.map(({ code, name: label }) => {
+              const href = `/championnats/${code}`;
               const active = pathname === href;
               return (
                 <li key={href}>

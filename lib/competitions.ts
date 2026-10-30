@@ -208,6 +208,22 @@ export function matchHistory(entries: AuditEntry[]): { at: Date; label: string; 
   return out;
 }
 
+// ─── Composition sur le terrain ──────────────────────────────────────────────
+
+type PitchPlayer = { position: "GOALKEEPER" | "DEFENDER" | "MIDFIELDER" | "FORWARD" | null };
+
+/**
+ * Lignes d'une composition (gardien, défense, milieu, attaque) d'après les postes des titulaires,
+ * et le système qui en découle (« 4-4-2 »). Un poste inconnu compte au milieu ; sans gardien désigné,
+ * personne n'est placé dans le but.
+ */
+export function pitchLines<T extends PitchPlayer>(starters: T[]): { lines: [T[], T[], T[], T[]]; formation: string | null } {
+  const of = (p: PitchPlayer["position"]) => starters.filter((s) => (s.position ?? "MIDFIELDER") === p);
+  const lines: [T[], T[], T[], T[]] = [of("GOALKEEPER"), of("DEFENDER"), of("MIDFIELDER"), of("FORWARD")];
+  const outfield = lines.slice(1).map((l) => l.length).filter((n) => n > 0);
+  return { lines, formation: starters.length >= 7 && outfield.length >= 2 ? outfield.join("-") : null };
+}
+
 // ─── Minute de jeu en direct ─────────────────────────────────────────────────
 
 /** Périodes d'un match : deux mi-temps, puis deux prolongations (coupes). */

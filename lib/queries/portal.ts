@@ -1,14 +1,14 @@
 import "server-only";
 import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { articles, championships, clubs, competitions, competitionTeams, licenses, nationalTeams, selections } from "@/lib/db/schema";
+import { articles, championships, clubs, competitions, competitionTeams, leagues, licenses, nationalTeams, selections } from "@/lib/db/schema";
 import { seasonOf } from "@/lib/licenses";
 
 /** Données de la page d'accueil du portail (EF-PUB-01). */
 export async function homeData() {
   const season = seasonOf();
   // Les matchs de l'accueil viennent de la section « Matchs et résultats » (lib/queries/matches.ts).
-  const [news, latestSelection, [{ clubsCount }], [{ licensesCount }]] = await Promise.all([
+  const [news, latestSelection, [{ clubsCount }], [{ licensesCount }], [{ leaguesCount }]] = await Promise.all([
     db.select().from(articles).where(eq(articles.status, "PUBLISHED")).orderBy(desc(articles.publishedAt), desc(articles.id)).limit(9),
     db
       .select({ s: selections, team: nationalTeams })
@@ -19,8 +19,9 @@ export async function homeData() {
       .limit(1),
     db.select({ clubsCount: count() }).from(clubs).where(eq(clubs.status, "AFFILIATED")),
     db.select({ licensesCount: count() }).from(licenses).where(and(eq(licenses.season, season), eq(licenses.status, "VALIDATED"))),
+    db.select({ leaguesCount: count() }).from(leagues).where(eq(leagues.active, true)),
   ]);
-  return { news, latestSelection: latestSelection[0] ?? null, clubsCount, licensesCount };
+  return { news, latestSelection: latestSelection[0] ?? null, clubsCount, licensesCount, leaguesCount };
 }
 
 /**

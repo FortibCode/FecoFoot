@@ -50,9 +50,21 @@ test("matchs : à la une, catégories de l'accueil, filtres et fiche en direct",
   await expect(score).toContainText("1 - 0");
   await expect(score).toContainText(/1[1-3]'/);
 
+  // Rubriques de la fiche (une coupe n'a pas de classement) et suivi d'un club.
+  await expect(visitor.getByRole("tab", { name: "Classement" })).toHaveCount(0);
+  await visitor.getByRole("tab", { name: "Compositions" }).click();
+  await expect(visitor.getByRole("tabpanel")).toContainText("Compositions non saisies");
+  await visitor.getByRole("tab", { name: "Face-à-face" }).click();
+  await expect(visitor.getByRole("tabpanel")).toContainText("Aucune rencontre officielle précédente");
+  await score.getByRole("button", { name: new RegExp(`^Suivre ${home}$`, "i") }).click();
+  await expect(score.getByRole("button", { name: new RegExp(`Ne plus suivre ${home}`, "i") })).toHaveAttribute("aria-pressed", "true");
+
   // Page complète : catégorie, statut, et une catégorie sans ce match.
   await visitor.goto("/matchs?categorie=coupes&statut=direct");
   await expect(visitor.locator("main")).toContainText(home, { ignoreCase: true });
+  // « Mes clubs » : seul le club suivi reste affiché (mémorisé sur l'appareil).
+  await visitor.getByRole("button", { name: /Mes clubs/ }).click();
+  await expect(visitor.locator(`a[href="/matchs/${matchId}"]`)).toBeVisible();
   await visitor.goto("/matchs?categorie=ligue-2");
   // Le club reste proposé dans le filtre « Équipe » : on vérifie l'absence du match lui-même.
   await expect(visitor.getByRole("link", { name: "Voir tous les matchs" })).toBeVisible();

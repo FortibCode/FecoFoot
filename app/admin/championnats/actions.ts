@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
@@ -72,13 +72,30 @@ export async function updateChampionship(championshipId: number, _state: ActionS
   if (!parsed.success) return fromZodError(parsed.error);
   const ch = await loadChampionship(championshipId);
   if (!ch) return { error: "Championnat introuvable." };
-  await db
-    .update(championships)
-    .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(championships.id, championshipId));
-  await logAudit({ userId: user.id, action: "UPDATE", entity: "championship", entityId: championshipId, details: { name: parsed.data.name, active: parsed.data.active } });
+  // Un seul nom partout : les saisons en cours ou à venir prennent le nouveau nom ; une saison terminée
+  // garde celui sous lequel elle s'est jouée (historique exact).
+  const renamed = await db.transaction(async (tx) => {
+    await tx
+      .update(championships)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(eq(championships.id, championshipId));
+    if (parsed.data.name === ch.name) return [];
+    return tx
+      .update(competitions)
+      .set({ name: parsed.data.name })
+      .where(and(eq(competitions.championshipId, championshipId), ne(competitions.status, "FINISHED")))
+      .returning({ id: competitions.id });
+  });
+  await logAudit({
+    userId: user.id,
+    action: "UPDATE",
+    entity: "championship",
+    entityId: championshipId,
+    details: { before: { name: ch.name }, name: parsed.data.name, active: parsed.data.active, renamedSeasons: renamed.map((r) => r.id) },
+  });
   revalidateChampionship(ch.code);
-  return { success: "Championnat mis à jour." };
+  revalidatePath("/", "layout");
+  return { success: renamed.length ? `Championnat mis à jour, ainsi que ${renamed.length > 1 ? "ses saisons en cours" : "sa saison en cours"}.` : "Championnat mis à jour." };
 }
 
 /**

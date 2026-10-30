@@ -29,6 +29,7 @@ export function StandingsTable({
   slice,
   enter = "left",
   zones,
+  highlight = [],
 }: {
   rows: Row[];
   title?: string;
@@ -40,6 +41,8 @@ export function StandingsTable({
   enter?: "left" | "right";
   /** Places de montée et de descente de la saison : liseré vert / rouge et légende. */
   zones?: { promotion: number; relegation: number };
+  /** Clubs mis en évidence (les deux équipes d'un match). */
+  highlight?: number[];
 }) {
   const { ordered: all, started, maxPoints } = orderStandings(rows);
   const offset = slice?.start ?? 0;
@@ -82,7 +85,8 @@ export function StandingsTable({
               <tr
                 key={r.clubId}
                 {...(animate ? { "data-reveal": enter, style: { ["--rd" as string]: `${Math.min(idx, 16) * 60}ms` } } : {})}
-                className={`group transition-colors hover:bg-accent/70 ${leader ? "bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)]" : "even:bg-muted/40"}`}
+                aria-current={highlight.includes(r.clubId) || undefined}
+                className={`group transition-colors hover:bg-accent/70 ${highlight.includes(r.clubId) ? "bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] font-semibold" : leader ? "bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)]" : "even:bg-muted/40"}`}
               >
                 <td className="relative px-2 py-2.5 text-center font-semibold">
                   {(leader || zone) && (

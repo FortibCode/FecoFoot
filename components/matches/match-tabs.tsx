@@ -3,10 +3,10 @@
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 /**
- * Onglets par catégorie (page d'accueil). Tous les panneaux sont rendus par le serveur : changer
+ * Onglets (catégories de l'accueil, rubriques de la fiche d'un match). Tous les panneaux sont rendus par le serveur : changer
  * d'onglet est immédiat, sans requête. Clavier : flèches gauche / droite, Début, Fin.
  */
-export function MatchTabs({ tabs, initial }: { tabs: { id: string; label: string; live?: boolean; panel: ReactNode }[]; initial: string }) {
+export function MatchTabs({ tabs, initial, label = "Catégories de matchs" }: { tabs: { id: string; label: string; live?: boolean; panel: ReactNode }[]; initial: string; label?: string }) {
   const [active, setActive] = useState(tabs.some((t) => t.id === initial) ? initial : tabs[0]?.id);
   const base = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -20,7 +20,7 @@ export function MatchTabs({ tabs, initial }: { tabs: { id: string; label: string
   };
   return (
     <div className="flex flex-col gap-6">
-      <div role="tablist" aria-label="Catégories de matchs" className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+      <div role="tablist" aria-label={label} className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
         {tabs.map((t, i) => {
           const selected = t.id === active;
           return (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { MatchLine } from "@/components/competitions/match-line";
+import { FollowClubButton } from "@/components/matches/favorites";
 import { PublicShell } from "@/components/public/public-shell";
 import { TEAM_OUTCOME_LABELS } from "@/lib/competitions";
 import { clubParticipations } from "@/lib/queries/championships";
@@ -54,7 +55,11 @@ export default async function PublicClubPage({ params }: PageProps<"/clubs/[slug
   return (
     <PublicShell eyebrow={`${club.city} · ${row.league ?? "Division nationale"}`} title={club.name} wide>
       <div className="mb-8 flex flex-wrap items-center gap-6 rounded-2xl border bg-card p-6 shadow-sm">
-        <ClubLogo src={logos.get(club.id)} name={club.name} className="size-28 sm:size-32" />
+        <div className="flex flex-col items-center gap-3">
+          <ClubLogo src={logos.get(club.id)} name={club.name} className="size-28 sm:size-32" />
+          {/* Clubs suivis : leurs matchs sont repérés et filtrables sur la page « Matchs et résultats ». */}
+          <FollowClubButton clubId={club.id} name={club.name} />
+        </div>
         <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
           {(
             [
