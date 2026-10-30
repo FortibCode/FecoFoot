@@ -7,7 +7,10 @@ import { FlipPhoto } from "@/components/public/flip-photo";
 import { NewsMosaic } from "@/components/public/news-mosaic";
 import { PublicShell } from "@/components/public/public-shell";
 import { PillLink, SectionHead } from "@/components/public/ui";
-import { NATIONAL_TEAMS } from "@/lib/national-teams";
+import { ArrowIcon, CalendarIcon, TrophyIcon } from "@/components/public/icons";
+import { FAMILY_ICONS } from "@/components/matches/family-icons";
+import { HomeMatchCard } from "@/components/matches/home-match-card";
+import { nationalTeamList } from "@/lib/queries/national";
 import { eliteClubs, homeData } from "@/lib/queries/portal";
 import { competitionTables } from "@/lib/queries/competitions";
 import { clubLogos } from "@/lib/club-logos";
@@ -15,7 +18,6 @@ import { ClubLogo } from "@/components/public/club-logo";
 import { MiniStandings, PreSeason } from "@/components/public/match-centre";
 import { FollowedMarks } from "@/components/matches/favorites";
 import { FeaturedMatch } from "@/components/matches/featured-match";
-import { FixtureGroups } from "@/components/matches/fixture-groups";
 import type { FixtureItem } from "@/components/matches/match-card";
 import { MatchTabs } from "@/components/matches/match-tabs";
 import { departmentalLeagues, familyTabs, featuredFixtures, homeFixtures } from "@/lib/queries/matches";
@@ -39,7 +41,7 @@ function Container({ children, className = "" }: { children: ReactNode; classNam
 /** Page d'accueil du portail public (EF-PUB-01). */
 export default async function HomePage() {
   await connection();
-  const [d, featured, gallery, elite, covers] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs(), teamCovers()]);
+  const [d, featured, gallery, elite, covers, teams] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs(), teamCovers(), nationalTeamList()]);
   const [eliteLogos, standing, spotlight, tabs] = await Promise.all([
     clubLogos(elite?.teams.map((t) => t.id) ?? []),
     elite ? competitionTables(elite.competition.id) : null,
@@ -74,7 +76,7 @@ export default async function HomePage() {
     [d.clubsCount, "Clubs affiliés"],
     [d.licensesCount, "Licences validées"],
     [d.leaguesCount, "Ligues départementales"],
-    [NATIONAL_TEAMS.length, "Sélections nationales"],
+    [teams.length, "Sélections nationales"],
   ] as const;
 
   // Liens rapides en colonne sur le bord gauche du bandeau (très grand écran, dans la marge).
@@ -208,17 +210,21 @@ export default async function HomePage() {
       {/* Matchs et résultats : à la une, puis une sélection courte par catégorie */}
       <section aria-labelledby="matchs-title" className="py-12 sm:py-14">
         <Container className="flex flex-col gap-8">
-          <SectionHead
-            id="matchs-title"
-            title="Matchs et"
-            highlight="résultats"
-            aside="Sélections, divisions nationales, ligues, coupes, jeunes et football féminin : les rencontres officielles, scores validés par les organisateurs."
-            action={
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+            <div data-reveal="left" className="flex flex-col gap-3">
+              <h2 id="matchs-title" className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
+                Matchs &amp; <span className="text-[var(--flag-green)]">résultats</span>
+              </h2>
+              <p className="max-w-2xl text-muted-foreground">
+                Sélections, divisions nationales, ligues, coupes, jeunes et football féminin : les rencontres officielles, scores validés par les organisateurs.
+              </p>
+            </div>
+            <div data-reveal="right">
               <PillLink href="/matchs" variant="green">
                 Voir tous les matchs
               </PillLink>
-            }
-          />
+            </div>
+          </div>
           {(hasLive(spotlight) || panels.some((p) => hasLive(p.upcoming))) && <LiveRefresh seconds={20} />}
           <FollowedMarks />
 
@@ -242,12 +248,44 @@ export default async function HomePage() {
                 const p = panels[i];
                 const elitePanel = t.family === "ligue-1" && elite;
                 const all = `/matchs?categorie=${t.family}`;
-                const column = (title: string, items: FixtureItem[], empty: string) => (
-                  <div className="flex min-w-0 flex-col gap-3">
-                    <h3 className="border-b-2 border-foreground pb-2 font-heading text-lg font-bold uppercase">{title}</h3>
-                    {items.length === 0 ? <p className="py-2 text-sm text-muted-foreground">{empty}</p> : <FixtureGroups items={items} showDate />}
-                  </div>
-                );
+                const column = (kind: "upcoming" | "recent", items: FixtureItem[]) => {
+                  const upcoming = kind === "upcoming";
+                  return (
+                    <div className="flex min-w-0 flex-col gap-4 bg-muted/60 p-4 sm:p-6">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="flex flex-col gap-2">
+                          <span className="flex items-center gap-2.5 font-heading text-xl font-bold uppercase">
+                            <span aria-hidden className="grid size-9 place-items-center rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] text-[var(--flag-green)]">
+                              {upcoming ? <CalendarIcon className="size-[1.1rem]" /> : <TrophyIcon className="size-[1.1rem]" />}
+                            </span>
+                            {upcoming ? "Prochains matchs" : "Derniers résultats"}
+                          </span>
+                          <span aria-hidden className="h-0.5 w-10 bg-[var(--flag-green)]" />
+                        </h3>
+                        {upcoming ? (
+                          <Link href={all} className="group inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--flag-green)] underline-offset-4 hover:underline">
+                            Voir tous les matchs
+                            <ArrowIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
+                          </Link>
+                        ) : (
+                          <Link href={all} className="inline-flex h-9 items-center gap-2 rounded-full border border-foreground/20 px-4 text-sm font-semibold transition-colors hover:border-[var(--flag-green)] hover:text-[var(--flag-green)]">
+                            <CalendarIcon className="size-4" />
+                            Calendrier complet
+                          </Link>
+                        )}
+                      </div>
+                      {items.length === 0 ? (
+                        <p className="bg-card px-4 py-6 text-center text-sm text-muted-foreground">{upcoming ? "Aucun match programmé pour le moment." : "Aucun résultat publié pour le moment."}</p>
+                      ) : (
+                        <ul className="flex flex-col gap-3">
+                          {items.map((item) => (
+                            <HomeMatchCard key={item.key} item={item} />
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                };
                 let panel: ReactNode;
                 if (p.upcoming.length === 0 && p.recent.length === 0) {
                   panel = elitePanel ? (
@@ -273,7 +311,7 @@ export default async function HomePage() {
                       )}
                       {(t.family === "feminin" || t.family === "jeunes") && (
                         <div className="flex flex-wrap justify-center gap-2">
-                          {NATIONAL_TEAMS.filter((n) => (t.family === "feminin" ? n.gender === "F" : ["U23", "U20", "U17", "U15"].includes(n.code))).map((n) => (
+                          {teams.filter((n) => (t.family === "feminin" ? n.code === "WOMEN" : ["U23", "U20", "U17", "U15"].includes(n.code))).map((n) => (
                             <Link key={n.slug} href={`/equipes-nationales/${n.slug}`} className="rounded-full border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted">
                               {n.name}
                             </Link>
@@ -287,20 +325,14 @@ export default async function HomePage() {
                   );
                 } else {
                   panel = (
-                    <div className="flex flex-col gap-6">
-                      <div className={`grid gap-8 ${elitePanel && started ? "lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_20rem]" : "lg:grid-cols-2"}`}>
-                        {column("Prochains matchs", p.upcoming, "Aucun match programmé pour le moment.")}
-                        {column("Derniers résultats", p.recent, "Aucun résultat publié pour le moment.")}
-                        {elitePanel && started && <MiniStandings rows={table} logos={eliteLogos} season={elite.competition.season} href={eliteHref} />}
-                      </div>
-                      <Link href={all} className="group inline-flex items-center gap-2 self-start text-sm font-semibold text-flag-green underline-offset-4 hover:underline">
-                        Tout le calendrier : {t.label}
-                        <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
-                      </Link>
+                    <div className={`grid gap-6 ${elitePanel && started ? "lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_20rem]" : "lg:grid-cols-2"}`}>
+                      {column("upcoming", p.upcoming)}
+                      {column("recent", p.recent)}
+                      {elitePanel && started && <MiniStandings rows={table} logos={eliteLogos} season={elite.competition.season} href={eliteHref} />}
                     </div>
                   );
                 }
-                return { id: t.family, label: t.label, live: hasLive(p.upcoming), panel };
+                return { id: t.family, label: t.label, icon: FAMILY_ICONS[t.family], live: hasLive(p.upcoming), panel };
               })}
             />
           ) : (
@@ -354,7 +386,7 @@ export default async function HomePage() {
             <h3 data-reveal="left" className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
               Nos sélections <span className="text-[var(--flag-green)]">nationales</span>
             </h3>
-            <NationalTeamCards teams={NATIONAL_TEAMS} covers={covers} reveal />
+            <NationalTeamCards teams={teams} covers={covers} reveal />
           </div>
         </Container>
       </section>

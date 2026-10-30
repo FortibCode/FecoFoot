@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/format";
 import { POSITION_LABELS } from "@/lib/licenses";
 import { NATIONAL_TEAM_SHORT, NATIONAL_TEAM_TAGLINES } from "@/lib/national-teams";
 import { photoUrl, teamCovers, teamPhotos } from "@/lib/photos";
+import { PhotoPager } from "@/components/public/photo-pager";
 import { fromNational, openTicketSales } from "@/lib/queries/matches";
 import { calledPlayers, groupDetail, teamGroups, teamPage } from "@/lib/queries/national";
 import { playerPhotoUrls } from "@/lib/queries/player-photos";
@@ -275,25 +276,8 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
                   {gallery.length === 0 ? (
                     <Muted>Aucune photo publiée pour cette sélection.</Muted>
                   ) : (
-                    // Portraits de même format ; légende au survol.
-                    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4">
-                      {gallery.map((p) => (
-                        <li key={p.id}>
-                          <figure className="group relative aspect-[3/4] overflow-hidden bg-muted">
-                            <a href={photoUrl(p)} target="_blank" rel="noreferrer" className="block size-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green">
-                              {/* eslint-disable-next-line @next/next/no-img-element -- image servie par la route des médias */}
-                              <img src={photoUrl(p)} alt={p.caption} width={p.width} height={p.height} loading="lazy" className="size-full object-cover object-top transition-transform duration-500 motion-safe:group-hover:scale-[1.03]" />
-                            </a>
-                            {p.caption && (
-                              <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-[linear-gradient(to_top,rgb(0_0_0/0.85),transparent)] px-3 pt-8 pb-3 text-xs text-white transition-transform duration-300 group-focus-within:translate-y-0 group-hover:translate-y-0">
-                                {p.caption}
-                                <span className="block text-white/70">© {p.credit}</span>
-                              </figcaption>
-                            )}
-                          </figure>
-                        </li>
-                      ))}
-                    </ul>
+                    // Portraits de même format, 5 par page ; légende au survol.
+                    <PhotoPager photos={gallery.map((p) => ({ id: p.id, src: photoUrl(p), caption: p.caption, credit: p.credit, width: p.width, height: p.height }))} />
                   )}
                   {videos.length > 0 && (
                     <section aria-label="Vidéos" className="flex flex-col gap-3">

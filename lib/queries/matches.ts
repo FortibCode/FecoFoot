@@ -6,6 +6,7 @@ import {
   desc,
   eq,
   gte,
+  ilike,
   inArray,
   isNotNull,
   lt,
@@ -61,6 +62,12 @@ export type MatchFilters = {
   /** Catégorie (Ligue 1, coupes, jeunes…) : ses compétitions, résolues par `withFamily`. */
   family?: MatchFamily;
   competitionIds?: number[];
+  /** Journée d'un championnat (numéro de tour). */
+  round?: number;
+  /** Texte cherché : club, sélection, adversaire ou compétition. */
+  search?: string;
+  /** Sélection nationale (identifiant) : ses seuls matchs. */
+  selection?: number;
 };
 
 /** Compétitions publiées de chaque catégorie (d'après leur configuration et le niveau du championnat). */
@@ -114,6 +121,9 @@ export async function familyTabs() {
   );
 }
 
+/** Motif ILIKE « contient », caractères spéciaux neutralisés. */
+const pattern = (q: string) => `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+
 // Constante dans la requête (pas un paramètre) : le GROUP BY doit reconnaître la même expression.
 const TZ = sql.raw("'Africa/Brazzaville'");
 const dayStart = (date: string) => new Date(`${date}T00:00:00+01:00`);
@@ -154,6 +164,22 @@ function clubWhere(
   if (f.season) w.push(eq(competitions.season, f.season));
   if (f.club)
     w.push(or(eq(matches.homeClubId, f.club), eq(matches.awayClubId, f.club))!);
+  if (f.round) w.push(eq(matches.round, f.round));
+  if (f.selection) w.push(sql`false`);
+  if (f.search) {
+    const like = pattern(f.search);
+    const named = db
+      .select({ id: clubs.id })
+      .from(clubs)
+      .where(or(ilike(clubs.name, like), ilike(clubs.shortName, like)));
+    w.push(
+      or(
+        inArray(matches.homeClubId, named),
+        inArray(matches.awayClubId, named),
+        ilike(competitions.name, like),
+      )!,
+    );
+  }
   if (opts.day !== false && f.date)
     w.push(
       gte(matches.kickoffAt, dayStart(f.date)),
@@ -174,9 +200,31 @@ function nationalWhere(
   f: MatchFilters,
   opts: { status?: PublicMatchStatus[]; day?: boolean } = {},
 ): SQL | null | undefined {
-  if (typeof f.competition === "number" || f.club || f.competitionIds)
+  if (
+    typeof f.competition === "number" ||
+    f.club ||
+    f.competitionIds ||
+    f.round
+  )
     return null;
   const w: SQL[] = [];
+  if (f.selection) w.push(eq(nationalFixtures.teamId, f.selection));
+  if (f.search) {
+    const like = pattern(f.search);
+    w.push(
+      or(
+        ilike(nationalFixtures.opponent, like),
+        ilike(nationalFixtures.competition, like),
+        inArray(
+          nationalFixtures.teamId,
+          db
+            .select({ id: nationalTeams.id })
+            .from(nationalTeams)
+            .where(ilike(nationalTeams.name, like)),
+        ),
+      )!,
+    );
+  }
   if (f.season) {
     const [from, to] = seasonRange(f.season);
     w.push(
@@ -515,9 +563,44 @@ export async function fixturesByDay(f: MatchFilters, from: string) {
   return days.map((day) => ({ day, count: n.get(day) ?? 0 }));
 }
 
+/**
+ * Championnat national affiché par la page Matchs (Ligue 1, Ligue 2) : la compétition de la saison
+ * demandée, sinon la plus récente, avec ses saisons et ses journées.
+ */
+export async function championshipView(ids: number[], season?: number) {
+  if (ids.length === 0) return null;
+  const comps = await db
+    .select({
+      id: competitions.id,
+      name: competitions.name,
+      slug: competitions.slug,
+      season: competitions.season,
+      championship: { code: championships.code, name: championships.name },
+    })
+    .from(competitions)
+    .leftJoin(championships, eq(competitions.championshipId, championships.id))
+    .where(and(inArray(competitions.id, ids), eq(competitions.type, "LEAGUE")))
+    .orderBy(desc(competitions.season), asc(competitions.name));
+  const competition = comps.find((c) => c.season === season) ?? comps[0];
+  if (!competition) return null;
+  const rounds = await db
+    .selectDistinct({ round: matches.round })
+    .from(matches)
+    .where(eq(matches.competitionId, competition.id))
+    .orderBy(asc(matches.round));
+  return {
+    competition,
+    seasons: [...new Set(comps.map((c) => c.season))],
+    rounds: rounds.map((r) => r.round),
+    href: competition.championship?.code
+      ? `/championnats/${competition.championship.code}?saison=${competition.season}`
+      : `/competitions/${competition.slug}`,
+  };
+}
+
 /** Choix des filtres : compétitions publiées, saisons, clubs engagés. */
 export async function fixtureFilterOptions() {
-  const [comps, clubList] = await Promise.all([
+  const [comps, clubList, teams] = await Promise.all([
     db
       .select({
         id: competitions.id,
@@ -537,11 +620,15 @@ export async function fixtureFilterOptions() {
       .innerJoin(clubs, eq(competitionTeams.clubId, clubs.id))
       .where(ne(competitions.status, "DRAFT"))
       .orderBy(asc(clubs.name)),
+    db
+      .select({ id: nationalTeams.id, name: nationalTeams.name, slug: nationalTeams.slug })
+      .from(nationalTeams)
+      .orderBy(asc(nationalTeams.id)),
   ]);
   const seasons = [...new Set(comps.map((c) => c.season))].sort(
     (a, b) => b - a,
   );
-  return { comps, clubs: clubList, seasons };
+  return { comps, clubs: clubList, seasons, teams };
 }
 
 /**

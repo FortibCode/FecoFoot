@@ -4,6 +4,7 @@ import type { FormItem } from "@/components/matches/form-rows";
 import { groupTable, recordTotals, streaks, type MatchStatValues } from "@/lib/competitions";
 import { playerPhotoUrls } from "@/lib/queries/player-photos";
 import { flagUrl } from "@/lib/flags";
+import { NATIONAL_TEAM_CODES } from "@/lib/national-teams";
 import { db } from "@/lib/db";
 import { clubs, matchStats, nationalEvents, nationalLineups, intlCompetitions, intlGroupMatches, intlGroups, intlGroupTeams, nationalFixtures, nationalStaff, nationalTeams, players, selectionPlayers, selections } from "@/lib/db/schema";
 
@@ -245,4 +246,10 @@ export async function fixtureSheet(fixtureId: number, lineupPublished: boolean) 
     events,
     stats: Object.fromEntries(stats.map(({ period, ...v }) => [period, v as unknown as MatchStatValues])) as Partial<Record<"ALL" | "H1" | "H2", MatchStatValues>>,
   };
+}
+
+/** Sélections enregistrées, dans l'ordre officiel (A, A', U-23… Dames) : noms et adresses lus en base. */
+export async function nationalTeamList() {
+  const rows = await db.select({ id: nationalTeams.id, code: nationalTeams.code, name: nationalTeams.name, slug: nationalTeams.slug }).from(nationalTeams);
+  return rows.sort((a, b) => NATIONAL_TEAM_CODES.indexOf(a.code) - NATIONAL_TEAM_CODES.indexOf(b.code));
 }

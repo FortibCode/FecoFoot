@@ -3,6 +3,7 @@ import { orderStandings, type StandingsRow } from "@/components/competitions/sta
 import { ClubLogo } from "@/components/public/club-logo";
 import { formatLabel, type CompetitionType } from "@/lib/competitions";
 import { seasonLabel } from "@/lib/licenses";
+import { ArrowIcon, BallIcon, TrophyIcon } from "@/components/public/icons";
 
 /** Classement résumé (8 premiers) : rang, club, matchs joués, différence, points. */
 export function MiniStandings({ rows, logos, season, href }: { rows: StandingsRow[]; logos: Map<number, string>; season: number; href: string }) {
@@ -118,5 +119,92 @@ export function PreSeason({
         </Link>
       </div>
     </div>
+  );
+}
+
+/**
+ * Classement de la colonne latérale (page Matchs) : position, club, bilan et points, accès au classement
+ * complet. Avant la première journée, les clubs engagés par ordre alphabétique, avec la mention.
+ */
+export function SideStandings({ rows, logos, href }: { rows: StandingsRow[]; logos: Map<number, string>; href: string }) {
+  const { ordered, started } = orderStandings(rows);
+  const cols = [
+    ["J", "Matchs joués", (r: StandingsRow) => r.played],
+    ["G", "Victoires", (r: StandingsRow) => r.won],
+    ["N", "Nuls", (r: StandingsRow) => r.drawn],
+    ["P", "Défaites", (r: StandingsRow) => r.lost],
+    ["Diff", "Différence de buts", (r: StandingsRow) => (r.goalDiff > 0 ? `+${r.goalDiff}` : r.goalDiff)],
+  ] as const;
+  return (
+    <section aria-labelledby="side-standings" className="flex flex-col gap-4 bg-muted/60 p-4 sm:p-5">
+      <h2 id="side-standings" className="flex items-center gap-2.5 font-heading text-lg font-bold uppercase">
+        <TrophyIcon className="size-5 text-[var(--flag-green)]" />
+        Classement
+      </h2>
+      {!started && <p className="text-xs text-muted-foreground">Avant la première journée : clubs engagés par ordre alphabétique.</p>}
+      <table className="w-full bg-card text-sm">
+        <thead className="bg-muted/60 text-[0.7rem] text-muted-foreground">
+          <tr>
+            <th scope="col" className="w-9 py-2.5 text-center font-semibold">
+              <abbr title="Position" className="no-underline">Pos</abbr>
+            </th>
+            <th scope="col" className="py-2.5 text-left font-semibold">Club</th>
+            {cols.map(([k, title]) => (
+              <th key={k} scope="col" className="w-7 py-2.5 text-center font-semibold">
+                <abbr title={title} className="no-underline">{k}</abbr>
+              </th>
+            ))}
+            <th scope="col" className="w-9 py-2.5 pr-1.5 text-center font-semibold">Pts</th>
+          </tr>
+        </thead>
+        <tbody className="tabular-nums">
+          {ordered.slice(0, 8).map((r, i) => (
+            <tr key={r.clubId} className="border-t">
+              <td className="py-2.5 text-center font-semibold">{started ? i + 1 : "–"}</td>
+              <td className="py-2.5">
+                <span className="flex min-w-0 items-center gap-2">
+                  <ClubLogo src={logos.get(r.clubId)} name={r.name} className="size-6 text-[0.55rem]" />
+                  <span className="truncate font-medium">{r.shortName ?? r.name}</span>
+                </span>
+              </td>
+              {cols.map(([k, , get]) => (
+                <td key={k} className="py-2.5 text-center text-xs text-muted-foreground">{get(r)}</td>
+              ))}
+              <td className="py-2.5 pr-1.5 text-center font-bold">{r.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Link href={href} className="group inline-flex items-center gap-1.5 self-start text-sm font-semibold text-[var(--flag-green)] underline-offset-4 hover:underline">
+        Voir le classement complet
+        <ArrowIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
+      </Link>
+    </section>
+  );
+}
+
+/** Meilleurs buteurs (buts des matchs validés), colonne latérale de la page Matchs. */
+export function SideScorers({ scorers }: { scorers: { playerId: number; goals: number; player?: { firstName: string; lastName: string; club: string | null } }[] }) {
+  return (
+    <section aria-labelledby="side-scorers" className="flex flex-col gap-4 bg-muted/60 p-4 sm:p-5">
+      <h2 id="side-scorers" className="flex items-center gap-2.5 font-heading text-lg font-bold uppercase">
+        <BallIcon className="size-5 text-[var(--flag-green)]" />
+        Meilleurs buteurs
+      </h2>
+      <ol className="flex flex-col bg-card">
+        {scorers.slice(0, 5).map((s, i) => (
+          <li key={s.playerId} className="flex items-center gap-3 border-t px-3 py-2.5 text-sm first:border-t-0">
+            <span className="w-4 text-center font-semibold tabular-nums">{i + 1}</span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate font-medium">{s.player ? `${s.player.firstName} ${s.player.lastName}` : "Joueur"}</span>
+              {s.player?.club && <span className="truncate text-xs text-muted-foreground">{s.player.club}</span>}
+            </span>
+            <span className="font-bold tabular-nums">
+              {s.goals} <span className="text-xs font-normal text-muted-foreground">but{s.goals > 1 ? "s" : ""}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

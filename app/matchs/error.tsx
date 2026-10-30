@@ -11,7 +11,7 @@ export default function MatchesError({ error, retry }: { error: Error & { digest
   }, [error]);
   return (
     <PublicShell eyebrow="Matchs" title="Matchs et résultats" wide>
-      <div role="alert" className="flex flex-col items-center gap-4 rounded-xl border border-dashed p-8 text-center">
+      <div role="alert" className="flex flex-col items-center gap-4 bg-muted/60 p-10 text-center">
         <p className="font-semibold">Les matchs n&apos;ont pas pu être chargés.</p>
         <p className="text-sm text-muted-foreground">Le service est momentanément indisponible. Réessayez dans un instant.</p>
         <div className="flex flex-wrap justify-center gap-2">

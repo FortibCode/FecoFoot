@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
  * Onglets (catégories de l'accueil, rubriques de la fiche d'un match). Tous les panneaux sont rendus par le serveur : changer
  * d'onglet est immédiat, sans requête. Clavier : flèches gauche / droite, Début, Fin.
  */
-export function MatchTabs({ tabs, initial, label = "Catégories de matchs" }: { tabs: { id: string; label: string; live?: boolean; panel: ReactNode }[]; initial: string; label?: string }) {
+export function MatchTabs({ tabs, initial, label = "Catégories de matchs" }: { tabs: { id: string; label: string; icon?: ReactNode; live?: boolean; panel: ReactNode }[]; initial: string; label?: string }) {
   const [active, setActive] = useState(tabs.some((t) => t.id === initial) ? initial : tabs[0]?.id);
   const base = useId();
   // Lien direct vers un onglet (« …#photos ») : l'onglet de l'ancre s'ouvre à l'arrivée.
@@ -50,6 +50,7 @@ export function MatchTabs({ tabs, initial, label = "Catégories de matchs" }: { 
               className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green ${selected ? "border-brand-ink bg-brand-ink text-white" : "bg-card hover:bg-muted"}`}
             >
               {t.live && <span aria-label="match en direct" className="size-2 rounded-full bg-[var(--flag-red)] motion-safe:animate-pulse" />}
+              {t.icon}
               {t.label}
             </button>
           );

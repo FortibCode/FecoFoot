@@ -4,7 +4,6 @@ import { TeamCard } from "@/components/public/national-team-cards";
 import { PublicShell } from "@/components/public/public-shell";
 import { db } from "@/lib/db";
 import { nationalTeams } from "@/lib/db/schema";
-import { NATIONAL_TEAMS } from "@/lib/national-teams";
 import { teamCovers } from "@/lib/photos";
 
 export const metadata: Metadata = {
@@ -24,7 +23,7 @@ export default async function PublicNationalTeamsPage() {
   await connection();
   const [rows, covers] = await Promise.all([db.select().from(nationalTeams), teamCovers()]);
   const bySlug = new Map(rows.map((t) => [t.slug, t]));
-  const first = bySlug.get(NATIONAL_TEAMS[0].slug);
+  const first = rows.find((t) => t.code === "A");
   return (
     <PublicShell
       eyebrow="Équipes nationales"
