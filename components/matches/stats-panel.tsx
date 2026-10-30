@@ -46,7 +46,7 @@ const LABELS: Record<EventType, string> = {
 /** Chronologie : équipe à domicile à gauche, extérieur à droite, minute au centre. */
 export function EventTimeline({ events }: { events: TimelineEvent[] }) {
   return (
-    <ol className="flex flex-col divide-y rounded-2xl border bg-card text-sm">
+    <ol className="flex flex-col divide-y rounded-2xl bg-muted/60 text-sm">
       {events.map((e) => {
         const who = (
           <span className="flex min-w-0 flex-col">

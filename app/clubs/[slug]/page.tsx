@@ -54,7 +54,7 @@ export default async function PublicClubPage({ params }: PageProps<"/clubs/[slug
 
   return (
     <PublicShell eyebrow={`${club.city} · ${row.league ?? "Division nationale"}`} title={club.name} wide>
-      <div className="mb-8 flex flex-wrap items-center gap-6 rounded-2xl border bg-card p-6 shadow-sm">
+      <div className="mb-8 flex flex-wrap items-center gap-6 rounded-2xl bg-muted/60 p-6">
         <div className="flex flex-col items-center gap-3">
           <ClubLogo src={logos.get(club.id)} name={club.name} className="size-28 sm:size-32" />
           {/* Clubs suivis : leurs matchs sont repérés et filtrables sur la page « Matchs et résultats ». */}
@@ -82,7 +82,7 @@ export default async function PublicClubPage({ params }: PageProps<"/clubs/[slug
           {results.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucun résultat.</p>
           ) : (
-            <div className="divide-y rounded-lg border">
+            <div className="divide-y rounded-lg shadow-sm">
               {results.map((m) => (
                 <MatchLine key={m.match.id} row={m} href={`/matchs/${m.match.id}`} official />
               ))}
@@ -94,7 +94,7 @@ export default async function PublicClubPage({ params }: PageProps<"/clubs/[slug
           {participations.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucune participation publiée.</p>
           ) : (
-            <ul className="flex flex-col divide-y rounded-lg border text-sm">
+            <ul className="flex flex-col divide-y rounded-lg text-sm shadow-sm">
               {participations.map((p) => (
                 <li key={p.competitionId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                   <Link href={p.championshipCode ? `/championnats/${p.championshipCode}?saison=${p.season}` : `/competitions/${p.slug}`} className="font-medium underline-offset-2 hover:underline">

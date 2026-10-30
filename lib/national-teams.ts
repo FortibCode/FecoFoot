@@ -21,6 +21,9 @@ export const NATIONAL_TEAM_TAGLINES: Record<string, string> = {
   dames: "Équipe féminine",
 };
 
+/** Repère court de chaque sélection (visuel des cartes sans photo). */
+export const NATIONAL_TEAM_SHORT: Record<string, string> = { a: "A", "a-locaux": "A'", u23: "U-23", u20: "U-20", u17: "U-17", u15: "U-15", dames: "Dames" };
+
 export const NATIONAL_TEAM_CODES = NATIONAL_TEAMS.map((t) => t.code) as unknown as readonly [string, ...string[]];
 
 export const SELECTION_STATUSES = ["DRAFT", "PUBLISHED"] as const;

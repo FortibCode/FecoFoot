@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 /** Flèche dans un rond (↗), décorative. */
 export function ArrowCircle({ tone = "light", className = "" }: { tone?: "light" | "dark" | "solid"; className?: string }) {
   const colors = {
-    light: "border border-foreground/20 text-foreground group-hover:border-[var(--flag-green)] group-hover:bg-[var(--flag-green)] group-hover:text-white",
+    light: "bg-background text-foreground group-hover:bg-[var(--flag-green)] group-hover:text-white",
     dark: "border border-white/25 text-white group-hover:bg-white group-hover:text-brand-ink",
     solid: "bg-white text-brand-ink",
   }[tone];

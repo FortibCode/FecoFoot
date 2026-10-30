@@ -511,7 +511,7 @@ export default async function PublicMatchPage({
         />
 
         {ticket && (
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--flag-yellow)] bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-start gap-3 rounded-2xl border-[var(--flag-yellow)] bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)] p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm">
             <p className="text-sm">
               <strong className="font-semibold">Billetterie ouverte</strong>
               {ticket.salesStatus === "PRESALE"
@@ -528,7 +528,7 @@ export default async function PublicMatchPage({
           </div>
         )}
 
-        <dl className="grid gap-4 rounded-2xl border bg-card p-5 text-sm sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+        <dl className="grid gap-4 rounded-2xl bg-muted/60 p-5 text-sm sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
           {facts.map(([k, v]) => (
             <div key={k} className="flex min-w-0 flex-col gap-0.5">
               <dt className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -575,7 +575,7 @@ export default async function PublicMatchPage({
                             : "Les buts, cartons et remplacements apparaîtront ici dès le coup d'envoi."}
                         </p>
                       ) : (
-                        <ol className="flex flex-col divide-y rounded-2xl border bg-card text-sm">
+                        <ol className="flex flex-col divide-y rounded-2xl bg-muted/60 text-sm">
                           {events.map(
                             ({
                               e,
@@ -635,14 +635,14 @@ export default async function PublicMatchPage({
                     {/* Statistiques relevées par l'officiel (possession, tirs…) ; à défaut, décompte des événements saisis. */}
                     {Object.keys(entered).length > 0 && (
                       <Section title="Statistiques" id="statistiques">
-                        <div className="rounded-2xl border bg-card p-4">
+                        <div className="rounded-2xl bg-muted/60 p-4">
                           <StatsPanel stats={entered} />
                         </div>
                       </Section>
                     )}
                     {started && Object.keys(entered).length === 0 && (
                       <Section title="Statistiques" id="statistiques">
-                        <div className="flex flex-col gap-4 rounded-2xl border bg-card p-4">
+                        <div className="flex flex-col gap-4 rounded-2xl bg-muted/60 p-4">
                           <p className="grid grid-cols-[2rem_1fr_2rem] items-center text-xs font-semibold text-muted-foreground">
                             {home ? (
                               <ClubLogo
@@ -715,7 +715,7 @@ export default async function PublicMatchPage({
                           Désignations à venir.
                         </p>
                       ) : (
-                        <dl className="flex flex-col divide-y rounded-2xl border bg-card text-sm">
+                        <dl className="flex flex-col divide-y rounded-2xl bg-muted/60 text-sm">
                           {officials.map((o) => (
                             <div
                               key={o.role}
@@ -734,7 +734,7 @@ export default async function PublicMatchPage({
                     </Section>
 
                     <Section title="Feuille de match" id="feuille">
-                      <div className="flex flex-col gap-2 rounded-2xl border bg-card p-4 text-sm">
+                      <div className="flex flex-col gap-2 rounded-2xl bg-muted/60 p-4 text-sm">
                         <p className="flex items-center gap-2 font-semibold">
                           <span
                             aria-hidden
@@ -882,7 +882,7 @@ export default async function PublicMatchPage({
               panel:
                 h2h && h2h.items.length > 0 ? (
                   <div className="flex flex-col gap-4">
-                    <dl className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-4 text-center">
+                    <dl className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/60 p-4 text-center">
                       {(
                         [
                           [home?.shortName ?? home?.name ?? "", h2h.tally.a],

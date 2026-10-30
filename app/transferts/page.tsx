@@ -71,7 +71,7 @@ export default async function PublicTransfersPage({ searchParams }: PageProps<"/
 
   return (
     <PublicShell eyebrow="Mouvements de joueurs" title="Transferts" subtitle="Transferts et prêts homologués par la fédération" wide>
-      <form className="mb-8 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-[repeat(2,minmax(0,1fr))_auto] sm:items-end" aria-label="Filtres">
+      <form className="mb-8 grid gap-3 rounded-xl bg-muted/60 p-4 sm:grid-cols-[repeat(2,minmax(0,1fr))_auto] sm:items-end" aria-label="Filtres">
         <label className="flex min-w-0 flex-col gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Saison
           <select name="saison" defaultValue={season ?? ""} className={select}>
@@ -102,7 +102,7 @@ export default async function PublicTransfersPage({ searchParams }: PageProps<"/
       {rows.length === 0 ? (
         <p className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">Aucun transfert homologué pour ces critères.</p>
       ) : (
-        <ul className="flex flex-col divide-y rounded-xl border bg-card">
+        <ul className="flex flex-col divide-y rounded-xl bg-muted/60">
           {rows.map(({ t, playerId, firstName, lastName, from, to }) => (
             <li key={t.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 p-4 text-sm sm:grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
               <PlayerPhoto src={photos.get(playerId)} firstName={firstName} lastName={lastName} className="row-span-2 size-14 text-base sm:row-span-1" />

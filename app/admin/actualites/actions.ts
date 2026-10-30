@@ -22,10 +22,12 @@ const ArticleSchema = z.object({
   summary: z.string().trim().min(10, { error: "Chapô requis." }).max(400),
   body: z.string().trim().min(20, { error: "Texte de l'article requis." }).max(50_000),
   category: z.enum(ARTICLE_CATEGORIES, { error: "Rubrique requise." }),
+  nationalTeamId: z.preprocess((v) => (v === "" || v == null ? null : v), z.coerce.number().int().positive().nullable()),
 });
 
 const revalidatePublic = () => {
   revalidatePath("/actualites", "layout");
+  revalidatePath("/equipes-nationales", "layout");
   revalidatePath("/");
 };
 

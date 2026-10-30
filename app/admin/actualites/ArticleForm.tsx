@@ -9,10 +9,13 @@ import { useActionForm } from "@/lib/use-action-form";
 export function ArticleForm({
   action,
   initial,
+  teams = [],
   submitLabel,
 }: {
   action: (s: ActionState, f: FormData) => Promise<ActionState>;
-  initial?: { title: string; summary: string; body: string; category: ArticleCategory };
+  initial?: { title: string; summary: string; body: string; category: ArticleCategory; nationalTeamId?: number | null };
+  /** Sélections nationales (rattachement facultatif de l'article). */
+  teams?: { id: number; name: string }[];
   submitLabel: string;
 }) {
   const { state, pending, formProps } = useActionForm(action);
@@ -24,6 +27,14 @@ export function ArticleForm({
         {ARTICLE_CATEGORIES.map((c) => (
           <option key={c} value={c}>
             {ARTICLE_CATEGORY_LABELS[c]}
+          </option>
+        ))}
+      </SelectField>
+      <SelectField label="Sélection concernée (facultatif)" name="nationalTeamId" defaultValue={initial?.nationalTeamId ? String(initial.nationalTeamId) : ""} hint="L'article apparaît aussi dans les actualités de la page de la sélection">
+        <option value="">Aucune</option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
           </option>
         ))}
       </SelectField>

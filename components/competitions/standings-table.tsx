@@ -48,7 +48,7 @@ export function StandingsTable({
   const offset = slice?.start ?? 0;
   const ordered = slice ? all.slice(slice.start, slice.end) : all;
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+    <div className="overflow-x-auto rounded-xl bg-muted/60">
       {title && <p className="border-b px-3 py-2 font-heading text-base font-semibold uppercase tracking-wide">{title}</p>}
       <table className="w-full text-sm sm:min-w-[640px]">
         <thead className="bg-brand-ink text-xs uppercase tracking-wider text-white/80">
@@ -171,7 +171,7 @@ export function StandingsTable({
 export function ScorersList({ scorers }: { scorers: { playerId: number; goals: number; player?: { lastName: string; firstName: string; club: string | null } }[] }) {
   if (scorers.length === 0) return <p className="text-sm text-muted-foreground">Aucun but marqué.</p>;
   return (
-    <ol className="flex flex-col divide-y rounded-xl border bg-card text-sm shadow-sm">
+    <ol className="flex flex-col divide-y rounded-xl bg-muted/60 text-sm">
       {scorers.map((s, i) => (
         <li key={s.playerId} className="flex items-center justify-between gap-3 px-3 py-2">
           <span>

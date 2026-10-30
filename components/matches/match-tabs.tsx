@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 /**
  * Onglets (catégories de l'accueil, rubriques de la fiche d'un match). Tous les panneaux sont rendus par le serveur : changer
@@ -9,6 +9,16 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "rea
 export function MatchTabs({ tabs, initial, label = "Catégories de matchs" }: { tabs: { id: string; label: string; live?: boolean; panel: ReactNode }[]; initial: string; label?: string }) {
   const [active, setActive] = useState(tabs.some((t) => t.id === initial) ? initial : tabs[0]?.id);
   const base = useId();
+  // Lien direct vers un onglet (« …#photos ») : l'onglet de l'ancre s'ouvre à l'arrivée.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const hash = decodeURIComponent(window.location.hash.slice(1));
+      if (hash && tabs.some((t) => t.id === hash)) setActive(hash);
+    });
+    return () => cancelAnimationFrame(id);
+    // Seulement à l'arrivée sur la page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKey = (e: KeyboardEvent, i: number) => {
     const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];

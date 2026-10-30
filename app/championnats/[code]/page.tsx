@@ -100,7 +100,7 @@ export default async function PublicChampionshipPage({ params, searchParams }: P
             {documents.length === 0 ? (
               <Empty>Aucun document publié.</Empty>
             ) : (
-              <ul className="flex flex-col divide-y rounded-lg border bg-card text-sm">
+              <ul className="flex flex-col divide-y rounded-lg bg-muted/60 text-sm">
                 {documents.map((d) => (
                   <li key={d.id} className="flex items-center justify-between gap-3 px-3 py-2">
                     <a href={`/media/championnats/documents/${d.id}`} target="_blank" rel="noreferrer" className="font-medium underline-offset-2 hover:underline">

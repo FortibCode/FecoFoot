@@ -28,7 +28,7 @@ export default async function PublicDisciplinePage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {rows.map(({ c, lastName, firstName, club, competition }) => (
-            <li key={c.id} className="rounded-lg border p-4 text-sm">
+            <li key={c.id} className="rounded-lg p-4 text-sm shadow-sm">
               <p className="text-xs text-muted-foreground">
                 {c.number} · décision du {formatDate(c.decidedAt)}
                 {competition && ` · ${competition}`}

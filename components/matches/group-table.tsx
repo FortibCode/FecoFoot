@@ -18,7 +18,7 @@ function Flag({ name }: { name: string }) {
 export function GroupTable({ rows, qualifiers }: { rows: GroupRow[]; qualifiers: number }) {
   const cols = ["Pts", "J", "G", "N", "P", "BP", "BC", "Diff"];
   return (
-    <div className="overflow-x-auto rounded-2xl border bg-card shadow-sm">
+    <div className="overflow-x-auto rounded-2xl bg-muted/60">
       <table className="w-full min-w-[34rem] text-sm">
         <thead className="bg-brand-ink text-xs text-white/80 uppercase">
           <tr>
@@ -96,7 +96,7 @@ export function GroupMatchdays({ fixtures, current }: { fixtures: GroupFixture[]
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {days.map((d) => (
-        <section key={d} aria-label={`Journée ${d}`} className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <section key={d} aria-label={`Journée ${d}`} className="overflow-hidden rounded-2xl bg-muted/60">
           <h3 className="border-b bg-muted/50 px-4 py-2 text-sm font-semibold uppercase tracking-wide">{d ? `Journée ${d}` : "Journée à préciser"}</h3>
           <ul className="divide-y">
             {fixtures

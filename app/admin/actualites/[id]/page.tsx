@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { nationalTeams } from "@/lib/db/schema";
 import { EmptyState } from "@/components/admin/empty-state";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
@@ -55,7 +56,7 @@ export default async function AdminArticlePage({ params }: PageProps<"/admin/act
         <section className="flex flex-col gap-3 border-t pt-6">
           <h2 className="font-semibold">Contenu</h2>
           <div id="modifier">
-          <ArticleForm action={updateArticle.bind(null, id)} initial={a} submitLabel="Enregistrer" />
+          <ArticleForm teams={await db.select({ id: nationalTeams.id, name: nationalTeams.name }).from(nationalTeams).orderBy(nationalTeams.id)} action={updateArticle.bind(null, id)} initial={a} submitLabel="Enregistrer" />
           </div>
         </section>
 

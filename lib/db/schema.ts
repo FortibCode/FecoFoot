@@ -758,8 +758,25 @@ export const nationalTeams = pgTable(
     code: nationalTeamCodeEnum("code").notNull(),
     name: varchar("name", { length: 120 }).notNull(),
     slug: varchar("slug", { length: 40 }).notNull(),
+    // Présentation publique de la sélection (rédigée par la fédération).
+    description: text("description"),
   },
   (t) => [uniqueIndex("national_teams_code_uq").on(t.code), uniqueIndex("national_teams_slug_uq").on(t.slug)],
+);
+
+/** Vidéos d'une sélection : liens vers les plateformes officielles (YouTube, Facebook…), sans hébergement. */
+export const nationalTeamVideos = pgTable(
+  "national_team_videos",
+  {
+    id: serial("id").primaryKey(),
+    teamId: integer("team_id")
+      .notNull()
+      .references(() => nationalTeams.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    url: varchar("url", { length: 500 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("national_team_videos_team_idx").on(t.teamId)],
 );
 
 export const nationalStaff = pgTable(
@@ -1335,6 +1352,8 @@ export const articles = pgTable(
     authorId: integer("author_id").references(() => users.id),
     // Article repris de l'ancien site fecofoot.cg : adresse d'origine, pour ne jamais l'importer deux fois.
     sourceUrl: varchar("source_url", { length: 500 }),
+    // Sélection concernée (actualités de la page de la sélection) ; null : article général.
+    nationalTeamId: integer("national_team_id").references(() => nationalTeams.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

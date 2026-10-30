@@ -194,7 +194,7 @@ export default async function NationalMatchPage({
         />
 
         {ticket && (
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--flag-yellow)] bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-start gap-3 rounded-2xl border-[var(--flag-yellow)] bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)] p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm">
             <p className="text-sm">
               <strong className="font-semibold">Billetterie ouverte</strong>
               {ticket.salesStatus === "PRESALE"
@@ -225,7 +225,7 @@ export default async function NationalMatchPage({
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
                   <section
                     aria-labelledby="bilan"
-                    className="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm"
+                    className="flex flex-col gap-4 rounded-2xl bg-muted/60 p-4"
                   >
                     <div>
                       <h3
@@ -260,7 +260,7 @@ export default async function NationalMatchPage({
                         ).map(([k, v, tone]) => (
                           <div
                             key={k}
-                            className="flex flex-col-reverse gap-0.5 rounded-xl bg-muted/50 p-3"
+                            className="flex flex-col-reverse gap-0.5 rounded-xl bg-card p-3"
                           >
                             <dt className="text-xs text-muted-foreground">
                               {k}
@@ -285,7 +285,7 @@ export default async function NationalMatchPage({
                   </section>
                   <section
                     aria-labelledby="forme"
-                    className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm"
+                    className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4"
                   >
                     <h3
                       id="forme"
@@ -354,7 +354,7 @@ export default async function NationalMatchPage({
                       Statistiques
                     </h3>
                     {hasStats ? (
-                      <div className="rounded-2xl border bg-card p-4 shadow-sm">
+                      <div className="rounded-2xl bg-muted/60 p-4">
                         <StatsPanel stats={sheet.stats} />
                       </div>
                     ) : (
@@ -450,7 +450,7 @@ export default async function NationalMatchPage({
                       La liste des joueurs n&apos;est pas encore détaillée.
                     </Muted>
                   ) : (
-                    <div className="overflow-x-auto rounded-2xl border bg-card">
+                    <div className="overflow-x-auto rounded-2xl bg-muted/60">
                       <table className="w-full text-sm">
                         <thead className="bg-muted/50 text-xs text-muted-foreground">
                           <tr>
@@ -515,7 +515,7 @@ export default async function NationalMatchPage({
               panel:
                 h2h.items.length > 0 ? (
                   <div className="flex flex-col gap-4">
-                    <dl className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-4 text-center">
+                    <dl className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/60 p-4 text-center">
                       {(
                         [
                           ["Victoires du Congo", h2h.totals.wins],

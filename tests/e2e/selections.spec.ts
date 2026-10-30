@@ -89,7 +89,8 @@ test("sélection nationale : convocation, publication sur le portail et lettres 
   await expect(visitor.locator("main")).toContainText(`E2E Sélectionneur ${RUN}`);
 
   // Fiche du match depuis le calendrier de la sélection : score, avant-match, convoqués publiés.
-  await visitor.getByRole("link", { name: new RegExp(`E2E Adversaire ${RUN}`) }).click();
+  await visitor.getByRole("tab", { name: "Calendrier et résultats" }).click();
+  await visitor.getByRole("link", { name: new RegExp(`E2E Adversaire ${RUN}`) }).first().click();
   await expect(visitor).toHaveURL(/\/matchs\/selection\/\d+$/);
   await expect(visitor.getByRole("region", { name: "Score" })).toContainText(`E2E Adversaire ${RUN}`, { ignoreCase: true });
   await expect(visitor.getByRole("tab", { name: "Avant-match" })).toHaveAttribute("aria-selected", "true");

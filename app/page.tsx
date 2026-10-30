@@ -3,10 +3,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { Carousel } from "@/components/public/carousel";
+import { FlipPhoto } from "@/components/public/flip-photo";
 import { NewsMosaic } from "@/components/public/news-mosaic";
 import { PublicShell } from "@/components/public/public-shell";
-import { ArrowCircle, PillLink, SectionHead } from "@/components/public/ui";
-import { formatDate } from "@/lib/format";
+import { PillLink, SectionHead } from "@/components/public/ui";
 import { NATIONAL_TEAMS } from "@/lib/national-teams";
 import { eliteClubs, homeData } from "@/lib/queries/portal";
 import { competitionTables } from "@/lib/queries/competitions";
@@ -23,7 +23,7 @@ import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
 import { NationalTeamCards } from "@/components/public/national-team-cards";
-import { featuredPhotos, latestPhotos, photoUrl } from "@/lib/photos";
+import { featuredPhotos, latestPhotos, photoUrl, teamCovers } from "@/lib/photos";
 import { CountUp } from "@/components/count-up";
 import { HeroSlideshow } from "@/components/public/hero-slideshow";
 
@@ -39,7 +39,7 @@ function Container({ children, className = "" }: { children: ReactNode; classNam
 /** Page d'accueil du portail public (EF-PUB-01). */
 export default async function HomePage() {
   await connection();
-  const [d, featured, gallery, elite] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs()]);
+  const [d, featured, gallery, elite, covers] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs(), teamCovers()]);
   const [eliteLogos, standing, spotlight, tabs] = await Promise.all([
     clubLogos(elite?.teams.map((t) => t.id) ?? []),
     elite ? competitionTables(elite.competition.id) : null,
@@ -52,12 +52,6 @@ export default async function HomePage() {
     departmentalLeagues(),
   ]);
   const slides = featured.map((p) => ({ src: photoUrl(p), caption: p.caption }));
-  // Lien « toutes les photos » : la galerie de la sélection si toutes les photos en viennent, sinon les sélections.
-  const galleryTeams = [...new Set(gallery.map((p) => p.teamSlug).filter(Boolean))];
-  const galleryLink =
-    galleryTeams.length === 1
-      ? { href: `/equipes-nationales/${galleryTeams[0]}#photos`, label: `Toutes les photos des ${gallery[0].team}` }
-      : { href: "/equipes-nationales", label: "Toutes les sélections" };
   const cover = slides.length > 0;
   // Championnat d'élite : sa page publique (celle du championnat national s'il y en a un) et son logo.
   const eliteHref = elite
@@ -339,54 +333,29 @@ export default async function HomePage() {
           <SectionHead
             title="Les Diables"
             highlight="Rouges"
-            aside={
-              d.latestSelection
-                ? `Dernière liste publiée : ${d.latestSelection.s.title} (${d.latestSelection.team.name}), le ${formatDate(d.latestSelection.s.publishedAt)}.`
-                : `Les ${NATIONAL_TEAMS.length} sélections nationales : de l'équipe A aux U-15, et les Diables Rouges Dames.`
-            }
-            action={
-              d.latestSelection ? (
-                <PillLink href={`/equipes-nationales/${d.latestSelection.team.slug}`} variant="green">
-                  Voir la liste
-                </PillLink>
-              ) : undefined
-            }
           />
           {gallery.length > 0 && (
-            <Carousel
-              label="En images"
-              tone="light"
-              heading={
-                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                  <h3 className="font-heading text-2xl font-bold">En images</h3>
-                  <Link href={galleryLink.href} className="text-sm font-semibold text-flag-green underline-offset-4 hover:underline">
-                    {galleryLink.label} →
-                  </Link>
-                </div>
-              }
-            >
-              {gallery.map((p, i) => (
-                <li key={p.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
-                  <Link
-                    href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"}
-                    className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-brand-ink shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green"
-                  >
-                    {/* Image illustrative : la légende, juste en dessous, donne le nom du lien. Fond sombre si l'image ne charge pas. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element -- image servie par la route des médias */}
-                    <img src={photoUrl(p)} alt="" loading="lazy" className="absolute inset-0 size-full object-cover text-transparent transition-transform duration-500 motion-safe:group-hover:scale-[1.04]" />
-                    <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-[linear-gradient(to_top,rgb(0_0_0/0.88)_0%,rgb(0_0_0/0.55)_45%,transparent_100%)]" />
-                    {/* Flèche en haut : le bas des photos porte souvent le filigrane du photographe. */}
-                    <ArrowCircle tone="dark" className="absolute top-3 right-3 bg-black/35 backdrop-blur-sm" />
-                    <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4 text-white">
-                      {p.team && <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-flag-yellow">{p.team}</span>}
-                      <span className="line-clamp-2 font-display text-lg leading-tight font-semibold uppercase">{p.caption}</span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </Carousel>
+            // Portraits de même format, sans texte sur l'image ; légende au survol.
+            <div>
+              <Carousel
+                label="En images"
+                autoplay={4000}
+              >
+                {gallery.map((p, i) => (
+                  <li key={p.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[70%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
+                    {/* Touchée, la photo se retourne et affiche sa légende. */}
+                    <FlipPhoto src={photoUrl(p)} caption={p.caption} team={p.team} credit={p.credit} href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"} />
+                  </li>
+                ))}
+              </Carousel>
+            </div>
           )}
-          <NationalTeamCards teams={NATIONAL_TEAMS} reveal />
+          <div className="flex flex-col gap-4">
+            <h3 data-reveal="left" className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
+              Nos sélections <span className="text-[var(--flag-green)]">nationales</span>
+            </h3>
+            <NationalTeamCards teams={NATIONAL_TEAMS} covers={covers} reveal />
+          </div>
         </Container>
       </section>
     </PublicShell>

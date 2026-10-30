@@ -8,7 +8,7 @@ import { seasonLabel } from "@/lib/licenses";
 export function MiniStandings({ rows, logos, season, href }: { rows: StandingsRow[]; logos: Map<number, string>; season: number; href: string }) {
   const { ordered } = orderStandings(rows);
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-2xl bg-muted/60">
       <div className="flex items-baseline justify-between gap-3 bg-brand-ink px-4 py-3 text-white">
         <h3 className="font-heading text-lg font-bold uppercase">Classement</h3>
         <span className="text-xs text-white/70">Saison {seasonLabel(season)}</span>
@@ -74,7 +74,7 @@ export function PreSeason({
   href: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <div className="overflow-hidden rounded-2xl bg-muted/60">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b px-5 py-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-4">
           {logo && (
@@ -101,7 +101,7 @@ export function PreSeason({
               <Link
                 href={`/clubs/${c.slug}`}
                 title={c.name}
-                className="flex h-full flex-col items-center gap-2 rounded-xl border p-2 text-center transition-colors hover:border-flag-green/50 sm:p-3 hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green"
+                className="flex h-full flex-col items-center gap-2 rounded-xl p-2 text-center transition-colors hover:border-flag-green/50 sm:p-3 hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green shadow-sm"
               >
                 <ClubLogo src={logos.get(c.id)} name={c.name} className="size-11 text-xs" />
                 <span className="line-clamp-2 text-xs leading-tight font-medium">{c.name}</span>

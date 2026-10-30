@@ -33,7 +33,7 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
             <ul className="grid gap-3 sm:grid-cols-2">
               {divisions.map(({ c, teams, played }) => (
                 <li key={c.id}>
-                  <Link href={`/competitions/${c.slug}`} className="group flex h-full items-center justify-between gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-md">
+                  <Link href={`/competitions/${c.slug}`} className="group flex h-full items-center justify-between gap-4 rounded-xl bg-muted/60 p-5 transition-all motion-safe:hover:-translate-y-0.5">
                     <span className="flex flex-col gap-1">
                       <span className="font-display text-xl font-bold uppercase">{c.name}</span>
                       <span className="text-sm text-muted-foreground">
@@ -78,7 +78,7 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
                   <li key={l.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 8) * 50}ms` }}>
                     <Link
                       href={`/ligues/${l.code.toLowerCase()}`}
-                      className="group flex h-full flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-md"
+                      className="group flex h-full flex-col gap-4 rounded-xl bg-muted/60 p-5 transition-all motion-safe:hover:-translate-y-0.5"
                       data-testid="public-league"
                     >
                       <span className="flex items-center gap-3">

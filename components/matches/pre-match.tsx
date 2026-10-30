@@ -15,7 +15,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : 
 
 function TeamCard({ team, record, profile, suspended, upcoming }: { team: NonNullable<Team>; record: TeamRecord; profile: Profile; suspended: Suspension[]; upcoming: boolean }) {
   return (
-    <section aria-label={`Avant-match : ${team.name}`} className="flex flex-col overflow-hidden rounded-2xl border bg-card text-sm shadow-sm">
+    <section aria-label={`Avant-match : ${team.name}`} className="flex flex-col overflow-hidden rounded-2xl bg-muted/60 text-sm">
       <p className="flex items-center gap-2.5 border-b bg-muted/50 px-4 py-3 font-semibold">
         <ClubLogo src={team.logo} name={team.name} className="size-7 text-[0.55rem]" />
         <span className="min-w-0 truncate">{team.name}</span>
@@ -92,7 +92,7 @@ function GoalTimes({ teams, profiles }: { teams: [NonNullable<Team>, NonNullable
     </span>
   );
   return (
-    <section aria-labelledby="buts-minutes" className="flex flex-col gap-3 rounded-2xl border bg-card p-4 text-sm shadow-sm">
+    <section aria-labelledby="buts-minutes" className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4 text-sm">
       <h3 id="buts-minutes" className="font-heading text-base font-bold uppercase">
         Buts par tranche de 15 minutes
       </h3>
@@ -158,7 +158,7 @@ function StadiumCard({ stadium }: { stadium: Stadium }) {
     ["Inauguration", stadium.openedYear ? String(stadium.openedYear) : null],
   ].filter((f): f is [string, string] => Boolean(f[1]));
   return (
-    <section aria-labelledby="le-stade" className="flex flex-col gap-3 rounded-2xl border bg-card p-4 text-sm shadow-sm">
+    <section aria-labelledby="le-stade" className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4 text-sm">
       <h3 id="le-stade" className="flex items-center gap-2 font-heading text-base font-bold uppercase">
         <svg aria-hidden viewBox="0 0 24 24" className="size-5 text-flag-green" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6" />
@@ -202,7 +202,7 @@ export function PreMatch({
   return (
     <div className="flex flex-col gap-6">
       {home && away && rh && ra && rh.totals.played + ra.totals.played > 0 && (
-        <section aria-labelledby="stats-generales" className="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm">
+        <section aria-labelledby="stats-generales" className="flex flex-col gap-4 rounded-2xl bg-muted/60 p-4">
           <div className="flex items-center justify-between gap-3">
             <ClubLogo src={home.logo} name={home.name} className="size-8 text-[0.6rem]" />
             <div className="text-center">

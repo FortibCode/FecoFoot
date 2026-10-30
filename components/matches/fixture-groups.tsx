@@ -10,7 +10,7 @@ export function FixtureGroups({ items, showDate = false }: { items: FixtureItem[
       {[...groups.values()].map((list) => {
         const g = list[0].group;
         return (
-          <div key={g.key} data-group className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <div key={g.key} data-group className="overflow-hidden rounded-2xl bg-muted/60">
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/50 px-3 py-2.5 text-sm sm:px-5">
               <span aria-hidden className="h-4 w-1 rounded-full bg-[linear-gradient(180deg,var(--flag-green)_0_33.33%,var(--flag-yellow)_33.33%_66.66%,var(--flag-red)_66.66%)]" />
               {g.href ? (

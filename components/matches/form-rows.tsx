@@ -24,7 +24,7 @@ function Mark({ side }: { side: Side }) {
 export function FormRows({ items, empty = "Aucun résultat officiel enregistré." }: { items: FormItem[]; empty?: string }) {
   if (items.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
-    <ol className="flex flex-col divide-y rounded-xl border">
+    <ol className="flex flex-col divide-y overflow-hidden rounded-xl bg-card">
       {items.map((f) => (
         <li key={f.id}>
           <Link

@@ -45,7 +45,7 @@ export function PublicShell({
               <div className="flex items-center gap-4 sm:gap-6">
                 {logo && (
                   // eslint-disable-next-line @next/next/no-img-element -- logo servi par la route des médias
-                  <img src={logo} alt="" className="size-20 shrink-0 rounded-xl border bg-white object-contain p-1.5 sm:size-24" />
+                  <img src={logo} alt="" className="size-20 shrink-0 rounded-xl bg-white object-contain p-1.5 sm:size-24 shadow-sm" />
                 )}
                 <div className="flex flex-col gap-3">
                   <h1 className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">

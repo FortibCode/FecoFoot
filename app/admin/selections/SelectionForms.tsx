@@ -329,3 +329,36 @@ export function NationalEventForm({ action, congoPlayers, opponent }: { action: 
     </form>
   );
 }
+
+/** Présentation de la sélection (page publique). */
+export function TeamDescriptionForm({ action, description }: { action: Action; description: string | null }) {
+  const { state, pending, formProps } = useActionForm(action);
+  return (
+    <form {...formProps} className="flex max-w-3xl flex-col gap-3">
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        Présentation de la sélection
+        <textarea name="description" rows={5} maxLength={4000} defaultValue={description ?? ""} placeholder="Histoire, palmarès, ambitions, sélectionneur…" className="rounded-md border bg-background px-3 py-2 font-normal" />
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <Submit pending={pending} label="Enregistrer la présentation" />
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}
+
+/** Lien vidéo (YouTube, Facebook) de la sélection. */
+export function TeamVideoForm({ action }: { action: Action }) {
+  const { state, pending, formProps } = useActionForm(action, { resetOnSuccess: true });
+  const fe = state?.fieldErrors;
+  return (
+    <form {...formProps} className="grid max-w-3xl gap-3 sm:grid-cols-2">
+      <TextField label="Titre de la vidéo" name="title" required errors={fe?.title} />
+      <TextField label="Adresse (YouTube ou Facebook)" name="url" type="url" required placeholder="https://www.youtube.com/watch?v=…" errors={fe?.url} />
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+        <Submit pending={pending} label="Ajouter la vidéo" />
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}

@@ -50,7 +50,7 @@ export function TicketCheck({ t }: { t: VerifiedTicket | null }) {
           <p className="text-sm">{v.text}</p>
         </div>
       </div>
-      <dl className="divide-y rounded-xl border bg-card text-sm">
+      <dl className="divide-y rounded-xl bg-muted/60 text-sm">
         {rows.map(([k, val]) => (
           <div key={k} className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 px-4 py-3">
             <dt className="text-muted-foreground">{k}</dt>

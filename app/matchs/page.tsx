@@ -107,11 +107,11 @@ function Skeleton() {
       className="flex flex-col gap-6 motion-safe:animate-pulse"
     >
       <div className="h-11 w-full max-w-2xl rounded-full bg-muted" />
-      <div className="h-20 rounded-xl border bg-card" />
+      <div className="h-20 rounded-xl bg-muted/60" />
       {[0, 1].map((i) => (
         <div key={i} className="flex flex-col gap-3">
           <div className="h-6 w-56 rounded bg-muted" />
-          <div className="h-48 rounded-2xl border bg-card" />
+          <div className="h-48 rounded-2xl bg-muted/60" />
         </div>
       ))}
     </div>
@@ -220,7 +220,7 @@ async function Matches({
       {/* Compétitions (ordinateur) : nombre de matchs et direct, avec les autres filtres */}
       <nav
         aria-label="Compétitions"
-        className="hidden lg:sticky lg:top-24 lg:flex lg:flex-col lg:gap-1 lg:rounded-2xl lg:border lg:bg-card lg:p-2 lg:shadow-sm"
+        className="hidden lg:sticky lg:top-24 lg:flex lg:flex-col lg:gap-1 lg:rounded-2xl lg:bg-card lg:p-2 lg:shadow-sm"
       >
         <p className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           Compétitions
@@ -322,7 +322,7 @@ async function Matches({
                     href={href({ date: active ? undefined : day })}
                     aria-current={active ? "date" : undefined}
                     aria-label={`${longDay.format(asDate(day))} : ${count} match${count > 1 ? "s" : ""}`}
-                    className={`flex flex-col items-center rounded-xl border px-0.5 py-2 text-center transition-colors ${active ? "border-brand-ink bg-brand-ink text-white" : count > 0 ? "bg-card hover:bg-muted" : "bg-card/50 text-muted-foreground hover:bg-muted"}`}
+                    className={`flex flex-col items-center rounded-xl px-0.5 py-2 text-center shadow-sm transition-colors ${active ? "border-brand-ink bg-brand-ink text-white" : count > 0 ? "bg-card hover:bg-muted" : "bg-card/50 text-muted-foreground hover:bg-muted"}`}
                   >
                     <span className="text-[0.65rem] font-semibold uppercase">
                       {isToday
@@ -358,7 +358,7 @@ async function Matches({
         <form
           action="/matchs"
           aria-label="Filtrer les matchs"
-          className="grid grid-cols-2 gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
+          className="grid grid-cols-2 gap-3 rounded-xl bg-muted/60 p-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
         >
           {status && (
             <input type="hidden" name="statut" value={STATUS_SLUGS[status]} />

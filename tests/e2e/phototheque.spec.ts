@@ -33,8 +33,8 @@ test("photothèque : photos d'une sélection, à la une sur l'accueil, masquées
     await expect(card).toHaveCount(1);
     const src = (await card.locator('a[href^="/media/photos/"]').getAttribute("href"))!;
 
-    // Publiée : visible sur la page de la sélection, servie sans session.
-    await visitor.goto("/equipes-nationales/u17");
+    // Publiée : visible sur la page de la sélection (onglet « Photos et vidéos »), servie sans session.
+    await visitor.goto("/equipes-nationales/u17#photos");
     await expect(visitor.getByRole("img", { name: caption })).toBeVisible();
     const media = await visitor.request.get(src);
     expect(media.status()).toBe(200);
@@ -50,7 +50,7 @@ test("photothèque : photos d'une sélection, à la une sur l'accueil, masquées
     await card.getByRole("button", { name: "Masquer" }).click();
     await expect(card).toContainText("Masquée");
     await expect(card).not.toContainText("À la une");
-    await visitor.goto("/equipes-nationales/u17");
+    await visitor.goto("/equipes-nationales/u17#photos");
     await expect(visitor.getByRole("img", { name: caption })).toHaveCount(0);
     expect((await visitor.request.get(src)).status()).toBe(404);
 

@@ -41,7 +41,7 @@ export function CompetitionFacts({ c, pools, poolLabel = "poule" }: { c: Competi
   }
   facts.push(["Discipline", `Suspension automatique après ${c.yellowCardThreshold} avertissements`]);
   return (
-    <dl className="grid gap-x-6 gap-y-3 rounded-xl border bg-card p-4 text-sm sm:grid-cols-2">
+    <dl className="grid gap-x-6 gap-y-3 rounded-xl bg-muted/60 p-4 text-sm sm:grid-cols-2">
       {facts.map(([k, v]) => (
         <div key={k} className="flex flex-col gap-0.5">
           <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{k}</dt>
@@ -79,7 +79,7 @@ export function SeasonView({ c, data, pool, poolLabel = "Poule" }: { c: Competit
             <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-[var(--flag-red,#dc241f)]" /> En direct
           </h2>
           <LiveRefresh />
-          <div className="divide-y overflow-hidden rounded-lg border bg-card">
+          <div className="divide-y overflow-hidden rounded-lg bg-muted/60">
             {live.map((m) => (
               <MatchLine key={m.match.id} row={m} href={`/matchs/${m.match.id}`} official />
             ))}
@@ -96,7 +96,7 @@ export function SeasonView({ c, data, pool, poolLabel = "Poule" }: { c: Competit
                 <Empty>Le tableau apparaîtra après le tirage au sort.</Empty>
               ) : (
                 rounds.map((r) => (
-                  <details key={r} open={r === openRound} className="overflow-hidden rounded-lg border bg-card">
+                  <details key={r} open={r === openRound} className="overflow-hidden rounded-lg bg-muted/60">
                     <summary className="cursor-pointer border-b bg-muted/50 px-3 py-2 text-xs font-semibold uppercase tracking-wider">{roundLabel(r, totalRounds)}</summary>
                     <div className="divide-y">
                       {allMatches
@@ -130,7 +130,7 @@ export function SeasonView({ c, data, pool, poolLabel = "Poule" }: { c: Competit
         </div>
         <aside className="flex min-w-0 flex-col gap-4">
           <h2 className="text-lg font-bold">Statistiques</h2>
-          <dl className="grid grid-cols-3 gap-2 rounded-xl border bg-card p-4 text-center">
+          <dl className="grid grid-cols-3 gap-2 rounded-xl bg-muted/60 p-4 text-center">
             {(
               [
                 ["Matchs joués", played.length],
@@ -156,7 +156,7 @@ export function SeasonView({ c, data, pool, poolLabel = "Poule" }: { c: Competit
             <Empty>Le calendrier de la saison n&apos;est pas encore publié.</Empty>
           ) : (
             rounds.map((r) => (
-              <details key={r} open={r === openRound} className="overflow-hidden rounded-lg border bg-card">
+              <details key={r} open={r === openRound} className="overflow-hidden rounded-lg bg-muted/60">
                 <summary className="cursor-pointer border-b bg-muted/50 px-3 py-2 text-xs font-semibold uppercase tracking-wider">Journée {r}</summary>
                 <div className="divide-y">
                   {allMatches
@@ -176,7 +176,7 @@ export function SeasonView({ c, data, pool, poolLabel = "Poule" }: { c: Competit
         {results.length === 0 ? (
           <Empty>Aucun résultat officiel pour cette saison.</Empty>
         ) : (
-          <div className="divide-y overflow-hidden rounded-lg border bg-card">
+          <div className="divide-y overflow-hidden rounded-lg bg-muted/60">
             {results.map((m) => (
               <MatchLine key={m.match.id} row={m} href={`/matchs/${m.match.id}`} official />
             ))}
@@ -194,7 +194,7 @@ export function SeasonView({ c, data, pool, poolLabel = "Poule" }: { c: Competit
               <li key={t.clubId}>
                 <Link
                   href={`/clubs/${t.slug}`}
-                  className="flex h-full flex-col items-center gap-2 rounded-xl border bg-card p-4 text-center transition-all hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-0.5"
+                  className="flex h-full flex-col items-center gap-2 rounded-xl bg-muted/60 p-4 text-center transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-0.5"
                 >
                   <ClubLogo src={data.logos.get(t.clubId)} name={t.name} className="size-16" />
                   <span className="font-display leading-tight font-bold uppercase">{t.name}</span>

@@ -45,10 +45,10 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
   return (
     <PublicShell eyebrow="Ligues" title={league.name} subtitle={league.department ? `Département : ${league.department}` : undefined} wide>
       <div className="flex flex-col gap-10">
-        <section className="flex flex-wrap items-start gap-6 rounded-2xl border bg-card p-6 shadow-sm">
+        <section className="flex flex-wrap items-start gap-6 rounded-2xl bg-muted/60 p-6">
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt={`Logo — ${league.name}`} className="size-24 rounded-xl border bg-white object-contain p-1" />
+            <img src={logo} alt={`Logo — ${league.name}`} className="size-24 rounded-xl bg-white object-contain p-1 shadow-sm" />
           ) : (
             <span className="grid size-24 place-items-center rounded-xl bg-brand-ink font-heading text-2xl font-bold text-[#fbde4a]">{league.code}</span>
           )}
@@ -78,7 +78,7 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
             {upcoming.length === 0 ? (
               <Empty>Aucun match programmé.</Empty>
             ) : (
-              <div className="divide-y overflow-hidden rounded-lg border bg-card">
+              <div className="divide-y overflow-hidden rounded-lg bg-muted/60">
                 {upcoming.map((m) => (
                   <MatchLine key={m.match.id} row={m} href={`/matchs/${m.match.id}`} official />
                 ))}
@@ -90,7 +90,7 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
             {results.length === 0 ? (
               <Empty>Aucun résultat officiel pour le moment.</Empty>
             ) : (
-              <div className="divide-y overflow-hidden rounded-lg border bg-card">
+              <div className="divide-y overflow-hidden rounded-lg bg-muted/60">
                 {results.map((m) => (
                   <MatchLine key={m.match.id} row={m} href={`/matchs/${m.match.id}`} official />
                 ))}
@@ -123,7 +123,7 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
             <ul className="grid gap-3 sm:grid-cols-2">
               {competitions.map((c) => (
                 <li key={c.id}>
-                  <Link href={`/competitions/${c.slug}`} className="block rounded-lg border bg-card p-4 transition-colors hover:bg-muted">
+                  <Link href={`/competitions/${c.slug}`} className="block rounded-lg bg-muted/60 p-4 transition-colors hover:bg-muted">
                     <p className="text-xs text-muted-foreground">
                       {seasonLabel(c.season)} · {COMPETITION_CATEGORY_LABELS[c.category]}
                       {c.gender === "F" ? " · Féminin" : ""}
@@ -145,7 +145,7 @@ export default async function PublicLeaguePage({ params }: PageProps<"/ligues/[c
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {clubs.map((c) => (
                 <li key={c.id}>
-                  <Link href={`/clubs/${c.slug}`} className="flex h-full flex-col items-center gap-2 rounded-xl border bg-card p-4 text-center transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-md">
+                  <Link href={`/clubs/${c.slug}`} className="flex h-full flex-col items-center gap-2 rounded-xl bg-muted/60 p-4 text-center transition-all motion-safe:hover:-translate-y-0.5">
                     <ClubLogo src={logos.get(c.id)} name={c.name} className="size-16" />
                     <span className="font-display leading-tight font-bold uppercase">{c.name}</span>
                     <span className="text-xs text-muted-foreground">{c.city}</span>

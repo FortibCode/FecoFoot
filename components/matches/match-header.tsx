@@ -58,7 +58,7 @@ export function MatchHeader({
 }) {
   const time = date ? timeFmt.format(date) : null;
   return (
-    <section aria-label="Score" className="relative border bg-card px-3 py-4 shadow-sm sm:px-8 sm:py-6">
+    <section aria-label="Score" className="relative bg-muted/60 px-3 py-4 sm:px-8 sm:py-6">
       <h1 className="sr-only">{title}</h1>
       <p className="flex flex-wrap items-center justify-center gap-2 text-center text-[0.7rem] font-semibold tracking-wider text-muted-foreground uppercase sm:px-36">
         {stageLogo && (

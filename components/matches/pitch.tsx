@@ -42,7 +42,7 @@ function Bench({ side, home }: { side: Side; home: boolean }) {
   // Système annoncé par le staff, sinon déduit des postes des titulaires.
   const formation = side.formation ?? pitchLines(side.players.filter((p) => p.starter)).formation;
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card text-sm">
+    <div className="overflow-hidden rounded-2xl bg-muted/60 text-sm">
       <p className="flex items-center gap-2 border-b bg-muted/50 px-4 py-2.5 font-semibold">
         <span aria-hidden className={`size-2.5 rounded-full ${home ? "bg-brand-ink" : "bg-white ring-2 ring-[var(--flag-yellow)]"}`} />
         <TeamBadge name={side.name} logo={side.logo} flag={side.flag} size="xs" />

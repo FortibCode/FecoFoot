@@ -33,12 +33,12 @@ function Cover({ a, className = "", large = false }: { a: NewsItem; className?: 
 function Tile({ a, className = "", index = 0 }: { a: NewsItem; className?: string; index?: number }) {
   return (
     <li data-reveal="up" style={{ ["--rd" as string]: `${index * 110}ms` }} className={`min-h-60 ${className}`}>
-      <Link href={`/actualites/${a.slug}`} className="group relative flex h-full overflow-hidden rounded-xl bg-brand-ink shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green">
+      <Link href={`/actualites/${a.slug}`} className="group relative flex h-full overflow-hidden bg-brand-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green">
         <Cover a={a} large className="absolute inset-0 size-full transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]" />
         <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_30%,rgb(0_0_0/0.55)_62%,rgb(0_0_0/0.9)_100%)]" />
         <span className="relative mt-auto flex flex-col items-start gap-2.5 p-5">
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="rounded bg-primary px-2 py-1 text-[0.7rem] font-bold whitespace-nowrap uppercase tracking-wide text-white">{ARTICLE_CATEGORY_LABELS[a.category]}</span>
+            <span className="bg-primary px-2 py-1 text-[0.7rem] font-bold whitespace-nowrap uppercase tracking-wide text-white">{ARTICLE_CATEGORY_LABELS[a.category]}</span>
             {a.publishedAt && (
               <time dateTime={a.publishedAt.toISOString()} className="text-xs font-semibold whitespace-nowrap text-white/75">
                 {longDate.format(a.publishedAt)}
@@ -55,13 +55,13 @@ function Tile({ a, className = "", index = 0 }: { a: NewsItem; className?: strin
 /** Fil d'infos : date, rubrique, titre et vignette. */
 function Feed({ items }: { items: NewsItem[] }) {
   return (
-    <aside data-reveal="right" style={{ ["--rd" as string]: "200ms" }} aria-labelledby="fil-infos" className="flex h-full flex-col overflow-hidden rounded-xl bg-muted">
+    <aside data-reveal="right" style={{ ["--rd" as string]: "200ms" }} aria-labelledby="fil-infos" className="flex h-full flex-col overflow-hidden bg-muted">
       <h3 id="fil-infos" className="px-5 pt-6 pb-2 font-heading text-2xl font-bold tracking-wide uppercase">
         Fil d&apos;infos
       </h3>
       <ul className="px-5">
         {items.map((a) => (
-          <li key={a.id} className="border-b border-foreground/10 last:border-b-0">
+          <li key={a.id}>
             <Link href={`/actualites/${a.slug}`} className="group flex items-start gap-3 py-3.5">
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2 text-xs font-bold">
@@ -70,12 +70,12 @@ function Feed({ items }: { items: NewsItem[] }) {
                 </span>
                 <span className="mt-1 line-clamp-3 text-sm leading-snug font-semibold break-words group-hover:text-primary">{a.title}</span>
               </span>
-              <Cover a={a} className="size-14 shrink-0 rounded-md" />
+              <Cover a={a} className="size-14 shrink-0" />
             </Link>
           </li>
         ))}
       </ul>
-      <Link href="/actualites" className="group mt-auto flex items-center justify-between border-t border-foreground/10 px-5 py-3.5 text-sm font-semibold hover:text-primary">
+      <Link href="/actualites" className="group mt-auto flex items-center justify-between px-5 py-3.5 text-sm font-semibold hover:text-primary">
         Voir toutes les actualités
         <span aria-hidden className="text-lg text-[var(--flag-green)] transition-transform group-hover:translate-x-1">⟶</span>
       </Link>

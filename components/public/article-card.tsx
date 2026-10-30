@@ -25,7 +25,7 @@ export function ArticleCard({
   return (
     <Link
       href={`/actualites/${a.slug}`}
-      className="group flex h-full flex-col gap-2 overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md"
+      className="group flex h-full flex-col gap-2 overflow-hidden rounded-xl bg-muted/60 transition-shadow"
     >
       {cover ? (
         // eslint-disable-next-line @next/next/no-img-element -- visuel servi par la route des médias

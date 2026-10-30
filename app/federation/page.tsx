@@ -16,7 +16,7 @@ export default async function FederationPage() {
   return (
     <PublicShell eyebrow="La Fédération" title="La Fédération" subtitle="Fédération Congolaise de Football · membre de la FIFA, de la CAF et de l'UNIFFAC" wide>
       <div className="flex flex-col gap-10">
-        <section className="grid gap-3 rounded-2xl border bg-card p-6 text-sm sm:grid-cols-3">
+        <section className="grid gap-3 rounded-2xl bg-muted/60 p-6 text-sm sm:grid-cols-3">
           {(
             [
               ["Fondée en", "1962"],
@@ -55,7 +55,7 @@ export default async function FederationPage() {
                     {leaders.length > 0 && (
                       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {leaders.map((m) => (
-                          <li key={m.id} className="flex items-center gap-4 rounded-xl border bg-card p-4">
+                          <li key={m.id} className="flex items-center gap-4 rounded-xl bg-muted/60 p-4">
                             <span aria-hidden className="brand-band grid size-12 shrink-0 place-items-center rounded-full font-display text-lg font-bold">
                               {m.fullName
                                 .split(/\s+/)
@@ -73,7 +73,7 @@ export default async function FederationPage() {
                       </ul>
                     )}
                     {others.length > 0 && (
-                      <ul className="grid gap-x-6 gap-y-2 rounded-xl border bg-card p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                      <ul className="grid gap-x-6 gap-y-2 rounded-xl bg-muted/60 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
                         {others.map((m) => (
                           <li key={m.id}>
                             <span className="font-semibold">{m.fullName}</span>

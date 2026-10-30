@@ -8,7 +8,7 @@ import { blankToNull, fromZodError, type ActionState } from "@/lib/action-state"
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
-import { intlCompetitions, intlGroupMatches, intlGroups, intlGroupTeams, matchStats, nationalEvents, nationalFixtures, nationalLineups, nationalStaff, nationalTeams, players, selectionPlayers, selections } from "@/lib/db/schema";
+import { intlCompetitions, intlGroupMatches, intlGroups, intlGroupTeams, matchStats, nationalEvents, nationalFixtures, nationalLineups, nationalStaff, nationalTeamVideos, nationalTeams, players, selectionPlayers, selections } from "@/lib/db/schema";
 import { EVENT_TYPES, formationError } from "@/lib/competitions";
 import { parseStats } from "@/lib/match-stats";
 import { POSITIONS } from "@/lib/licenses";
@@ -435,4 +435,52 @@ export async function saveFixtureStats(code: string, fixtureId: number, _state: 
   await logAudit({ userId: user.id, action: "MATCH_STATS", entity: "national_fixture", entityId: fixtureId, details: { period: parsed.period, ...parsed.values } });
   revalidateSheet(code, fixtureId, tf.t.slug);
   return { success: "Statistiques enregistrées." };
+}
+
+// ─── Présentation et vidéos d'une sélection (page publique) ──────────────────
+
+/** Texte de présentation de la sélection, affiché en tête de sa page publique. */
+export async function updateTeamDescription(code: string, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("national_teams.manage");
+  const t = await team(code);
+  if (!t) return { error: "Sélection introuvable." };
+  const description = z.preprocess(blankToNull, z.string().trim().max(4000).nullable()).safeParse(formData.get("description"));
+  if (!description.success) return { error: "Présentation trop longue (4 000 caractères au plus)." };
+  await db.update(nationalTeams).set({ description: description.data }).where(eq(nationalTeams.id, t.id));
+  await logAudit({ userId: user.id, action: "UPDATE", entity: "national_team", entityId: t.id, details: { description: Boolean(description.data) } });
+  revalidateTeam(code, t.slug);
+  return { success: "Présentation enregistrée." };
+}
+
+/** Plateformes acceptées pour les vidéos : liens publics, rien n'est hébergé par la plateforme. */
+const VIDEO_HOSTS = ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "facebook.com", "www.facebook.com", "fb.watch"];
+
+export async function addTeamVideo(code: string, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("national_teams.manage");
+  const t = await team(code);
+  if (!t) return { error: "Sélection introuvable." };
+  const title = String(formData.get("title") ?? "").trim();
+  const raw = String(formData.get("url") ?? "").trim();
+  if (title.length < 3 || title.length > 200) return { error: "Titre de la vidéo requis.", fieldErrors: { title: ["Titre requis."] } };
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return { error: "Adresse de la vidéo invalide.", fieldErrors: { url: ["Adresse invalide."] } };
+  }
+  if (url.protocol !== "https:" || !VIDEO_HOSTS.includes(url.hostname)) return { error: "Vidéo YouTube ou Facebook uniquement (adresse https).", fieldErrors: { url: ["YouTube ou Facebook."] } };
+  const [created] = await db.insert(nationalTeamVideos).values({ teamId: t.id, title, url: url.toString() }).returning({ id: nationalTeamVideos.id });
+  await logAudit({ userId: user.id, action: "CREATE", entity: "national_team_video", entityId: created.id, details: { title, url: url.toString() } });
+  revalidateTeam(code, t.slug);
+  return { success: "Vidéo ajoutée." };
+}
+
+export async function deleteTeamVideo(code: string, videoId: number): Promise<ActionState> {
+  const user = await requirePermission("national_teams.manage");
+  const t = await team(code);
+  if (!t) return { error: "Sélection introuvable." };
+  await db.delete(nationalTeamVideos).where(and(eq(nationalTeamVideos.id, videoId), eq(nationalTeamVideos.teamId, t.id)));
+  await logAudit({ userId: user.id, action: "DELETE", entity: "national_team_video", entityId: videoId });
+  revalidateTeam(code, t.slug);
+  return { success: "Vidéo retirée." };
 }

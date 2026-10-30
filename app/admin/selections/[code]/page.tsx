@@ -9,13 +9,16 @@ import { requirePermission } from "@/lib/auth/guard";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { SELECTION_STATUS_LABELS } from "@/lib/national-teams";
 import { teamGroups, teamPage } from "@/lib/queries/national";
+import { db } from "@/lib/db";
+import { nationalTeamVideos } from "@/lib/db/schema";
+import { desc, eq } from "drizzle-orm";
 import { seasonOf } from "@/lib/licenses";
 import { RowActions } from "@/components/admin/row-actions";
 import { can } from "@/lib/auth/roles";
 import { photoUrl, teamPhotos } from "@/lib/photos";
-import { addFixture, addGroupMatch, addStaff, createGroup, createSelection, deleteGroup, deleteGroupMatch, linkFixtureToGroup, removeStaff, setFixtureFeatured, setFixtureResult, setGroupMatchResult } from "../actions";
+import { addFixture, addGroupMatch, addStaff, addTeamVideo, deleteTeamVideo, updateTeamDescription, createGroup, createSelection, deleteGroup, deleteGroupMatch, linkFixtureToGroup, removeStaff, setFixtureFeatured, setFixtureResult, setGroupMatchResult } from "../actions";
 import { FeaturedToggle } from "@/components/featured-toggle";
-import { FixtureForm, FixtureGroupForm, FixtureResultForm, GroupForm, GroupMatchForm, GroupMatchResultForm, SelectionCreateForm, StaffForm } from "../SelectionForms";
+import { TeamDescriptionForm, TeamVideoForm, FixtureForm, FixtureGroupForm, FixtureResultForm, GroupForm, GroupMatchForm, GroupMatchResultForm, SelectionCreateForm, StaffForm } from "../SelectionForms";
 
 export const metadata: Metadata = { title: "Sélection nationale — FECOFOOT" };
 
@@ -25,7 +28,11 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
   const data = await teamPage(code, { publishedOnly: false });
   if (!data) notFound();
   const { team, staff, fixtures, selections } = data;
-  const [gallery, groups] = await Promise.all([teamPhotos(team.id), teamGroups(team.id)]);
+  const [gallery, groups, videos] = await Promise.all([
+    teamPhotos(team.id),
+    teamGroups(team.id),
+    db.select().from(nationalTeamVideos).where(eq(nationalTeamVideos.teamId, team.id)).orderBy(desc(nationalTeamVideos.createdAt)),
+  ]);
   const groupOptions = groups.map((g) => ({ id: g.group.id, label: `${g.competition.name} · ${g.group.name}` }));
   const canManagePhotos = can(user.role, "communication.manage");
 
@@ -100,6 +107,25 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
             {fixtures.length === 0 && <li className="px-3 py-2 text-muted-foreground">Aucun match.</li>}
           </ul>
           <FixtureForm action={addFixture.bind(null, team.code)} />
+        </section>
+
+        {/* Présentation et vidéos de la sélection (page publique) */}
+        <section className="flex flex-col gap-4 border-t pt-6">
+          <h2 className="font-semibold">Présentation et vidéos</h2>
+          <TeamDescriptionForm action={updateTeamDescription.bind(null, team.code)} description={team.description} />
+          {videos.length > 0 && (
+            <ul className="flex flex-col divide-y rounded-lg border text-sm">
+              {videos.map((v) => (
+                <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                  <a href={v.url} target="_blank" rel="noreferrer" className="font-medium underline-offset-2 hover:underline">
+                    {v.title}
+                  </a>
+                  <RowActions name={v.title} onDelete={deleteTeamVideo.bind(null, team.code, v.id)} />
+                </li>
+              ))}
+            </ul>
+          )}
+          <TeamVideoForm action={addTeamVideo.bind(null, team.code)} />
         </section>
 
         {/* Compétitions internationales : groupes, pays, matchs entre les autres pays (classement public du groupe). */}

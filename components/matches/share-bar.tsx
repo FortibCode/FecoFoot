@@ -87,7 +87,7 @@ export function ShareBar({ title, path, agenda, clubs = [] }: { title: string; p
         </a>
       )}
       {open && (
-        <div role="menu" className="absolute top-full right-0 z-20 mt-2 w-48 rounded-xl border bg-card p-1 shadow-lg">
+        <div role="menu" className="absolute top-full right-0 z-20 mt-2 w-48 rounded-xl bg-card p-1 shadow-lg">
           <button type="button" role="menuitem" className={item} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`${title} ${url()}`)}`, "_blank", "noopener,noreferrer")}>
             WhatsApp
           </button>

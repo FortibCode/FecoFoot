@@ -79,7 +79,7 @@ function ListSkeleton() {
       aria-label="Chargement des compétitions"
       className="flex flex-col gap-6 motion-safe:animate-pulse"
     >
-      <div className="h-36 rounded-xl border bg-card sm:h-24" />
+      <div className="h-36 rounded-xl bg-muted/60 sm:h-24" />
       <div className="flex gap-2">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="h-10 w-28 rounded-full bg-muted" />
@@ -87,7 +87,7 @@ function ListSkeleton() {
       </div>
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <li key={i} className="h-64 rounded-2xl border bg-card" />
+          <li key={i} className="h-64 rounded-2xl bg-muted/60" />
         ))}
       </ul>
     </div>
@@ -207,7 +207,7 @@ async function CompetitionList({
           <li key={c.id}>
             <Link
               href={link}
-              className="group flex h-full flex-col rounded-2xl border bg-card shadow-sm transition-[border-color,box-shadow,transform] duration-200 hover:border-flag-green/50 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-0.5"
+              className="group flex h-full flex-col rounded-2xl bg-muted/60 transition-[border-color,box-shadow,transform] duration-200 hover:border-flag-green/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-0.5 hover:bg-muted"
             >
               <div className="flex items-start gap-4 p-5">
                 {logo ? (
@@ -215,7 +215,7 @@ async function CompetitionList({
                   <img
                     src={logo}
                     alt=""
-                    className="size-14 shrink-0 rounded-xl border bg-white object-contain p-1"
+                    className="size-14 shrink-0 rounded-xl bg-white object-contain p-1 shadow-sm"
                   />
                 ) : (
                   <span
@@ -278,7 +278,7 @@ async function CompetitionList({
     <div className="flex flex-col gap-6">
       <form
         action="/competitions"
-        className="grid grid-cols-2 gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
+        className="grid grid-cols-2 gap-3 rounded-xl bg-muted/60 p-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
         aria-label="Filtrer les compétitions"
       >
         {status && <input type="hidden" name="statut" value={status} />}

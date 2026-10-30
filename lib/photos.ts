@@ -66,3 +66,23 @@ export async function teamPhotos(teamId: number) {
     .where(and(eq(photos.teamId, teamId), eq(photos.published, true)))
     .orderBy(desc(photos.createdAt), desc(photos.id));
 }
+
+/**
+ * Photo de couverture de chaque sélection (cartes « Nos sélections ») : une photo publiée de sa photothèque,
+ * de préférence mise à la une et en paysage. Une sélection sans photo n'en reçoit aucune.
+ */
+export async function teamCovers(): Promise<Record<string, string>> {
+  const rows = await db
+    .select({ ...publicPhoto, featured: photos.featured, slug: nationalTeams.slug })
+    .from(photos)
+    .innerJoin(nationalTeams, eq(photos.teamId, nationalTeams.id))
+    .where(eq(photos.published, true))
+    .orderBy(desc(photos.createdAt), desc(photos.id));
+  const score = (p: (typeof rows)[number]) => (p.featured ? 2 : 0) + (p.width > p.height ? 1 : 0);
+  const best = new Map<string, (typeof rows)[number]>();
+  for (const p of rows) {
+    const cur = best.get(p.slug);
+    if (!cur || score(p) > score(cur)) best.set(p.slug, p);
+  }
+  return Object.fromEntries([...best].map(([slug, p]) => [slug, photoUrl(p)]));
+}

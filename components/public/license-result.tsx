@@ -13,7 +13,7 @@ const VERDICT = {
 export function LicenseResult({ license }: { license: PublicLicense | null }) {
   // Une demande non validée (en attente, rejetée) n'est pas une licence : elle n'est pas révélée publiquement.
   if (!license || !(license.status in VERDICT)) {
-    return <p className="rounded-lg border border-destructive bg-destructive/10 p-4 font-semibold">Aucune licence trouvée.</p>;
+    return <p className="rounded-lg border-destructive bg-destructive/10 p-4 font-semibold shadow-sm">Aucune licence trouvée.</p>;
   }
   const v = VERDICT[license.status as keyof typeof VERDICT];
   return (
