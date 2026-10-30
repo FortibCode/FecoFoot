@@ -143,10 +143,10 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
                     <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {list.map((p) => (
                         <li key={p.id} className="flex items-center gap-3 bg-muted/60 p-3 text-sm">
-                          {/* Photo seulement si le joueur en a autorisé la publication ; sinon son numéro. */}
-                          {p.playerId && photos.get(p.playerId) ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- photo servie par la route des licences
-                            <img src={photos.get(p.playerId)} alt="" className="size-11 shrink-0 rounded-full object-cover" />
+                          {/* Photo seulement si le joueur en a autorisé la publication (ou portrait sous licence libre) ; sinon son numéro. */}
+                          {(p.playerId && photos.get(p.playerId)) || p.portrait ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- photo servie par la route des médias
+                            <img src={(p.playerId && photos.get(p.playerId)) || p.portrait!} alt="" className="size-11 shrink-0 rounded-full object-cover object-top" />
                           ) : (
                             <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-brand-ink font-display text-base font-bold text-white tabular-nums">
                               {p.shirtNumber ?? "–"}
@@ -157,6 +157,7 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
                             <span className="truncate text-xs text-muted-foreground">
                               {[p.position ? POSITION_LABELS[p.position] : null, p.club].filter(Boolean).join(" · ")}
                             </span>
+                            {p.portrait && p.portraitCredit && <span className="truncate text-[0.65rem] text-muted-foreground/80">Photo : {p.portraitCredit}</span>}
                           </span>
                         </li>
                       ))}

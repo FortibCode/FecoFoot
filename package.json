@@ -28,6 +28,7 @@
     "saison:2025-2026": "tsx scripts/saison-2025-2026.mts",
     "comex:2026-10-28": "tsx --conditions=react-server scripts/comex-2026-10-28.mts",
     "photos:import": "tsx --conditions=react-server scripts/import-photos.mts",
+    "selection:a-comores": "tsx --conditions=react-server scripts/selection-a-comores-2026.mts",
     "clubs:import": "tsx --conditions=react-server scripts/import-clubs.mts",
     "logos:officiels": "tsx --conditions=react-server scripts/logos-officiels.mts",
     "sources:import-saison": "tsx --conditions=react-server scripts/import-saison-externe.mts",

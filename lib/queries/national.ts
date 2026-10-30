@@ -41,6 +41,9 @@ export async function calledPlayers(selectionId: number) {
     position: r.entry.position,
     shirtNumber: r.entry.shirtNumber,
     playerId: r.entry.playerId,
+    // Portrait d'un joueur hors registre (servi seulement une fois la liste publiée) et son crédit.
+    portrait: r.entry.photoKey ? `/media/convoques/${r.entry.id}?v=${r.entry.photoKey.split("/").pop()!.slice(0, 8)}` : null,
+    portraitCredit: r.entry.photoCredit,
   }));
 }
 

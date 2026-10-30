@@ -826,6 +826,9 @@ export const selectionPlayers = pgTable(
     externalCountry: varchar("external_country", { length: 80 }),
     position: positionEnum("position"),
     shirtNumber: integer("shirt_number"),
+    // Portrait d'un joueur hors registre (photo sous licence libre ou fournie par la fédération) et son crédit.
+    photoKey: varchar("photo_key", { length: 200 }),
+    photoCredit: varchar("photo_credit", { length: 240 }),
   },
   (t) => [
     uniqueIndex("selection_players_player_uq").on(t.selectionId, t.playerId),
