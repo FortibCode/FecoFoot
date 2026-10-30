@@ -13,6 +13,7 @@ import { StatCards } from "@/components/admin/stat-cards";
 import { SelectField } from "@/components/ui/field";
 import { textMatch } from "@/lib/text-search";
 import { createTicketEvent } from "./actions";
+import { ticketableFixtures } from "@/lib/queries/matches";
 import { EventForm } from "./TicketingForms";
 
 export const metadata: Metadata = { title: "Billetterie — FECOFOOT" };
@@ -103,7 +104,7 @@ export default async function AdminTicketingPage({ searchParams }: PageProps<"/a
       </DataTable>
       <section className="mt-6 flex flex-col gap-3">
         <h2 className="font-semibold">Nouvel événement</h2>
-        <EventForm action={createTicketEvent} />
+        <EventForm action={createTicketEvent} fixtures={await ticketableFixtures()} />
       </section>
     </>
   );

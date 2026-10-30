@@ -8,6 +8,8 @@ import {
   matchHistory,
   publicMatchStatus,
   pitchLines,
+  streaks,
+  goalBuckets,
   nextPeriod,
   publicStatus,
   publicStatusLabel,
@@ -363,5 +365,28 @@ describe("composition sur le terrain", () => {
     const r = pitchLines([...xi(1, 4, 3, 2), { id: 99, position: null }]);
     expect(r.formation).toBe("4-4-2");
     expect(pitchLines(xi(1, 2, 1, 0)).formation).toBeNull();
+  });
+});
+
+describe("avant-match", () => {
+  it("compte les séries en cours", () => {
+    expect(streaks(["V", "V", "N", "V"])).toEqual({ wins: 2, unbeaten: 4 });
+    expect(streaks(["D", "V"])).toEqual({ wins: 0, unbeaten: 0 });
+    expect(streaks([])).toEqual({ wins: 0, unbeaten: 0 });
+  });
+
+  it("répartit les buts par tranche de 15 minutes", () => {
+    const r = goalBuckets(
+      [
+        { type: "GOAL", minute: 3, clubId: 1 },
+        { type: "PENALTY_GOAL", minute: 45, clubId: 1 },
+        { type: "GOAL", minute: 47, clubId: 2 },
+        { type: "OWN_GOAL", minute: 92, clubId: 2 },
+        { type: "YELLOW_CARD", minute: 10, clubId: 1 },
+      ],
+      1,
+    );
+    expect(r.scored).toEqual([1, 0, 1, 0, 0, 1]);
+    expect(r.conceded).toEqual([0, 0, 0, 1, 0, 0]);
   });
 });

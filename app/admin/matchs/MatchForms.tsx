@@ -11,16 +11,37 @@ import { useActionForm } from "@/lib/use-action-form";
 type Action = (s: ActionState, f: FormData) => Promise<ActionState>;
 type PlayerOption = { id: number; label: string; team: string };
 
-export function ScheduleForm({ action, kickoff, venue }: { action: Action; kickoff: string; venue: string }) {
+export function ScheduleForm({
+  action,
+  kickoff,
+  venue,
+  stadiumId,
+  stadiums,
+}: {
+  action: Action;
+  kickoff: string;
+  venue: string;
+  stadiumId: number | null;
+  stadiums: { id: number; name: string; city: string }[];
+}) {
   const { state, pending, formProps } = useActionForm(action);
+  const [chosen, setChosen] = useState(stadiumId ? String(stadiumId) : "");
   return (
-    <form {...formProps} className="grid max-w-2xl gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-end">
+    <form {...formProps} className="grid max-w-3xl gap-3 sm:grid-cols-2 sm:items-end">
       <TextField label="Date et heure (Brazzaville)" name="kickoffAt" type="datetime-local" defaultValue={kickoff} />
-      <TextField label="Stade" name="venue" defaultValue={venue} />
-      <Button type="submit" variant="outline" disabled={pending} className="h-10">
-        Programmer
-      </Button>
-      <div className="sm:col-span-3">
+      <SelectField label="Stade enregistré" name="stadiumId" value={chosen} onChange={(e) => setChosen(e.target.value)} hint="Sa fiche s'affiche sur la page publique du match">
+        <option value="">Autre lieu (saisi ci-dessous)</option>
+        {stadiums.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name} — {s.city}
+          </option>
+        ))}
+      </SelectField>
+      {!chosen && <TextField label="Lieu" name="venue" defaultValue={venue} className="sm:col-span-2" />}
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+        <Button type="submit" variant="outline" disabled={pending} className="h-10">
+          Programmer
+        </Button>
         <FormMessage state={state} />
       </div>
     </form>

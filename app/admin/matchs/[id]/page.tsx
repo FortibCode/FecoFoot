@@ -13,7 +13,7 @@ import { requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
 import { canReschedule, EVENT_TYPE_LABELS, GOAL_EVENTS, hasScore, MATCH_STATUS_LABELS, roundLabel } from "@/lib/competitions";
 import { db } from "@/lib/db";
-import { matchEvents, matches, matchLineups, matchOfficials, players, referees, users } from "@/lib/db/schema";
+import { matchEvents, matches, matchLineups, matchOfficials, players, referees, stadiums, users } from "@/lib/db/schema";
 import { formatDateTime } from "@/lib/format";
 import { entityHistory } from "@/lib/queries/audit";
 import { canEditMatchSheet, canManageMatch, eligiblePlayers, matchQuery, refereeOf } from "@/lib/queries/competitions";
@@ -50,6 +50,7 @@ export default async function MatchPage({ params }: PageProps<"/admin/matchs/[id
   const { match: m, competition: c, home, away } = row;
 
   const manage = await canManageMatch(user, id);
+  const stadiumOptions = manage ? await db.select({ id: stadiums.id, name: stadiums.name, city: stadiums.city, active: stadiums.active }).from(stadiums).orderBy(stadiums.city, stadiums.name) : [];
   const refereeing = can(user.role, "refereeing.manage");
   const sheet = await canEditMatchSheet(user, id);
   const ownClub = can(user.role, "lineups.submit") && (user.clubId === m.homeClubId || user.clubId === m.awayClubId) ? user.clubId : null;
@@ -160,7 +161,13 @@ export default async function MatchPage({ params }: PageProps<"/admin/matchs/[id
           <section className="flex flex-col gap-3">
             <h2 className="font-semibold">Programmation</h2>
             {canReschedule(m.status) ? (
-              <ScheduleForm action={scheduleMatch.bind(null, id)} kickoff={localInput(m.kickoffAt)} venue={m.venue ?? ""} />
+              <ScheduleForm
+                action={scheduleMatch.bind(null, id)}
+                kickoff={localInput(m.kickoffAt)}
+                venue={m.venue ?? ""}
+                stadiumId={m.stadiumId}
+                stadiums={stadiumOptions.filter((s) => s.active || s.id === m.stadiumId)}
+              />
             ) : (
               <p className="text-sm text-muted-foreground">Le match a commencé : la date, l&apos;heure et le stade ne se modifient plus.</p>
             )}

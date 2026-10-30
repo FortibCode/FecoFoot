@@ -7,13 +7,14 @@ import type { ActionState } from "@/lib/action-state";
 import { MAX_SUBSTITUTES, STARTERS } from "@/lib/competitions";
 import { useActionForm } from "@/lib/use-action-form";
 
-type Row = { id: number; name: string; position: string; selected: boolean; starter: boolean; shirtNumber: number | null; suspended: string | null };
+type Row = { id: number; name: string; position: string; selected: boolean; starter: boolean; shirtNumber: number | null; suspended: string | null; captain: boolean };
 
 export function LineupForm({ action, rows }: { action: (s: ActionState, f: FormData) => Promise<ActionState>; rows: Row[] }) {
   const { state, pending, formProps } = useActionForm(action);
   const [sel, setSel] = useState(() => new Map(rows.map((r) => [r.id, r.selected ? (r.starter ? "starter" : "sub") : "none"])));
   const starters = [...sel.values()].filter((v) => v === "starter").length;
   const subs = [...sel.values()].filter((v) => v === "sub").length;
+  const [captain, setCaptain] = useState<number | null>(() => rows.find((r) => r.captain)?.id ?? null);
 
   return (
     <form {...formProps} className="flex flex-col gap-4">
@@ -57,6 +58,19 @@ export function LineupForm({ action, rows }: { action: (s: ActionState, f: FormD
                 />
                 {v !== "none" && <input type="hidden" name="playerIds" value={r.id} />}
                 {v === "starter" && <input type="hidden" name={`starter_${r.id}`} value="on" />}
+                {/* Capitaine : un des titulaires. */}
+                <label className={`flex h-9 items-center gap-1.5 rounded-md border px-2 text-xs font-semibold ${v === "starter" ? "" : "invisible"}`}>
+                  <input
+                    type="radio"
+                    name="captainId"
+                    value={r.id}
+                    checked={captain === r.id && v === "starter"}
+                    onChange={() => setCaptain(r.id)}
+                    disabled={v !== "starter"}
+                    className="accent-[var(--flag-green)]"
+                  />
+                  Capitaine
+                </label>
               </span>
             </li>
           );

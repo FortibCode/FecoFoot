@@ -239,6 +239,13 @@
       "when": 1793354035297,
       "tag": "0033_featured_matches",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793361030520,
+      "tag": "0034_stades_capitaine_billets",
+      "breakpoints": true
     }
   ]
 }

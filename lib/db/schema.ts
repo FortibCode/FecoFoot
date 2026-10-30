@@ -579,6 +579,29 @@ export const competitionTeams = pgTable(
   (t) => [uniqueIndex("competition_teams_uq").on(t.competitionId, t.clubId)],
 );
 
+/**
+ * Stades : fiche publique (adresse, capacité, pelouse) reliée aux matchs qui s'y jouent.
+ * Saisis par la fédération ; le stade d'un match reste aussi écrit en clair (`matches.venue`).
+ */
+export const stadiums = pgTable(
+  "stadiums",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    city: varchar("city", { length: 120 }).notNull(),
+    address: varchar("address", { length: 255 }),
+    capacity: integer("capacity"),
+    // « Naturelle », « Synthétique »…
+    surface: varchar("surface", { length: 40 }),
+    openedYear: integer("opened_year"),
+    description: text("description"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("stadiums_name_city_uq").on(t.name, t.city)],
+);
+
 export const scoreSourceEnum = pgEnum("score_source", SCORE_SOURCES);
 
 export const matches = pgTable(
@@ -598,6 +621,8 @@ export const matches = pgTable(
     awayClubId: integer("away_club_id").references(() => clubs.id),
     kickoffAt: timestamp("kickoff_at", { withTimezone: true }),
     venue: varchar("venue", { length: 160 }),
+    // Stade enregistré (fiche publique) ; `venue` en garde le nom affiché.
+    stadiumId: integer("stadium_id").references(() => stadiums.id),
     status: matchStatusEnum("status").notNull().default("SCHEDULED"),
     // Match en cours : période (1, 2 : mi-temps ; 3, 4 : prolongations) et heure de son coup d'envoi,
     // d'où la minute de jeu affichée au public.
@@ -666,6 +691,8 @@ export const matchLineups = pgTable(
       .references(() => players.id),
     starter: boolean("starter").notNull(),
     shirtNumber: integer("shirt_number"),
+    // Capitaine désigné par le club (un titulaire).
+    captain: boolean("captain").notNull().default(false),
   },
   (t) => [uniqueIndex("match_lineups_player_uq").on(t.matchId, t.playerId), index("match_lineups_club_idx").on(t.matchId, t.clubId)],
 );
@@ -965,6 +992,9 @@ export const ticketEvents = pgTable(
     venue: varchar("venue", { length: 160 }).notNull(),
     kickoffAt: timestamp("kickoff_at", { withTimezone: true }).notNull(),
     salesStatus: salesStatusEnum("sales_status").notNull().default("DRAFT"),
+    // Rencontre concernée (match de club ou des sélections) : bouton « Acheter un billet » sur sa page.
+    matchId: integer("match_id").references(() => matches.id, { onDelete: "set null" }),
+    nationalFixtureId: integer("national_fixture_id").references(() => nationalFixtures.id, { onDelete: "set null" }),
     // Plafond par Fan ID (RG-10) et points de présence (RG-15), paramétrables par match.
     maxTicketsPerFan: integer("max_tickets_per_fan").notNull().default(4),
     attendancePoints: integer("attendance_points").notNull().default(1),

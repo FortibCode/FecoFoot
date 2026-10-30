@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { openTicketSales } from "@/lib/queries/matches";
 import { PublicShell } from "@/components/public/public-shell";
 import { db } from "@/lib/db";
 import { nationalTeams } from "@/lib/db/schema";
@@ -28,7 +30,9 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
   // Prochains matchs d'abord (du plus proche au plus lointain), puis les résultats (du plus récent au plus ancien).
   const upcoming = fixtures.filter((f) => f.status === "SCHEDULED").reverse();
   const ordered = [...upcoming, ...fixtures.filter((f) => f.status !== "SCHEDULED")];
-  const [list, gallery] = await Promise.all([latest ? calledPlayers(latest.id) : [], teamPhotos(team.id)]);
+  const [list, gallery, sales] = await Promise.all([latest ? calledPlayers(latest.id) : [], teamPhotos(team.id), openTicketSales({ fixtureIds: upcoming.map((f) => f.id) })]);
+  // Billetterie ouverte d'un match à venir : bouton « Acheter un billet ».
+  const ticketOf = new Map(sales.map((t) => [t.fixtureId, t]));
 
   return (
     <PublicShell eyebrow="Équipes nationales" title={team.name} wide>
@@ -95,6 +99,14 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
                     {f.status === "CANCELLED" && <span className="ml-2 text-destructive">annulé</span>}
                   </p>
                   {f.venue && <p className="text-xs text-muted-foreground">{f.venue}</p>}
+                  {ticketOf.get(f.id) && (
+                    <Link
+                      href={`/billetterie/${ticketOf.get(f.id)!.slug}`}
+                      className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--flag-yellow)] px-3 text-xs font-semibold text-brand-ink hover:brightness-95"
+                    >
+                      Acheter un billet <span aria-hidden>→</span>
+                    </Link>
+                  )}
                 </li>
               ))}
               {fixtures.length === 0 && <li className="px-3 py-2 text-muted-foreground">Aucun match programmé.</li>}

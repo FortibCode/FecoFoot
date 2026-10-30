@@ -13,8 +13,9 @@ import { ticketEvents } from "@/lib/db/schema";
 import { formatDateTime, formatFcfa } from "@/lib/format";
 import { eventDashboard } from "@/lib/queries/ticketing-dashboard";
 import { ORDER_CHANNEL_LABELS, ORDER_STATUS_LABELS, remaining, SALES_STATUS_LABELS } from "@/lib/ticketing";
-import { addCategory, counterSale, refundTicketOrder, setSalesStatus } from "../actions";
-import { CategoryForm, CounterForm } from "../TicketingForms";
+import { addCategory, counterSale, linkTicketEvent, refundTicketOrder, setSalesStatus } from "../actions";
+import { ticketableFixtures } from "@/lib/queries/matches";
+import { CategoryForm, CounterForm, MatchLinkForm } from "../TicketingForms";
 
 export const metadata: Metadata = { title: "Événement — billetterie FECOFOOT" };
 
@@ -47,6 +48,15 @@ export default async function AdminTicketEventPage({ params }: PageProps<"/admin
         }
       />
       <div className="flex flex-col gap-10">
+        {/* Rencontre concernée : bouton « Acheter un billet » sur la page publique du match */}
+        <section className="flex flex-col gap-3">
+          <h2 className="font-semibold">Rencontre concernée</h2>
+          <MatchLinkForm
+            action={linkTicketEvent.bind(null, event.id)}
+            fixtures={await ticketableFixtures()}
+            current={event.matchId ? `m:${event.matchId}` : event.nationalFixtureId ? `n:${event.nationalFixtureId}` : ""}
+          />
+        </section>
         {/* Tableau de bord (EF-BIL-10) */}
         <StatCards
           testIdPrefix="kpi-"

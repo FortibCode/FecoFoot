@@ -22,6 +22,8 @@ export default async function teardown() {
         or player_id in (select id from players where club_id in (select id from clubs where name like 'E2E %'))`;
       // Lot 2 : compétitions (matchs, événements, compositions, désignations en cascade), arbitres, sélections.
       await tx`delete from competitions where name like 'E2E %'`;
+      // Stades de test (leurs matchs viennent d'être supprimés avec les compétitions).
+      await tx`delete from stadiums where name like 'E2E %'`;
       const e2eReferees = tx`select id from referees where last_name like 'E2E%'`;
       await tx`delete from match_officials where referee_id in (${e2eReferees})`;
       // Les comptes des arbitres de test (@e2e.example.cg) sont supprimés avec les autres comptes de test.

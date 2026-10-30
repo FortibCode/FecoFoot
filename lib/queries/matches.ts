@@ -24,11 +24,16 @@ import {
   competitionTeams,
   clubs,
   matches,
+  matchEvents,
   nationalFixtures,
   nationalTeams,
+  players,
+  ticketEvents,
 } from "@/lib/db/schema";
 import {
   competitionFamily,
+  goalBuckets,
+  streaks,
   MATCH_FAMILIES,
   MATCH_FAMILY_LABELS,
   MATCH_STATUSES_OF,
@@ -40,6 +45,7 @@ import {
 } from "@/lib/competitions";
 import { flagUrl } from "@/lib/flags";
 import { matchQuery, type MatchRow } from "@/lib/queries/competitions";
+import { suspendedPlayers } from "@/lib/queries/discipline";
 
 export type MatchFilters = {
   /** Compétition (identifiant) ou « selections » : matchs des équipes nationales. */
@@ -96,11 +102,13 @@ export async function familyTabs() {
     db.select({ n: count() }).from(nationalFixtures),
   ]);
   // Toutes les catégories sont proposées (un onglet vide l'explique) ; « Autres » seulement s'il en existe.
-  return MATCH_FAMILIES.filter((fam) => fam !== "autres" || ids.has(fam)).map((fam) => ({
-    family: fam,
-    label: names.get(fam) ?? MATCH_FAMILY_LABELS[fam],
-    configured: fam === "selections" ? n > 0 : ids.has(fam),
-  }));
+  return MATCH_FAMILIES.filter((fam) => fam !== "autres" || ids.has(fam)).map(
+    (fam) => ({
+      family: fam,
+      label: names.get(fam) ?? MATCH_FAMILY_LABELS[fam],
+      configured: fam === "selections" ? n > 0 : ids.has(fam),
+    }),
+  );
 }
 
 // Constante dans la requête (pas un paramètre) : le GROUP BY doit reconnaître la même expression.
@@ -640,10 +648,20 @@ export async function fixturesByCompetition(f: MatchFilters) {
   return { competitions: clubRows, national: natRow.n };
 }
 
-const validated = and(eq(matches.status, "FINISHED"), isNotNull(matches.validatedAt));
+const validated = and(
+  eq(matches.status, "FINISHED"),
+  isNotNull(matches.validatedAt),
+);
 
-/** Forme d'un club : ses 5 derniers résultats validés (toutes compétitions), avant le match affiché. */
-export async function clubForm(clubId: number, before: Date | null, excludeMatch: number) {
+/**
+ * Forme d'un club : ses 8 derniers résultats validés (toutes compétitions) avant le match affiché, du plus
+ * ancien au plus récent, et ses séries en cours (victoires d'affilée, matchs sans défaite).
+ */
+export async function clubRecord(
+  clubId: number,
+  before: Date | null,
+  excludeMatch: number,
+) {
   const rows = await matchQuery()
     .where(
       and(
@@ -655,14 +673,112 @@ export async function clubForm(clubId: number, before: Date | null, excludeMatch
       ),
     )
     .orderBy(desc(matches.kickoffAt))
-    .limit(5);
-  // Lecture de gauche à droite : du plus ancien au plus récent.
-  return rows.reverse().map(({ match: m, home, away }) => {
-    const [mine, theirs] = m.homeClubId === clubId ? [m.homeScore ?? 0, m.awayScore ?? 0] : [m.awayScore ?? 0, m.homeScore ?? 0];
-    const result: "V" | "N" | "D" = mine > theirs ? "V" : mine === theirs ? "N" : "D";
+    .limit(30);
+  const results = rows.map(({ match: m, home, away }) => {
+    const [mine, theirs] =
+      m.homeClubId === clubId
+        ? [m.homeScore ?? 0, m.awayScore ?? 0]
+        : [m.awayScore ?? 0, m.homeScore ?? 0];
+    const result: "V" | "N" | "D" =
+      mine > theirs ? "V" : mine === theirs ? "N" : "D";
     const opponent = m.homeClubId === clubId ? away?.name : home?.name;
-    return { id: m.id, result, label: `${result === "V" ? "Victoire" : result === "N" ? "Nul" : "Défaite"} ${mine}-${theirs} contre ${opponent ?? "?"}` };
+    return {
+      id: m.id,
+      result,
+      label: `${result === "V" ? "Victoire" : result === "N" ? "Nul" : "Défaite"} ${mine}-${theirs} contre ${opponent ?? "?"}`,
+    };
   });
+  return {
+    form: results.slice(0, 8).reverse(),
+    streaks: streaks(results.map((r) => r.result)),
+  };
+}
+
+/** Buts marqués et encaissés par tranche de 15 minutes, et meilleurs buteurs d'un club dans une compétition (résultats validés). */
+export async function clubGoalProfile(competitionId: number, clubId: number) {
+  const events = await db
+    .select({
+      type: matchEvents.type,
+      minute: matchEvents.minute,
+      clubId: matchEvents.clubId,
+      playerId: matchEvents.playerId,
+      lastName: players.lastName,
+      firstName: players.firstName,
+    })
+    .from(matchEvents)
+    .innerJoin(matches, eq(matchEvents.matchId, matches.id))
+    .leftJoin(players, eq(matchEvents.playerId, players.id))
+    .where(
+      and(
+        eq(matches.competitionId, competitionId),
+        validated,
+        or(eq(matches.homeClubId, clubId), eq(matches.awayClubId, clubId)),
+      ),
+    );
+  const scorers = new Map<number, { name: string; goals: number }>();
+  for (const e of events) {
+    if (
+      (e.type === "GOAL" || e.type === "PENALTY_GOAL") &&
+      e.clubId === clubId &&
+      e.playerId !== null
+    ) {
+      const cur = scorers.get(e.playerId) ?? {
+        name: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim(),
+        goals: 0,
+      };
+      scorers.set(e.playerId, { ...cur, goals: cur.goals + 1 });
+    }
+  }
+  return {
+    ...goalBuckets(events, clubId),
+    scorers: [...scorers.values()]
+      .sort((a, b) => b.goals - a.goals)
+      .slice(0, 3),
+  };
+}
+
+/** Joueurs d'un club suspendus pour son prochain match dans la compétition (cartons, décisions de la commission). */
+export async function suspendedFor(clubId: number, competitionId: number) {
+  const map = await suspendedPlayers(clubId, competitionId);
+  if (map.size === 0) return [];
+  const rows = await db
+    .select({
+      id: players.id,
+      lastName: players.lastName,
+      firstName: players.firstName,
+    })
+    .from(players)
+    .where(inArray(players.id, [...map.keys()]));
+  return rows.map((p) => ({
+    id: p.id,
+    name: `${p.firstName} ${p.lastName}`,
+    reason: map.get(p.id)!,
+  }));
+}
+
+/** Autres matchs de la même journée (ou du même tour, de la même poule). */
+export async function roundFixtures(
+  competitionId: number,
+  round: number,
+  pool: string | null,
+  excludeMatch: number,
+) {
+  const rows = await matchQuery()
+    .where(
+      and(
+        eq(matches.competitionId, competitionId),
+        eq(matches.round, round),
+        pool ? eq(matches.pool, pool) : undefined,
+        ne(matches.id, excludeMatch),
+      ),
+    )
+    .orderBy(
+      sql`${matches.kickoffAt} asc nulls last`,
+      asc(matches.bracketSlot),
+      asc(matches.id),
+    );
+  const cupRounds = await cupRoundsOf(rows);
+  return rows.map((r) => fromClub(r, cupRounds));
 }
 
 /** Face-à-face : rencontres validées entre deux clubs (les plus récentes d'abord) et bilan. */
@@ -673,14 +789,20 @@ export async function headToHead(a: number, b: number, excludeMatch: number) {
         validated,
         ne(competitions.status, "DRAFT"),
         ne(matches.id, excludeMatch),
-        or(and(eq(matches.homeClubId, a), eq(matches.awayClubId, b)), and(eq(matches.homeClubId, b), eq(matches.awayClubId, a))),
+        or(
+          and(eq(matches.homeClubId, a), eq(matches.awayClubId, b)),
+          and(eq(matches.homeClubId, b), eq(matches.awayClubId, a)),
+        ),
       ),
     )
     .orderBy(desc(matches.kickoffAt))
     .limit(10);
   const tally = { a: 0, draws: 0, b: 0 };
   for (const { match: m } of rows) {
-    const [ga, gb] = m.homeClubId === a ? [m.homeScore ?? 0, m.awayScore ?? 0] : [m.awayScore ?? 0, m.homeScore ?? 0];
+    const [ga, gb] =
+      m.homeClubId === a
+        ? [m.homeScore ?? 0, m.awayScore ?? 0]
+        : [m.awayScore ?? 0, m.homeScore ?? 0];
     if (ga > gb) tally.a++;
     else if (ga < gb) tally.b++;
     else tally.draws++;
@@ -691,7 +813,97 @@ export async function headToHead(a: number, b: number, excludeMatch: number) {
 
 /** Ligues départementales actives, par département (onglet « Ligues départementales » de l'accueil). */
 export async function departmentalLeagues() {
-  return db.select({ code: leagues.code, name: leagues.name, department: leagues.department }).from(leagues).where(eq(leagues.active, true)).orderBy(asc(leagues.department));
+  return db
+    .select({
+      code: leagues.code,
+      name: leagues.name,
+      department: leagues.department,
+    })
+    .from(leagues)
+    .where(eq(leagues.active, true))
+    .orderBy(asc(leagues.department));
+}
+
+/**
+ * Billetterie ouverte (prévente membres ou vente publique, avant le coup d'envoi) des matchs donnés :
+ * bouton « Acheter un billet » sur leur page.
+ */
+export async function openTicketSales(opts: {
+  matchIds?: number[];
+  fixtureIds?: number[];
+}) {
+  const { matchIds = [], fixtureIds = [] } = opts;
+  if (matchIds.length === 0 && fixtureIds.length === 0) return [];
+  return db
+    .select({
+      slug: ticketEvents.slug,
+      salesStatus: ticketEvents.salesStatus,
+      matchId: ticketEvents.matchId,
+      fixtureId: ticketEvents.nationalFixtureId,
+    })
+    .from(ticketEvents)
+    .where(
+      and(
+        inArray(ticketEvents.salesStatus, ["PRESALE", "OPEN"]),
+        gte(ticketEvents.kickoffAt, new Date()),
+        or(
+          matchIds.length ? inArray(ticketEvents.matchId, matchIds) : undefined,
+          fixtureIds.length
+            ? inArray(ticketEvents.nationalFixtureId, fixtureIds)
+            : undefined,
+        ),
+      ),
+    );
+}
+
+const shortDate = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: "Africa/Brazzaville",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+/**
+ * Rencontres à venir auxquelles relier un événement de billetterie : matchs de club programmés (équipes
+ * connues) et matchs des sélections. Valeur « m:<id> » ou « n:<id> ».
+ */
+export async function ticketableFixtures() {
+  const now = new Date();
+  const [club, nat] = await Promise.all([
+    matchQuery()
+      .where(
+        and(
+          eq(matches.status, "SCHEDULED"),
+          gte(matches.kickoffAt, now),
+          ne(competitions.status, "DRAFT"),
+          isNotNull(matches.homeClubId),
+          isNotNull(matches.awayClubId),
+        ),
+      )
+      .orderBy(asc(matches.kickoffAt))
+      .limit(200),
+    db
+      .select({ f: nationalFixtures, team: nationalTeams.name })
+      .from(nationalFixtures)
+      .innerJoin(nationalTeams, eq(nationalFixtures.teamId, nationalTeams.id))
+      .where(
+        and(
+          eq(nationalFixtures.status, "SCHEDULED"),
+          gte(nationalFixtures.kickoffAt, now),
+        ),
+      )
+      .orderBy(asc(nationalFixtures.kickoffAt)),
+  ]);
+  return [
+    ...nat.map(({ f, team }) => ({
+      value: `n:${f.id}`,
+      label: `${shortDate.format(f.kickoffAt)} · ${f.isHome ? `Congo – ${f.opponent}` : `${f.opponent} – Congo`} (${team})`,
+    })),
+    ...club.map(({ match: m, home, away, competition }) => ({
+      value: `m:${m.id}`,
+      label: `${m.kickoffAt ? shortDate.format(m.kickoffAt) : ""} · ${home?.name} – ${away?.name} (${competition.name})`,
+    })),
+  ];
 }
 
 export { addDays };

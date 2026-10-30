@@ -31,6 +31,14 @@ const EventSchema = z.object({
   gateFlowLimit: z.coerce.number().int().min(1).max(1000),
 });
 
+/** Rencontre concernée par un événement : « m:<id> » (match de club), « n:<id> » (sélection) ou aucune. */
+function rencontreOf(value: FormDataEntryValue | null): { matchId: number | null; nationalFixtureId: number | null } {
+  const [kind, id] = String(value ?? "").split(":");
+  const n = Number(id);
+  if (!Number.isInteger(n) || n <= 0) return { matchId: null, nationalFixtureId: null };
+  return kind === "m" ? { matchId: n, nationalFixtureId: null } : kind === "n" ? { matchId: null, nationalFixtureId: n } : { matchId: null, nationalFixtureId: null };
+}
+
 /** Création d'un événement en vente (EF-BIL-01). */
 export async function createTicketEvent(_state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requirePermission("ticketing.manage");
@@ -42,9 +50,22 @@ export async function createTicketEvent(_state: ActionState, formData: FormData)
   const taken = new Set((await db.select({ slug: ticketEvents.slug }).from(ticketEvents).where(like(ticketEvents.slug, `${base}%`))).map((r) => r.slug));
   let slug = base;
   for (let i = 2; taken.has(slug); i++) slug = `${base}-${i}`;
-  const [created] = await db.insert(ticketEvents).values({ ...e, kickoffAt, slug }).returning({ id: ticketEvents.id });
+  const [created] = await db.insert(ticketEvents).values({ ...e, ...rencontreOf(formData.get("rencontre")), kickoffAt, slug }).returning({ id: ticketEvents.id });
   await logAudit({ userId: user.id, action: "CREATE", entity: "ticket_event", entityId: created.id, details: { title: e.title } });
   redirect(eventPath(created.id));
+}
+
+/** Rencontre concernée : la page publique du match propose alors « Acheter un billet » pendant la vente. */
+export async function linkTicketEvent(eventId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("ticketing.manage");
+  const link = rencontreOf(formData.get("rencontre"));
+  const updated = await db.update(ticketEvents).set(link).where(eq(ticketEvents.id, eventId)).returning({ id: ticketEvents.id });
+  if (updated.length === 0) return { error: "Événement introuvable." };
+  await logAudit({ userId: user.id, action: "LINK_MATCH", entity: "ticket_event", entityId: eventId, details: link });
+  revalidatePath(eventPath(eventId));
+  revalidatePath("/matchs", "layout");
+  revalidatePath("/equipes-nationales", "layout");
+  return { success: link.matchId || link.nationalFixtureId ? "Événement relié à la rencontre." : "Lien avec la rencontre retiré." };
 }
 
 /** Cycle de vente : brouillon → prévente membres → vente ouverte → clôturée / annulée (EF-BIL-03). */

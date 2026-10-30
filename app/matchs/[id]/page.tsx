@@ -11,6 +11,8 @@ import {
 import { FixtureGroups } from "@/components/matches/fixture-groups";
 import { MatchStatusBadge } from "@/components/matches/match-card";
 import { MatchTabs } from "@/components/matches/match-tabs";
+import { PreMatch } from "@/components/matches/pre-match";
+import { ShareBar } from "@/components/matches/share-bar";
 import { Pitch, type LineupPlayer } from "@/components/matches/pitch";
 import { StandingsTable } from "@/components/competitions/standings-table";
 import { ClubLogo } from "@/components/public/club-logo";
@@ -36,13 +38,22 @@ import {
   matchOfficials,
   players,
   referees,
+  stadiums,
 } from "@/lib/db/schema";
 import { formatDateTime, formatMatchDate, kickoffTime } from "@/lib/format";
 import { championshipLogoUrl, leagueLogoUrl } from "@/lib/league-logo";
 import { seasonLabel } from "@/lib/licenses";
 import { OFFICIAL_ROLE_LABELS, OFFICIAL_ROLES } from "@/lib/referees";
 import { matchQuery } from "@/lib/queries/competitions";
-import { clubForm, fromClub, headToHead } from "@/lib/queries/matches";
+import {
+  clubGoalProfile,
+  clubRecord,
+  fromClub,
+  headToHead,
+  openTicketSales,
+  roundFixtures,
+  suspendedFor,
+} from "@/lib/queries/matches";
 import { competitionTables } from "@/lib/queries/competitions";
 
 const playerIn = alias(players, "player_in");
@@ -264,17 +275,30 @@ export default async function PublicMatchPage({
   const side = (clubId: number) => (clubId === m.homeClubId ? "home" : "away");
   const history = matchHistory(log);
   // Forme, face-à-face et classement : uniquement des résultats validés.
-  const [formHome, formAway, h2h, tables] = await Promise.all([
-    m.homeClubId
-      ? clubForm(m.homeClubId, m.kickoffAt, m.id)
+  // Avant le coup d'envoi : suspendus du prochain match ; ensuite, la feuille de match fait foi.
+  const upcoming = item.status === "UPCOMING" && !item.stale;
+  const teamsOf = [home, away];
+  const [records, profiles, suspensions, h2h, tables, sameRound] =
+    await Promise.all([
+      Promise.all(
+        teamsOf.map((t) => (t ? clubRecord(t.id, m.kickoffAt, m.id) : null)),
+      ),
+      Promise.all(teamsOf.map((t) => (t ? clubGoalProfile(c.id, t.id) : null))),
+      Promise.all(
+        teamsOf.map((t) => (t && upcoming ? suspendedFor(t.id, c.id) : [])),
+      ),
+      m.homeClubId && m.awayClubId
+        ? headToHead(m.homeClubId, m.awayClubId, m.id)
+        : Promise.resolve(null),
+      c.type === "LEAGUE" ? competitionTables(c.id) : Promise.resolve(null),
+      roundFixtures(c.id, m.round, m.pool, m.id),
+    ]);
+  const [formHome, formAway] = records.map((r) => r?.form.slice(-5) ?? []);
+  const [[stadium], [ticket]] = await Promise.all([
+    m.stadiumId
+      ? db.select().from(stadiums).where(eq(stadiums.id, m.stadiumId)).limit(1)
       : Promise.resolve([]),
-    m.awayClubId
-      ? clubForm(m.awayClubId, m.kickoffAt, m.id)
-      : Promise.resolve([]),
-    m.homeClubId && m.awayClubId
-      ? headToHead(m.homeClubId, m.awayClubId, m.id)
-      : Promise.resolve(null),
-    c.type === "LEAGUE" ? competitionTables(c.id) : Promise.resolve(null),
+    upcoming ? openTicketSales({ matchIds: [m.id] }) : Promise.resolve([]),
   ]);
   const table =
     tables?.tables.find((t) => t.pool === (m.pool ?? "")) ?? tables?.tables[0];
@@ -296,6 +320,7 @@ export default async function PublicMatchPage({
               lastName: x.lastName,
               position: x.position,
               starter: x.l.starter,
+              captain: x.l.captain,
             })),
         }
       : null;
@@ -489,6 +514,30 @@ export default async function PublicMatchPage({
           )}
         </section>
 
+        {ticket && (
+          <div className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--flag-yellow)] bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm">
+              <strong className="font-semibold">Billetterie ouverte</strong>
+              {ticket.salesStatus === "PRESALE"
+                ? " : prévente réservée aux membres Fan ID."
+                : " : places en vente, paiement Mobile Money."}
+            </p>
+            <Link
+              href={`/billetterie/${ticket.slug}`}
+              className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--flag-yellow)] px-5 text-sm font-semibold text-brand-ink hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-ink"
+            >
+              Acheter un billet
+              <span aria-hidden>→</span>
+            </Link>
+          </div>
+        )}
+
+        <ShareBar
+          title={`${title(row)} — ${c.name}`}
+          path={`/matchs/${m.id}`}
+          agenda={upcoming && m.kickoffAt ? `/matchs/${m.id}/agenda` : null}
+        />
+
         <dl className="grid gap-4 rounded-2xl border bg-card p-5 text-sm sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
           {facts.map(([k, v]) => (
             <div key={k} className="flex min-w-0 flex-col gap-0.5">
@@ -502,8 +551,26 @@ export default async function PublicMatchPage({
 
         <MatchTabs
           label="Rubriques du match"
-          initial="resume"
+          initial={upcoming ? "avant-match" : "resume"}
           tabs={[
+            {
+              id: "avant-match",
+              label: "Avant-match",
+              panel: (
+                <PreMatch
+                  teams={teamsOf.map((t) =>
+                    t
+                      ? { id: t.id, name: t.name, logo: logos.get(t.id) }
+                      : null,
+                  )}
+                  records={records}
+                  profiles={profiles}
+                  suspensions={suspensions}
+                  upcoming={upcoming}
+                  stadium={stadium ?? null}
+                />
+              ),
+            },
             {
               id: "resume",
               label: "Résumé",
@@ -769,6 +836,25 @@ export default async function PublicMatchPage({
                   },
                 ]
               : []),
+            {
+              id: "journee",
+              label: c.type === "CUP" ? "Tour" : "Journée",
+              panel:
+                sameRound.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      Autres matchs · {round}
+                      {m.pool ? ` · Poule ${m.pool}` : ""}
+                    </p>
+                    <FixtureGroups items={sameRound} showDate />
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                    Aucun autre match pour cette{" "}
+                    {c.type === "CUP" ? "phase" : "journée"}.
+                  </p>
+                ),
+            },
             {
               id: "face-a-face",
               label: "Face-à-face",

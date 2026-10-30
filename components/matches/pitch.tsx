@@ -1,7 +1,7 @@
 import { ClubLogo } from "@/components/public/club-logo";
 import { pitchLines } from "@/lib/competitions";
 
-export type LineupPlayer = { id: number; number: number | null; firstName: string; lastName: string; position: "GOALKEEPER" | "DEFENDER" | "MIDFIELDER" | "FORWARD" | null; starter: boolean };
+export type LineupPlayer = { id: number; number: number | null; firstName: string; lastName: string; position: "GOALKEEPER" | "DEFENDER" | "MIDFIELDER" | "FORWARD" | null; starter: boolean; captain?: boolean };
 type Side = { id: number; name: string; logo?: string | null; players: LineupPlayer[] };
 
 /** Hauteur (en % du terrain) de chaque ligne : extérieur en haut, domicile en bas. */
@@ -16,6 +16,11 @@ function Dot({ p, home }: { p: LineupPlayer; home: boolean }) {
       >
         {p.number ?? ""}
       </span>
+      {p.captain && (
+        <span aria-hidden className="-mt-3 ml-7 grid size-4 place-items-center rounded-full bg-[var(--flag-yellow)] text-[0.6rem] font-bold text-brand-ink ring-1 ring-black/20 sm:ml-8">
+          C
+        </span>
+      )}
       <span className="w-full truncate text-[0.65rem] leading-tight font-semibold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.7)] sm:text-xs">{p.lastName}</span>
     </li>
   );
@@ -41,6 +46,7 @@ function Bench({ side, home }: { side: Side; home: boolean }) {
               <li key={p.id} className="flex gap-3 py-0.5">
                 <span className="w-6 shrink-0 text-right font-bold tabular-nums">{p.number ?? ""}</span>
                 {p.firstName} {p.lastName}
+                {p.captain && <span className="rounded bg-[var(--flag-yellow)] px-1 text-[0.65rem] font-bold text-brand-ink" title="Capitaine">C</span>}
               </li>
             ))}
         </ul>

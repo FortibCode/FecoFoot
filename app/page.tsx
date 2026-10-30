@@ -259,7 +259,7 @@ export default async function HomePage() {
                 let panel: ReactNode;
                 if (p.upcoming.length === 0 && p.recent.length === 0) {
                   panel = elitePanel ? (
-                    <PreSeason competition={elite.competition} teams={elite.teams.length} logo={eliteLogo} href={eliteHref} />
+                    <PreSeason competition={elite.competition} clubs={elite.teams} logos={eliteLogos} logo={eliteLogo} href={eliteHref} />
                   ) : (
                     <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed p-8 text-center">
                       <p className="font-semibold">

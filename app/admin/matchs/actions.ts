@@ -9,7 +9,7 @@ import { requirePermission, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
 import { canReschedule, EVENT_TYPES, GOAL_EVENTS, lineupError, MATCH_STATUSES, nextPeriod, scoreFromEvents, type LineupEntry, type MatchPeriod } from "@/lib/competitions";
 import { db } from "@/lib/db";
-import { competitions, matchEvents, matches, matchLineups, matchOfficials, players, referees } from "@/lib/db/schema";
+import { competitions, matchEvents, matches, matchLineups, matchOfficials, players, referees, stadiums } from "@/lib/db/schema";
 import { isUniqueViolation } from "@/lib/queries/players";
 import { canEditMatchSheet, canManageMatch, eligiblePlayers, recomputeMatch, refereeOf } from "@/lib/queries/competitions";
 import { suspendedPlayers } from "@/lib/queries/discipline";
@@ -51,13 +51,17 @@ export async function scheduleMatch(matchId: number, _state: ActionState, formDa
   if (kickoffAt && (kickoffAt.getUTCFullYear() < m.competition.season - 1 || kickoffAt.getUTCFullYear() > m.competition.season + 2)) {
     return { error: "La date ne correspond pas à la saison de la compétition." };
   }
-  const venue = z.preprocess(blankToNull, z.string().trim().max(160).nullable()).parse(formData.get("venue"));
+  // Stade enregistré : son nom et sa ville font foi ; sinon, lieu saisi librement.
+  const stadiumId = Number(formData.get("stadiumId")) || null;
+  const [stadium] = stadiumId ? await db.select().from(stadiums).where(eq(stadiums.id, stadiumId)).limit(1) : [];
+  if (stadiumId && !stadium) return { error: "Stade introuvable." };
+  const venue = stadium ? `${stadium.name}, ${stadium.city}` : z.preprocess(blankToNull, z.string().trim().max(160).nullable()).parse(formData.get("venue"));
   // Un match reporté puis reprogrammé redevient « programmé ».
   const status = m.match.status === "POSTPONED" && kickoffAt ? "SCHEDULED" : m.match.status;
 
   try {
     await db.transaction(async (tx) => {
-      await tx.update(matches).set({ kickoffAt, venue, status, updatedBy: user.id, updatedAt: new Date() }).where(eq(matches.id, matchId));
+      await tx.update(matches).set({ kickoffAt, venue, stadiumId: stadium?.id ?? null, status, updatedBy: user.id, updatedAt: new Date() }).where(eq(matches.id, matchId));
       if (kickoffAt) await tx.update(matchOfficials).set({ matchDay: matchDay(kickoffAt) }).where(eq(matchOfficials.matchId, matchId));
     });
   } catch (e) {
@@ -71,7 +75,7 @@ export async function scheduleMatch(matchId: number, _state: ActionState, formDa
     action: "SCHEDULE",
     entity: "match",
     entityId: matchId,
-    details: { before: { kickoffAt: m.match.kickoffAt, venue: m.match.venue }, after: { kickoffAt, venue } },
+    details: { before: { kickoffAt: m.match.kickoffAt, venue: m.match.venue, stadiumId: m.match.stadiumId }, after: { kickoffAt, venue, stadiumId: stadium?.id ?? null } },
   });
   revalidateMatch(matchId, m.match.competitionId);
   return { success: "Programmation enregistrée." };
@@ -254,12 +258,15 @@ export async function saveLineup(matchId: number, clubId: number, _state: Action
   const suspended = await suspendedPlayers(clubId, m.competition.id);
   const blocked = entries.filter((e) => suspended.has(e.playerId));
   if (blocked.length > 0) return { error: `${blocked.length} joueur(s) suspendu(s) ne peuvent pas figurer sur la feuille de match.` };
+  // Capitaine (facultatif) : un des titulaires de la composition.
+  const captainId = Number(formData.get("captainId")) || null;
+  if (captainId !== null && !entries.some((e) => e.playerId === captainId && e.starter)) return { error: "Le capitaine doit être l'un des titulaires." };
 
   await db.transaction(async (tx) => {
     await tx.delete(matchLineups).where(and(eq(matchLineups.matchId, matchId), eq(matchLineups.clubId, clubId)));
-    await tx.insert(matchLineups).values(entries.map((e) => ({ ...e, matchId, clubId })));
+    await tx.insert(matchLineups).values(entries.map((e) => ({ ...e, matchId, clubId, captain: e.playerId === captainId })));
   });
-  await logAudit({ userId: user.id, action: "LINEUP", entity: "match", entityId: matchId, details: { clubId, players: entries.length } });
+  await logAudit({ userId: user.id, action: "LINEUP", entity: "match", entityId: matchId, details: { clubId, players: entries.length, captainId } });
   revalidatePath(matchPath(matchId));
   return { success: "Composition enregistrée." };
 }

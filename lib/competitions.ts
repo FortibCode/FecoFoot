@@ -224,6 +224,36 @@ export function pitchLines<T extends PitchPlayer>(starters: T[]): { lines: [T[],
   return { lines, formation: starters.length >= 7 && outfield.length >= 2 ? outfield.join("-") : null };
 }
 
+// ─── Avant-match ─────────────────────────────────────────────────────────────
+
+/** Séries en cours d'après les résultats, du plus récent au plus ancien : victoires d'affilée, matchs sans défaite. */
+export function streaks(results: ("V" | "N" | "D")[]): { wins: number; unbeaten: number } {
+  const run = (ok: (r: "V" | "N" | "D") => boolean) => {
+    const i = results.findIndex((r) => !ok(r));
+    return i === -1 ? results.length : i;
+  };
+  return { wins: run((r) => r === "V"), unbeaten: run((r) => r !== "D") };
+}
+
+export const GOAL_BUCKETS = ["1-15", "16-30", "31-45", "46-60", "61-75", "76-90"] as const;
+
+/**
+ * Buts marqués et encaissés par un club, par tranche de 15 minutes (temps additionnel compris dans la
+ * dernière tranche de chaque mi-temps). Un but contre son camp compte pour l'adversaire.
+ */
+export function goalBuckets(events: { type: EventType; minute: number; clubId: number }[], clubId: number) {
+  const scored = Array(6).fill(0) as number[];
+  const conceded = Array(6).fill(0) as number[];
+  for (const e of events) {
+    if (!GOAL_EVENTS.includes(e.type)) continue;
+    const forClub = e.type === "OWN_GOAL" ? e.clubId !== clubId : e.clubId === clubId;
+    const minute = Math.max(1, e.minute);
+    const i = minute <= 45 ? Math.min(2, Math.floor((minute - 1) / 15)) : Math.min(5, 3 + Math.floor((minute - 46) / 15));
+    (forClub ? scored : conceded)[i]++;
+  }
+  return { scored, conceded };
+}
+
 // ─── Minute de jeu en direct ─────────────────────────────────────────────────
 
 /** Périodes d'un match : deux mi-temps, puis deux prolongations (coupes). */

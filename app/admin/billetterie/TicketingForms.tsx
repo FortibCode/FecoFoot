@@ -10,7 +10,40 @@ import { useActionForm } from "@/lib/use-action-form";
 
 type Action = (s: ActionState, f: FormData) => Promise<ActionState>;
 
-export function EventForm({ action }: { action: Action }) {
+type Rencontre = { value: string; label: string };
+
+/** Choix de la rencontre concernée (matchs à venir). */
+function RencontreSelect({ fixtures, current }: { fixtures: Rencontre[]; current?: string }) {
+  return (
+    <SelectField label="Rencontre concernée" name="rencontre" defaultValue={current ?? ""} hint="La page publique du match proposera « Acheter un billet » pendant la vente" className="sm:col-span-2">
+      <option value="">Aucune (événement indépendant)</option>
+      {current && !fixtures.some((f) => f.value === current) && <option value={current}>Rencontre actuellement reliée (passée)</option>}
+      {fixtures.map((f) => (
+        <option key={f.value} value={f.value}>
+          {f.label}
+        </option>
+      ))}
+    </SelectField>
+  );
+}
+
+/** Rencontre concernée par un événement existant. */
+export function MatchLinkForm({ action, fixtures, current }: { action: Action; fixtures: Rencontre[]; current?: string }) {
+  const { state, pending, formProps } = useActionForm(action);
+  return (
+    <form {...formProps} className="grid max-w-2xl gap-3 sm:grid-cols-2">
+      <RencontreSelect fixtures={fixtures} current={current} />
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+        <Button type="submit" variant="outline" disabled={pending} className="h-10 w-fit">
+          Relier à la rencontre
+        </Button>
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}
+
+export function EventForm({ action, fixtures = [] }: { action: Action; fixtures?: Rencontre[] }) {
   const { state, pending, formProps } = useActionForm(action);
   const fe = state?.fieldErrors;
   return (
@@ -25,6 +58,7 @@ export function EventForm({ action }: { action: Action }) {
       </SelectField>
       <TextField label="Date et heure (Brazzaville)" name="kickoffAt" type="datetime-local" required errors={fe?.kickoffAt} />
       <TextField label="Stade" name="venue" required defaultValue="Stade Alphonse Massamba-Débat" className="sm:col-span-2" errors={fe?.venue} />
+      <RencontreSelect fixtures={fixtures} />
       <TextField label="Billets maximum par Fan ID" name="maxTicketsPerFan" type="number" min={1} max={20} defaultValue={4} required />
       <TextField label="Points de fidélité du match" name="attendancePoints" type="number" min={0} max={100} defaultValue={1} required />
       <TextField label="Débit max. par porte (entrées / min)" name="gateFlowLimit" type="number" min={1} max={1000} defaultValue={30} required />

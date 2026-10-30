@@ -61,6 +61,7 @@ export default async function LineupPage({ params }: PageProps<"/admin/matchs/[i
               starter: byPlayer.get(pl.id)?.starter ?? false,
               shirtNumber: byPlayer.get(pl.id)?.shirtNumber ?? null,
               suspended: suspended.get(pl.id) ?? null,
+              captain: byPlayer.get(pl.id)?.captain ?? false,
             }))}
         />
       )}
