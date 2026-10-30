@@ -30,7 +30,6 @@ export function PaginatedStandings({
 }) {
   const pages = Math.max(1, Math.ceil(orderStandings(rows).ordered.length / PAGE_SIZE));
   const [page, setPage] = useState(0);
-  const [dir, setDir] = useState<"left" | "right">("left");
   const [hold, setHold] = useState(false);
   const reduced = useSyncExternalStore(subscribeReducedMotion, () => window.matchMedia(REDUCED).matches, () => false);
   const root = useRef<HTMLDivElement>(null);
@@ -39,14 +38,12 @@ export function PaginatedStandings({
     if (pages < 2 || hold || reduced) return;
     const id = setInterval(() => {
       if (document.visibilityState !== "visible") return;
-      setDir("right");
       setPage((p) => (p + 1) % pages);
     }, INTERVAL_MS);
     return () => clearInterval(id);
   }, [pages, hold, reduced]);
 
   const go = (p: number) => {
-    setDir(p < page ? "left" : "right");
     setPage((p + pages) % pages);
   };
   const start = page * PAGE_SIZE;
@@ -63,8 +60,9 @@ export function PaginatedStandings({
         if (!root.current?.contains(e.relatedTarget as Node | null)) setHold(false);
       }}
     >
-      {/* key : les lignes de la nouvelle page sont recréées et entrent en glissant. */}
-      <StandingsTable key={page} rows={rows} logos={logos} title={title} animate slice={{ start, end: start + PAGE_SIZE }} enter={dir} zones={zones} />
+      {/* key : les lignes de la nouvelle page sont recréées et entrent en glissant depuis la gauche
+          (un décalage vers la droite ferait apparaître une barre de défilement dans le tableau). */}
+      <StandingsTable key={page} rows={rows} logos={logos} title={title} animate slice={{ start, end: start + PAGE_SIZE }} enter="left" zones={zones} />
       {pages > 1 && (
         <nav aria-label="Pages du classement" className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <p className="text-muted-foreground" aria-live="polite">

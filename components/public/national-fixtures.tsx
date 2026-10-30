@@ -39,7 +39,7 @@ function UpcomingCard({ row, index }: { row: Row; index: number }) {
   const [home, away] = f.isHome ? ["Congo", f.opponent] : [f.opponent, "Congo"];
   return (
     <li data-reveal="left" style={{ ["--rd" as string]: `${index * 120}ms` }}>
-      <Link href={`/equipes-nationales/${row.teamSlug}`} className="group block overflow-hidden rounded-2xl bg-brand-ink transition-transform duration-300 motion-safe:hover:-translate-y-1 text-white shadow-md transition-shadow hover:shadow-xl">
+      <Link href={`/equipes-nationales/${row.teamSlug}`} className="group block overflow-hidden rounded-2xl bg-brand-ink text-white shadow-md transition-[box-shadow,transform] duration-300 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-1">
         <div className="flex items-center gap-3">
           <span className="shrink-0 whitespace-nowrap bg-[var(--flag-red)] px-4 py-2 font-display text-lg font-bold uppercase [clip-path:polygon(0_0,100%_0,calc(100%-0.75rem)_100%,0_100%)] pr-6">
             {formatDayMonth(f.kickoffAt)}
@@ -70,31 +70,50 @@ function UpcomingCard({ row, index }: { row: Row; index: number }) {
   );
 }
 
-/** Résultat : équipes de part et d'autre du score, date et lieu en dessous. */
-function ResultRow({ row, index }: { row: Row; index: number }) {
+const OUTCOME = {
+  V: { label: "Victoire", dot: "bg-[var(--flag-green)]" },
+  N: { label: "Nul", dot: "bg-muted-foreground" },
+  D: { label: "Défaite", dot: "bg-[var(--flag-red)]" },
+} as const;
+
+/** Résultat, même famille que l'affiche des prochains matchs : date et issue en tête, score entre les drapeaux. */
+function ResultCard({ row, index }: { row: Row; index: number }) {
   const { f } = row;
   const [homeGoals, awayGoals] = f.isHome ? [f.goalsFor, f.goalsAgainst] : [f.goalsAgainst, f.goalsFor];
-  const outcome = f.goalsFor! > f.goalsAgainst! ? "V" : f.goalsFor === f.goalsAgainst ? "N" : "D";
-  const tone = { V: "text-[var(--flag-green)]", N: "text-foreground", D: "text-[var(--flag-red)]" }[outcome];
+  const outcome = OUTCOME[f.goalsFor! > f.goalsAgainst! ? "V" : f.goalsFor === f.goalsAgainst ? "N" : "D"];
   const venue = splitVenue(f.venue);
   return (
-    <li data-reveal="right" style={{ ["--rd" as string]: `${index * 120}ms` }} className="border-b py-4 last:border-b-0">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 font-display text-lg font-bold uppercase sm:text-xl">
-        <span className="min-w-0 justify-self-end">
-          <Team name={f.isHome ? "Congo" : f.opponent} flagAfter />
-        </span>
-        <span className={`rounded-md bg-muted px-3 py-1 tabular-nums ${tone}`}>
-          {homeGoals} - {awayGoals}
-        </span>
-        <span className="min-w-0">
-          <Team name={f.isHome ? f.opponent : "Congo"} />
-        </span>
-      </div>
-      <p className="mt-1 text-center text-xs text-muted-foreground">
-        {formatMatchDate(f.kickoffAt)}
-        {venue && ` / ${venue.stadium}`}
-        {f.competition && ` · ${f.competition}`}
-      </p>
+    <li data-reveal="right" style={{ ["--rd" as string]: `${index * 120}ms` }}>
+      <Link
+        href={`/equipes-nationales/${row.teamSlug}`}
+        className="group block overflow-hidden rounded-2xl border bg-card shadow-sm transition-[box-shadow,transform] duration-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-1"
+      >
+        <div className="flex items-center gap-3 border-b px-5 py-2.5 text-sm">
+          <span className="font-display text-base font-bold whitespace-nowrap uppercase">{formatMatchDate(f.kickoffAt)}</span>
+          {f.competition && <span className="min-w-0 truncate font-heading font-semibold uppercase tracking-wide text-[var(--flag-green)]">{f.competition}</span>}
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 font-semibold">
+            <span aria-hidden className={`size-2 rounded-full ${outcome.dot}`} />
+            {outcome.label}
+          </span>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5 px-3 py-5 font-display text-base font-bold uppercase sm:gap-4 sm:px-5 sm:text-2xl">
+          <span className="min-w-0 justify-self-end">
+            <Team name={f.isHome ? "Congo" : f.opponent} flagAfter />
+          </span>
+          <span className="rounded-md bg-brand-ink px-3 py-1 text-white tabular-nums">
+            {homeGoals} - {awayGoals}
+          </span>
+          <span className="min-w-0">
+            <Team name={f.isHome ? f.opponent : "Congo"} />
+          </span>
+        </div>
+        {venue && (
+          <p className="-mt-2 px-5 pb-4 text-center text-xs uppercase tracking-wide text-muted-foreground">
+            {venue.stadium}
+            {venue.city && `, ${venue.city}`}
+          </p>
+        )}
+      </Link>
     </li>
   );
 }
@@ -121,9 +140,9 @@ export function NationalFixtures({ played, upcoming }: Awaited<ReturnType<typeof
         {played.length === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">Aucun résultat.</p>
         ) : (
-          <ul className="rounded-b-xl bg-card/70 px-2">
+          <ul className="mt-4 flex flex-col gap-4">
             {played.map((r, i) => (
-              <ResultRow key={r.f.id} row={r} index={i} />
+              <ResultCard key={r.f.id} row={r} index={i} />
             ))}
           </ul>
         )}

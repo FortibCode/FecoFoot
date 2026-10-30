@@ -33,15 +33,17 @@ export async function seedLicensedPlayers(clubName: string, count: number, seaso
   return withDb(async (sql) => {
     const [{ id: clubId }] = await sql<{ id: number }[]>`select id from clubs where name = ${clubName}`;
     const ids: number[] = [];
+    // Numéros fédéral et de licence limités à 24 caractères : identifiant du club en base 36.
+    const ref = (kind: string, i: number) => `E2E-${kind}-${tag}-${clubId.toString(36)}-${i}`.toUpperCase();
     for (let i = 0; i < count; i++) {
       const last = `E2E${tag}${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`.toUpperCase();
       const [{ id }] = await sql<{ id: number }[]>`
         insert into players (federal_id, last_name, first_name, birth_date, gender, club_id, identity_key, position)
-        values (${`FCF-J-E2E-${tag}-${clubId}-${i}`.toUpperCase()}, ${last}, ${"Joueur"}, ${"1998-01-01"}, 'M', ${clubId}, ${`e2e|${tag}|${clubId}|${i}`},
+        values (${ref("J", i)}, ${last}, ${"Joueur"}, ${"1998-01-01"}, 'M', ${clubId}, ${`e2e|${tag}|${clubId}|${i}`},
                 ${i === 0 ? "GOALKEEPER" : i < 5 ? "DEFENDER" : i < 9 ? "MIDFIELDER" : "FORWARD"})
         returning id`;
       await sql`insert into licenses (number, player_id, club_id, season, category, type, status, medical_check_date, fee_amount, expires_at, verify_token)
-        values (${`LIC-E2E-${tag}-${clubId}-${i}`}, ${id}, ${clubId}, ${season}, 'SENIOR', 'AMATEUR', 'VALIDATED', ${`${season}-08-01`}, 0,
+        values (${ref("L", i)}, ${id}, ${clubId}, ${season}, 'SENIOR', 'AMATEUR', 'VALIDATED', ${`${season}-08-01`}, 0,
                 ${`${season + 1}-06-30T22:59:59Z`}, ${`e2e-tok-${tag}-${clubId}-${i}-xxxxxxxxxxxxxx`})`;
       ids.push(id);
     }

@@ -2,20 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
-import { PaginatedStandings } from "@/components/competitions/paginated-standings";
 import { Carousel } from "@/components/public/carousel";
 import { NewsMosaic } from "@/components/public/news-mosaic";
 import { PublicShell } from "@/components/public/public-shell";
 import { ArrowCircle, PillLink, SectionHead } from "@/components/public/ui";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { NATIONAL_TEAMS } from "@/lib/national-teams";
-import type { MatchRow } from "@/lib/queries/competitions";
 import { eliteClubs, homeData } from "@/lib/queries/portal";
 import { competitionTables } from "@/lib/queries/competitions";
 import { clubLogos } from "@/lib/club-logos";
 import { ClubLogo } from "@/components/public/club-logo";
+import { MatchList, MiniStandings, PreSeason } from "@/components/public/match-centre";
+import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
-import { isLive, MATCH_STATUS_LABELS } from "@/lib/competitions";
 import { seasonLabel } from "@/lib/licenses";
 import { nationalFixturesOverview } from "@/lib/queries/national";
 import { NationalFixtures } from "@/components/public/national-fixtures";
@@ -29,72 +28,8 @@ export const metadata: Metadata = {
   description: "Résultats, classements, équipes nationales, billetterie et actualités du football congolais.",
 };
 
-const teamName = (c: MatchRow["home"]) => c?.shortName ?? c?.name ?? "À déterminer";
-
 function Container({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
-}
-
-/** Ligne de la liste des matchs : rencontre, compétition, date, flèche. */
-function MatchListRow({ row }: { row: MatchRow }) {
-  const m = row.match;
-  const live = isLive(m.status);
-  const played = m.status === "FINISHED" || live;
-  return (
-    <li>
-      <Link
-        href={`/matchs/${m.id}`}
-        className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b py-4 transition-colors hover:bg-accent/60 sm:px-2"
-      >
-        <span className="flex min-w-0 items-center gap-3 font-display text-lg font-semibold uppercase sm:text-xl">
-          {row.home && <ClubLogo src={row.home.logo} name={row.home.name} className="size-8 text-xs" />}
-          <span className="truncate">{teamName(row.home)}</span>
-          {played ? (
-            <span className={`shrink-0 rounded-md px-2 py-0.5 text-base text-white tabular-nums ${live ? "bg-[var(--flag-red,#dc241f)]" : "bg-brand-ink"}`}>
-              {m.homeScore ?? 0} – {m.awayScore ?? 0}
-            </span>
-          ) : (
-            <span className="shrink-0 text-sm text-muted-foreground">vs</span>
-          )}
-          <span className="truncate">{teamName(row.away)}</span>
-          {row.away && <ClubLogo src={row.away.logo} name={row.away.name} className="size-8 text-xs" />}
-        </span>
-        <ArrowCircle className="row-span-2" />
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--flag-green)]">{row.competition.name}</span>
-          {live ? (
-            <span className="text-xs font-bold text-[var(--flag-red,#dc241f)] uppercase">● {MATCH_STATUS_LABELS[m.status]}</span>
-          ) : (
-            <span className="text-xs text-muted-foreground">{m.kickoffAt ? formatDateTime(m.kickoffAt) : "Date à fixer"}</span>
-          )}
-        </span>
-      </Link>
-    </li>
-  );
-}
-
-function MatchList({ title, rows, empty, from = "left", more }: { title: string; rows: MatchRow[]; empty: string; from?: "left" | "right"; more?: string }) {
-  return (
-    <div data-reveal={from} className="flex min-w-0 flex-col">
-      <h3 className="flex items-baseline justify-between gap-3 border-b-2 border-foreground pb-2 font-heading text-xl font-bold uppercase">
-        {title}
-        {more && (
-          <Link href={more} className="font-sans text-xs font-semibold normal-case text-[var(--flag-green)] hover:underline">
-            Tout voir →
-          </Link>
-        )}
-      </h3>
-      {rows.length === 0 ? (
-        <p className="border-b py-4 text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <ul>
-          {rows.map((r) => (
-            <MatchListRow key={r.match.id} row={r} />
-          ))}
-        </ul>
-      )}
-    </div>
-  );
 }
 
 /** Page d'accueil du portail public (EF-PUB-01). */
@@ -113,6 +48,16 @@ export default async function HomePage() {
       ? { href: `/equipes-nationales/${galleryTeams[0]}#photos`, label: `Toutes les photos des ${gallery[0].team}` }
       : { href: "/equipes-nationales", label: "Toutes les sélections" };
   const cover = slides.length > 0;
+  // Championnat d'élite : sa page publique (celle du championnat national s'il y en a un) et son logo.
+  const eliteHref = elite
+    ? elite.competition.championship
+      ? `/championnats/${elite.competition.championship.code}?saison=${elite.competition.season}`
+      : `/competitions/${elite.competition.slug}`
+    : "/competitions";
+  const eliteLogo = elite?.competition.championship ? championshipLogoUrl(elite.competition.championship) : null;
+  const table = standing?.tables[0]?.rows ?? [];
+  // Aucun match de club joué ni programmé : un encart d'avant-saison remplace les listes vides.
+  const quiet = d.live.length === 0 && d.results.length === 0 && d.upcoming.length === 0;
   const figures = [
     [d.clubsCount, "Clubs affiliés"],
     [d.licensesCount, "Licences validées"],
@@ -217,26 +162,29 @@ export default async function HomePage() {
           <Container className="flex flex-col gap-4 py-6 lg:flex-row lg:items-center lg:gap-8">
             <div data-reveal="left" className="shrink-0">
               <h2 id="elite-title" className="font-heading text-2xl font-bold uppercase">
-                {elite.competition.name}
+                <Link href={eliteHref} className="hover:text-primary">
+                  {elite.competition.name}
+                </Link>
               </h2>
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
                 Saison {seasonLabel(elite.competition.season)} · {elite.teams.length} clubs
               </p>
             </div>
-            <ul className="-mx-4 flex snap-x gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 lg:flex-1 lg:justify-between">
+            {/* Logos seuls (noms complets en infobulle et pour les lecteurs d'écran) : pas de noms tronqués. */}
+            <ul className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:px-0 lg:flex-1 lg:justify-between lg:gap-1">
               {elite.teams.map((t, i) => (
                 <li key={t.id} data-reveal="zoom" style={{ ["--rd" as string]: `${i * 55}ms` }} className="shrink-0 snap-start">
                   <Link
                     href={`/clubs/${t.slug}`}
                     title={t.name}
-                    className="group flex w-16 flex-col items-center gap-1.5 rounded-lg p-1.5 transition-colors hover:bg-muted sm:w-[4.5rem]"
+                    aria-label={t.name}
+                    className="group flex size-14 items-center justify-center rounded-xl transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green"
                   >
                     <ClubLogo
                       src={eliteLogos.get(t.id)}
                       name={t.name}
-                      className="size-11 grayscale-[15%] transition-transform duration-300 motion-safe:group-hover:scale-110 group-hover:grayscale-0 sm:size-12"
+                      className="size-11 transition-transform duration-300 motion-safe:group-hover:scale-110"
                     />
-                    <span className="w-full truncate text-center text-[0.65rem] font-semibold">{t.shortName ?? t.name}</span>
                   </Link>
                 </li>
               ))}
@@ -264,39 +212,19 @@ export default async function HomePage() {
               <LiveRefresh />
             </div>
           )}
-          <div className="grid gap-8 lg:grid-cols-2">
-            <MatchList title="Derniers résultats" rows={d.results} empty="Aucun résultat." more="/matchs?vue=resultats" />
-            <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé." from="right" more="/matchs?vue=calendrier" />
-          </div>
+          {quiet && elite ? (
+            <PreSeason competition={elite.competition} teams={elite.teams.length} logo={eliteLogo} href={eliteHref} />
+          ) : (
+            <div className={`grid gap-8 ${table.length > 0 ? "xl:grid-cols-[minmax(0,1fr)_22rem]" : ""}`}>
+              <div className="grid gap-8 lg:grid-cols-2">
+                <MatchList title="Derniers résultats" rows={d.results} empty="Aucun résultat officiel pour le moment." more="/matchs?vue=resultats" />
+                <MatchList title="Prochains matchs" rows={d.upcoming} empty="Aucun match programmé pour le moment." from="right" more="/matchs?vue=calendrier" />
+              </div>
+              {table.length > 0 && elite && <MiniStandings rows={table} logos={eliteLogos} season={elite.competition.season} href={eliteHref} />}
+            </div>
+          )}
         </Container>
       </section>
-
-      {/* Classement du championnat d'élite */}
-      {standing && standing.tables[0] && (
-        <section aria-labelledby="classement-title" className="pb-12 sm:pb-14">
-          <Container className="flex flex-col gap-6">
-            <div data-reveal="up" className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex flex-col gap-2">
-                <h2 id="classement-title" className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
-                  Classement <span className="text-[var(--flag-green)]">{standing.competition.name}</span>
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Saison {seasonLabel(standing.competition.season)}
-                  {standing.competition.status === "DRAFT" && " · le championnat n'a pas encore commencé : classement à zéro, par ordre alphabétique"}
-                </p>
-              </div>
-              {standing.competition.status !== "DRAFT" && (
-                <PillLink href={`/competitions/${standing.competition.slug}`} variant="green">
-                  Calendrier et statistiques
-                </PillLink>
-              )}
-            </div>
-            {standing.tables.map((t) => (
-              <PaginatedStandings key={t.pool} rows={t.rows} title={t.pool ? `Poule ${t.pool}` : undefined} logos={Object.fromEntries(eliteLogos)} />
-            ))}
-          </Container>
-        </section>
-      )}
 
       {/* Actualités : mosaïque et fil d'infos */}
       <section className="pb-12 sm:pb-14">
@@ -350,7 +278,7 @@ export default async function HomePage() {
               }
             >
               {gallery.map((p, i) => (
-                <li key={p.id} data-reveal="up" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
+                <li key={p.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
                   <Link
                     href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"}
                     className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-brand-ink shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green"

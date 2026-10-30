@@ -10,6 +10,17 @@ export const NATIONAL_TEAMS = [
   { code: "WOMEN", name: "Diables Rouges Dames", slug: "dames", gender: "F" },
 ] as const;
 
+/** Ce que désigne chaque sélection (cartes du portail). */
+export const NATIONAL_TEAM_TAGLINES: Record<string, string> = {
+  a: "Équipe première",
+  "a-locaux": "Joueurs du championnat national",
+  u23: "Moins de 23 ans",
+  u20: "Moins de 20 ans",
+  u17: "Moins de 17 ans",
+  u15: "Moins de 15 ans",
+  dames: "Équipe féminine",
+};
+
 export const NATIONAL_TEAM_CODES = NATIONAL_TEAMS.map((t) => t.code) as unknown as readonly [string, ...string[]];
 
 export const SELECTION_STATUSES = ["DRAFT", "PUBLISHED"] as const;

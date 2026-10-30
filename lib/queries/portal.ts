@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { articles, clubs, competitions, competitionTeams, licenses, matches, nationalTeams, selections, ticketEvents } from "@/lib/db/schema";
+import { articles, championships, clubs, competitions, competitionTeams, licenses, matches, nationalTeams, selections, ticketEvents } from "@/lib/db/schema";
 import { seasonOf } from "@/lib/licenses";
 import { competitionTables, matchQuery } from "@/lib/queries/competitions";
 
@@ -65,8 +65,19 @@ export async function homeData() {
  */
 export async function eliteClubs() {
   const [comp] = await db
-    .select({ id: competitions.id, name: competitions.name, slug: competitions.slug, season: competitions.season, status: competitions.status })
+    .select({
+      id: competitions.id,
+      name: competitions.name,
+      slug: competitions.slug,
+      season: competitions.season,
+      status: competitions.status,
+      type: competitions.type,
+      doubleRound: competitions.doubleRound,
+      // Championnat national de rattachement : sa page publique et son logo officiel.
+      championship: { id: championships.id, code: championships.code, logoKey: championships.logoKey },
+    })
     .from(competitions)
+    .leftJoin(championships, eq(competitions.championshipId, championships.id))
     .where(and(eq(competitions.type, "LEAGUE"), isNull(competitions.leagueId), eq(competitions.category, "SENIOR"), eq(competitions.gender, "M")))
     // À saison égale, la première division (« Ligue 1 ») avant la deuxième.
     .orderBy(desc(competitions.season), asc(competitions.name), desc(competitions.id))

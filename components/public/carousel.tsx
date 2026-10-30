@@ -63,11 +63,12 @@ export function Carousel({ label, children, tone = "dark", heading }: { label: s
           )}
         </div>
       )}
+      {/* Rangée bloquée à la verticale ; marge intérieure pour que l'ombre et le contour de focus ne soient pas rognés. */}
       <ul
         ref={track}
         onScroll={update}
         aria-label={label}
-        className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:scroll-px-0 sm:px-0"
+        className="-mx-4 -my-2 flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden scroll-px-4 px-4 py-2 [scrollbar-width:none] sm:mx-0 sm:scroll-px-0 sm:px-0"
       >
         {children}
       </ul>
