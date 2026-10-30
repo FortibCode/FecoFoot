@@ -92,7 +92,9 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
                     {f.competition && ` · ${f.competition}`}
                   </p>
                   <p className="font-medium">
-                    {f.isHome ? `Congo – ${f.opponent}` : `${f.opponent} – Congo`}
+                    <Link href={`/matchs/selection/${f.id}`} className="underline-offset-2 hover:underline">
+                      {f.isHome ? `Congo – ${f.opponent}` : `${f.opponent} – Congo`}
+                    </Link>
                     {f.status === "PLAYED" && (
                       <strong className="ml-2">{f.isHome ? `${f.goalsFor} – ${f.goalsAgainst}` : `${f.goalsAgainst} – ${f.goalsFor}`}</strong>
                     )}

@@ -816,6 +816,70 @@ export const selectionPlayers = pgTable(
   ],
 );
 
+/**
+ * Compétitions internationales des sélections (éliminatoires CAN, Coupe du monde…) organisées en groupes :
+ * pays du groupe, matchs entre les autres pays (saisis par la fédération) ; les matchs du Congo restent dans
+ * `nationalFixtures`, reliés à leur groupe et à leur journée. Le classement du groupe en est calculé.
+ */
+export const intlCompetitions = pgTable("intl_competitions", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  season: integer("season").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const intlGroups = pgTable(
+  "intl_groups",
+  {
+    id: serial("id").primaryKey(),
+    competitionId: integer("competition_id")
+      .notNull()
+      .references(() => intlCompetitions.id, { onDelete: "cascade" }),
+    // Sélection du Congo engagée dans ce groupe.
+    teamId: integer("team_id")
+      .notNull()
+      .references(() => nationalTeams.id),
+    name: varchar("name", { length: 80 }).notNull(),
+    // Places qualificatives pour le tour suivant (légende du classement).
+    qualifiers: integer("qualifiers").notNull().default(2),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("intl_groups_uq").on(t.competitionId, t.name)],
+);
+
+/** Pays d'un groupe (le Congo compris), tels qu'affichés au classement. */
+export const intlGroupTeams = pgTable(
+  "intl_group_teams",
+  {
+    id: serial("id").primaryKey(),
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => intlGroups.id, { onDelete: "cascade" }),
+    country: varchar("country", { length: 120 }).notNull(),
+  },
+  (t) => [uniqueIndex("intl_group_teams_uq").on(t.groupId, t.country)],
+);
+
+/** Matchs du groupe entre les autres pays (sans le Congo), saisis par la fédération. */
+export const intlGroupMatches = pgTable(
+  "intl_group_matches",
+  {
+    id: serial("id").primaryKey(),
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => intlGroups.id, { onDelete: "cascade" }),
+    matchday: integer("matchday").notNull(),
+    home: varchar("home", { length: 120 }).notNull(),
+    away: varchar("away", { length: 120 }).notNull(),
+    kickoffAt: timestamp("kickoff_at", { withTimezone: true }),
+    venue: varchar("venue", { length: 160 }),
+    homeGoals: integer("home_goals"),
+    awayGoals: integer("away_goals"),
+    status: fixtureStatusEnum("status").notNull().default("SCHEDULED"),
+  },
+  (t) => [index("intl_group_matches_idx").on(t.groupId, t.matchday)],
+);
+
 export const nationalFixtures = pgTable(
   "national_fixtures",
   {
@@ -831,10 +895,89 @@ export const nationalFixtures = pgTable(
     goalsFor: integer("goals_for"),
     goalsAgainst: integer("goals_against"),
     status: fixtureStatusEnum("status").notNull().default("SCHEDULED"),
+    // Groupe d'une compétition internationale et journée (classement et journées du groupe).
+    groupId: integer("group_id").references(() => intlGroups.id, { onDelete: "set null" }),
+    matchday: integer("matchday"),
+    // Composition du Congo : système annoncé par le staff et publication (avant le coup d'envoi si le staff le décide).
+    formation: varchar("formation", { length: 16 }),
+    lineupPublished: boolean("lineup_published").notNull().default(false),
     // Mis en avant sur la page d'accueil (« À la une »), sur décision de la fédération.
     featured: boolean("featured").notNull().default(false),
   },
   (t) => [index("national_fixtures_team_idx").on(t.teamId, t.kickoffAt)],
+);
+
+/** Composition du Congo pour un match des sélections : parmi les convoqués, titulaires et remplaçants. */
+export const nationalLineups = pgTable(
+  "national_lineups",
+  {
+    id: serial("id").primaryKey(),
+    fixtureId: integer("fixture_id")
+      .notNull()
+      .references(() => nationalFixtures.id, { onDelete: "cascade" }),
+    selectionPlayerId: integer("selection_player_id").references(() => selectionPlayers.id, { onDelete: "set null" }),
+    // Joueur du registre (photo publiée avec son accord) ; null pour un joueur évoluant à l'étranger.
+    playerId: integer("player_id").references(() => players.id),
+    name: varchar("name", { length: 160 }).notNull(),
+    shirtNumber: integer("shirt_number"),
+    position: positionEnum("position"),
+    starter: boolean("starter").notNull(),
+    captain: boolean("captain").notNull().default(false),
+  },
+  (t) => [index("national_lineups_fixture_idx").on(t.fixtureId)],
+);
+
+export const nationalEventSideEnum = pgEnum("national_event_side", ["CONGO", "OPPONENT"]);
+
+/** Événements d'un match des sélections (saisis par la fédération) : buts, passes décisives, cartons, changements. */
+export const nationalEvents = pgTable(
+  "national_events",
+  {
+    id: serial("id").primaryKey(),
+    fixtureId: integer("fixture_id")
+      .notNull()
+      .references(() => nationalFixtures.id, { onDelete: "cascade" }),
+    type: matchEventTypeEnum("type").notNull(),
+    minute: integer("minute").notNull(),
+    // Équipe concernée (un but contre son camp est rangé du côté du joueur qui l'a marqué).
+    side: nationalEventSideEnum("side").notNull(),
+    player: varchar("player", { length: 160 }).notNull(),
+    // Passeur décisif (but) ou joueur entrant (changement).
+    secondPlayer: varchar("second_player", { length: 160 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("national_events_fixture_idx").on(t.fixtureId)],
+);
+
+export const statPeriodEnum = pgEnum("stat_period", ["ALL", "H1", "H2"]);
+
+/**
+ * Statistiques d'un match saisies par l'officiel (club) ou la fédération (sélection) : total ou par mi-temps.
+ * Valeurs « domicile / extérieur » ; vides quand elles n'ont pas été relevées.
+ */
+export const matchStats = pgTable(
+  "match_stats",
+  {
+    id: serial("id").primaryKey(),
+    matchId: integer("match_id").references(() => matches.id, { onDelete: "cascade" }),
+    fixtureId: integer("fixture_id").references(() => nationalFixtures.id, { onDelete: "cascade" }),
+    period: statPeriodEnum("period").notNull().default("ALL"),
+    possessionHome: integer("possession_home"),
+    shotsHome: integer("shots_home"),
+    shotsAway: integer("shots_away"),
+    shotsOnTargetHome: integer("shots_on_target_home"),
+    shotsOnTargetAway: integer("shots_on_target_away"),
+    cornersHome: integer("corners_home"),
+    cornersAway: integer("corners_away"),
+    offsidesHome: integer("offsides_home"),
+    offsidesAway: integer("offsides_away"),
+    foulsHome: integer("fouls_home"),
+    foulsAway: integer("fouls_away"),
+    savesHome: integer("saves_home"),
+    savesAway: integer("saves_away"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("match_stats_match_uq").on(t.matchId, t.period), uniqueIndex("match_stats_fixture_uq").on(t.fixtureId, t.period)],
 );
 
 // ─── Paiements Mobile Money (M16) ────────────────────────────────────────────

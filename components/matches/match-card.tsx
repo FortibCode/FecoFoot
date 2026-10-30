@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClubLogo } from "@/components/public/club-logo";
+import { TeamBadge } from "@/components/public/team-badge";
 import { LiveMinute } from "@/components/matches/live-minute";
 import { liveMinute, PUBLIC_MATCH_STATUS_LABELS, type MatchPeriod, type PublicMatchStatus } from "@/lib/competitions";
 import { kickoffTime } from "@/lib/format";
@@ -55,12 +55,7 @@ export function MatchStatusBadge({ item, size = "sm" }: { item: FixtureItem; siz
 
 /** Une équipe sur sa ligne : logo ou drapeau, nom (nom court sur téléphone), repère « club suivi ». */
 function TeamRow({ team, tone }: { team: FixtureItem["home"]; tone: "win" | "lose" | "neutral" }) {
-  const mark = team.flag ? (
-    // eslint-disable-next-line @next/next/no-img-element -- petit SVG statique
-    <img src={team.flag} alt="" className="h-4 w-6 shrink-0 rounded-[2px] object-cover ring-1 ring-black/10" />
-  ) : (
-    <ClubLogo src={team.logo} name={team.name} className="size-6 text-[0.5rem]" />
-  );
+  const mark = <TeamBadge name={team.name} logo={team.logo} flag={team.flag} size="xs" />;
   return (
     <span className={`flex min-w-0 items-center gap-2.5 text-[0.95rem] leading-tight ${tone === "win" ? "font-bold" : tone === "lose" ? "text-muted-foreground" : "font-medium"}`}>
       {mark}

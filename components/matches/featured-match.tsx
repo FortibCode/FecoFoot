@@ -1,19 +1,12 @@
 import Link from "next/link";
-import { ClubLogo } from "@/components/public/club-logo";
+import { TeamBadge } from "@/components/public/team-badge";
 import { MatchStatusBadge, type FixtureItem } from "@/components/matches/match-card";
 import { formatDayMonth, kickoffTime } from "@/lib/format";
 
 function Team({ team }: { team: FixtureItem["home"] }) {
   return (
     <span className="flex min-w-0 flex-col items-center gap-2.5 text-center">
-      <span className="grid size-16 place-items-center rounded-2xl bg-white p-2 shadow-md sm:size-20">
-        {team.flag ? (
-          // eslint-disable-next-line @next/next/no-img-element -- petit SVG statique
-          <img src={team.flag} alt="" className="h-8 w-12 rounded-[3px] object-cover ring-1 ring-black/10 sm:h-10 sm:w-14" />
-        ) : (
-          <ClubLogo src={team.logo} name={team.name} className="size-full text-base" />
-        )}
-      </span>
+      <TeamBadge name={team.name} logo={team.logo} flag={team.flag} size="lg" className="shadow-md" />
       <span className="line-clamp-2 font-display text-base leading-tight font-bold uppercase sm:text-xl">{team.name}</span>
     </span>
   );

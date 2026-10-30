@@ -15,6 +15,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import type { FormItem } from "@/components/matches/form-rows";
 import type { FixtureItem } from "@/components/matches/match-card";
 import { db } from "@/lib/db";
 import {
@@ -33,6 +34,8 @@ import {
 import {
   competitionFamily,
   goalBuckets,
+  groupTable,
+  recordTotals,
   streaks,
   MATCH_FAMILIES,
   MATCH_FAMILY_LABELS,
@@ -246,23 +249,24 @@ export function fromClub(
   };
 }
 
-type NationalRow = {
+export type NationalRow = {
   f: typeof nationalFixtures.$inferSelect;
   team: string;
   teamSlug: string;
 };
-function fromNational({ f, team, teamSlug }: NationalRow): FixtureItem {
+export function fromNational({ f, team, teamSlug }: NationalRow): FixtureItem {
   const congo = { name: "Congo", flag: flagUrl("Congo") };
   const opponent = { name: f.opponent, flag: flagUrl(f.opponent) };
   const [home, away] = f.isHome ? [congo, opponent] : [opponent, congo];
   const played = f.goalsFor !== null && f.goalsAgainst !== null;
   return {
     key: `n${f.id}`,
-    href: `/equipes-nationales/${teamSlug}`,
+    href: `/matchs/selection/${f.id}`,
     kickoffAt: f.kickoffAt,
     venue: f.venue,
     status: NATIONAL_STATUS[f.status],
     awaiting: false,
+    stale: f.status === "SCHEDULED" && f.kickoffAt.getTime() < Date.now() - 3 * 3_600_000,
     halfTime: false,
     period: null,
     periodStartedAt: null,
@@ -654,14 +658,10 @@ const validated = and(
 );
 
 /**
- * Forme d'un club : ses 8 derniers résultats validés (toutes compétitions) avant le match affiché, du plus
- * ancien au plus récent, et ses séries en cours (victoires d'affilée, matchs sans défaite).
+ * Forme d'un club avant le match affiché (résultats validés, toutes compétitions) : les derniers matchs en
+ * lignes (score, adversaire), le bilan des 10 derniers et les séries en cours.
  */
-export async function clubRecord(
-  clubId: number,
-  before: Date | null,
-  excludeMatch: number,
-) {
+export async function clubRecord(clubId: number, before: Date | null, excludeMatch: number) {
   const rows = await matchQuery()
     .where(
       and(
@@ -675,22 +675,28 @@ export async function clubRecord(
     .orderBy(desc(matches.kickoffAt))
     .limit(30);
   const results = rows.map(({ match: m, home, away }) => {
-    const [mine, theirs] =
-      m.homeClubId === clubId
-        ? [m.homeScore ?? 0, m.awayScore ?? 0]
-        : [m.awayScore ?? 0, m.homeScore ?? 0];
-    const result: "V" | "N" | "D" =
-      mine > theirs ? "V" : mine === theirs ? "N" : "D";
-    const opponent = m.homeClubId === clubId ? away?.name : home?.name;
-    return {
+    const isHome = m.homeClubId === clubId;
+    const [goalsFor, goalsAgainst] = isHome ? [m.homeScore ?? 0, m.awayScore ?? 0] : [m.awayScore ?? 0, m.homeScore ?? 0];
+    const result: "V" | "N" | "D" = goalsFor > goalsAgainst ? "V" : goalsFor === goalsAgainst ? "N" : "D";
+    const opponent = isHome ? away?.name : home?.name;
+    const item: FormItem = {
       id: m.id,
+      href: `/matchs/${m.id}`,
+      date: m.kickoffAt,
+      home: { name: home?.shortName ?? home?.name ?? "?", logo: home?.logo },
+      away: { name: away?.shortName ?? away?.name ?? "?", logo: away?.logo },
+      score: [m.homeScore ?? 0, m.awayScore ?? 0],
       result,
-      label: `${result === "V" ? "Victoire" : result === "N" ? "Nul" : "Défaite"} ${mine}-${theirs} contre ${opponent ?? "?"}`,
     };
+    return { item, goalsFor, goalsAgainst, label: `${result === "V" ? "Victoire" : result === "N" ? "Nul" : "Défaite"} ${goalsFor}-${goalsAgainst} contre ${opponent ?? "?"}` };
   });
   return {
-    form: results.slice(0, 8).reverse(),
-    streaks: streaks(results.map((r) => r.result)),
+    // Pastilles du tableau de score : du plus ancien au plus récent.
+    form: results.slice(0, 8).reverse().map((r) => ({ id: r.item.id, result: r.item.result, label: r.label })),
+    // Lignes de l'avant-match : du plus récent au plus ancien.
+    recent: results.slice(0, 5).map((r) => r.item),
+    totals: recordTotals(results.slice(0, 10)),
+    streaks: streaks(results.map((r) => r.item.result)),
   };
 }
 
@@ -907,3 +913,21 @@ export async function ticketableFixtures() {
 }
 
 export { addDays };
+
+/**
+ * Classements « domicile » et « extérieur » d'une compétition (poule du match), d'après les résultats validés.
+ * Barème de la compétition non appliqué ici : 3 points la victoire, 1 le nul, comme le classement général par défaut.
+ */
+export async function homeAwayTables(competitionId: number, pool: string | null, rows: { clubId: number; name: string; shortName: string | null }[]) {
+  const played = await db
+    .select({ homeClubId: matches.homeClubId, awayClubId: matches.awayClubId, homeScore: matches.homeScore, awayScore: matches.awayScore, kickoffAt: matches.kickoffAt })
+    .from(matches)
+    .where(and(eq(matches.competitionId, competitionId), validated, pool ? eq(matches.pool, pool) : undefined));
+  const results = played
+    .filter((m) => m.homeClubId && m.awayClubId && m.homeScore !== null && m.awayScore !== null)
+    .map((m) => ({ home: String(m.homeClubId), away: String(m.awayClubId), homeGoals: m.homeScore!, awayGoals: m.awayScore!, date: m.kickoffAt }));
+  const byId = new Map(rows.map((r) => [String(r.clubId), r]));
+  const toRows = (scope: "home" | "away") =>
+    groupTable([...byId.keys()], results, scope).map((g) => ({ ...g, clubId: Number(g.team), penalty: 0, name: byId.get(g.team)!.name, shortName: byId.get(g.team)!.shortName }));
+  return { home: toRows("home"), away: toRows("away") };
+}

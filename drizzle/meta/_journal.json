@@ -246,6 +246,20 @@
       "when": 1793361030520,
       "tag": "0034_stades_capitaine_billets",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793364810607,
+      "tag": "0035_competitions_internationales",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793367308889,
+      "tag": "0036_feuille_selections_statistiques",
+      "breakpoints": true
     }
   ]
 }

@@ -31,6 +31,8 @@ export default async function teardown() {
       await tx`delete from selections where title like 'E2E %'`;
       await tx`delete from national_staff where full_name like 'E2E %'`;
       await tx`delete from national_fixtures where opponent like 'E2E %'`;
+      // Compétitions internationales de test (groupes, pays et matchs en cascade).
+      await tx`delete from intl_competitions where name like 'E2E %'`;
 
       // Instances de test (membres en cascade).
       await tx`delete from governance_bodies where name like 'E2E %'`;

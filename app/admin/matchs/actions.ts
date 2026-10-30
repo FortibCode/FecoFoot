@@ -9,7 +9,8 @@ import { requirePermission, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
 import { canReschedule, EVENT_TYPES, GOAL_EVENTS, lineupError, MATCH_STATUSES, nextPeriod, scoreFromEvents, type LineupEntry, type MatchPeriod } from "@/lib/competitions";
 import { db } from "@/lib/db";
-import { competitions, matchEvents, matches, matchLineups, matchOfficials, players, referees, stadiums } from "@/lib/db/schema";
+import { competitions, matchEvents, matches, matchLineups, matchOfficials, matchStats, players, referees, stadiums } from "@/lib/db/schema";
+import { parseStats } from "@/lib/match-stats";
 import { isUniqueViolation } from "@/lib/queries/players";
 import { canEditMatchSheet, canManageMatch, eligiblePlayers, recomputeMatch, refereeOf } from "@/lib/queries/competitions";
 import { suspendedPlayers } from "@/lib/queries/discipline";
@@ -346,4 +347,21 @@ export async function setMatchFeatured(matchId: number, featured: boolean): Prom
   revalidateMatch(matchId, m.match.competitionId);
   revalidatePath("/");
   return { success: featured ? "Match mis à la une de la page d'accueil." : "Match retiré de la une." };
+}
+
+/** Statistiques du match (total ou mi-temps), saisies par l'organisateur ou le commissaire désigné. */
+export async function saveMatchStats(matchId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  if (!(await canEditMatchSheet(user, matchId))) return { error: "Vous n'êtes pas autorisé à modifier cette feuille de match." };
+  const m = await loadMatch(matchId);
+  if (!m) return { error: "Match introuvable." };
+  const parsed = parseStats(formData);
+  if ("error" in parsed) return { error: parsed.error };
+  await db
+    .insert(matchStats)
+    .values({ matchId, period: parsed.period, ...parsed.values })
+    .onConflictDoUpdate({ target: [matchStats.matchId, matchStats.period], set: { ...parsed.values, updatedAt: new Date() } });
+  await logAudit({ userId: user.id, action: "MATCH_STATS", entity: "match", entityId: matchId, details: { period: parsed.period, ...parsed.values } });
+  revalidateMatch(matchId, m.match.competitionId);
+  return { success: "Statistiques enregistrées." };
 }

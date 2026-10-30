@@ -9,6 +9,11 @@ import {
   publicMatchStatus,
   pitchLines,
   streaks,
+  recordTotals,
+  groupTable,
+  statsError,
+  statRows,
+  formationError,
   goalBuckets,
   nextPeriod,
   publicStatus,
@@ -388,5 +393,78 @@ describe("avant-match", () => {
     );
     expect(r.scored).toEqual([1, 0, 1, 0, 0, 1]);
     expect(r.conceded).toEqual([0, 0, 0, 1, 0, 0]);
+  });
+});
+
+describe("fichier agenda d'un match", () => {
+  it("échappe le texte et fixe une durée de 2 heures", async () => {
+    const { matchCalendar } = await import("@/lib/ics");
+    const ics = matchCalendar(
+      { uid: "match-1", start: new Date("2026-11-13T13:00:00Z"), summary: "Comores – Congo", description: "Éliminatoires; journée 3", location: "Stade Malouzini, Moroni", url: "https://exemple.cg/matchs/1" },
+      new Date("2026-11-01T00:00:00Z"),
+    );
+    expect(ics).toContain("DTSTART:20261113T130000Z");
+    expect(ics).toContain("DTEND:20261113T150000Z");
+    expect(ics).toContain("LOCATION:Stade Malouzini\\, Moroni");
+    expect(ics).toContain("DESCRIPTION:Éliminatoires\; journée 3");
+  });
+});
+
+describe("bilan d'une équipe", () => {
+  it("compte les résultats, les buts et la série de matchs avec un but", () => {
+    const t = recordTotals([
+      { goalsFor: 2, goalsAgainst: 1 },
+      { goalsFor: 1, goalsAgainst: 1 },
+      { goalsFor: 0, goalsAgainst: 3 },
+      { goalsFor: 4, goalsAgainst: 0 },
+    ]);
+    expect(t).toEqual({ played: 4, wins: 2, draws: 1, losses: 1, goalsFor: 7, goalsAgainst: 5, scoringRun: 2 });
+  });
+});
+
+describe("classement d'un groupe", () => {
+  const d = (n: number) => new Date(Date.UTC(2026, 8, n));
+  const teams = ["Cameroun", "Comores", "Namibie", "Congo"];
+  const played = [
+    { home: "Namibie", away: "Congo", homeGoals: 1, awayGoals: 0, date: d(24) },
+    { home: "Congo", away: "Cameroun", homeGoals: 1, awayGoals: 1, date: d(29) },
+  ];
+  it("classe aux points avec les seuls résultats saisis", () => {
+    const t = groupTable(teams, played);
+    expect(t.map((r) => [r.team, r.points, r.played])).toEqual([
+      ["Namibie", 3, 1],
+      ["Cameroun", 1, 1],
+      ["Congo", 1, 2],
+      ["Comores", 0, 0],
+    ]);
+    expect(t.find((r) => r.team === "Congo")?.form).toEqual(["D", "N"]);
+  });
+  it("sépare domicile et extérieur, sans tenir compte des accents ni de la casse", () => {
+    const home = groupTable(teams, [...played, { home: "comores", away: "NAMIBIE", homeGoals: 2, awayGoals: 0, date: d(30) }], "home");
+    expect(home.find((r) => r.team === "Congo")).toMatchObject({ played: 1, drawn: 1, points: 1 });
+    expect(home.find((r) => r.team === "Comores")).toMatchObject({ played: 1, won: 1, points: 3 });
+    expect(home.find((r) => r.team === "Namibie")).toMatchObject({ played: 1, won: 1 });
+  });
+});
+
+describe("statistiques et système de jeu", () => {
+  const empty = { possessionHome: null, shotsHome: null, shotsAway: null, shotsOnTargetHome: null, shotsOnTargetAway: null, cornersHome: null, cornersAway: null, offsidesHome: null, offsidesAway: null, foulsHome: null, foulsAway: null, savesHome: null, savesAway: null };
+  it("contrôle les valeurs saisies", () => {
+    expect(statsError({ ...empty, possessionHome: 120 })).toMatch(/pourcentage/);
+    expect(statsError({ ...empty, shotsHome: 5, shotsOnTargetHome: 7 })).toMatch(/cadrés/);
+    expect(statsError({ ...empty, possessionHome: 39, shotsHome: 12, shotsOnTargetHome: 5 })).toBeNull();
+  });
+  it("n'affiche que les statistiques relevées des deux côtés", () => {
+    const rows = statRows({ ...empty, possessionHome: 39, cornersHome: 5, cornersAway: 6, foulsHome: 10 });
+    expect(rows).toEqual([
+      { label: "Possession", home: 39, away: 61, percent: true },
+      { label: "Corners", home: 5, away: 6 },
+    ]);
+  });
+  it("valide le système de jeu", () => {
+    expect(formationError("4-3-3")).toBeNull();
+    expect(formationError("4-2-3-1")).toBeNull();
+    expect(formationError("4-4-3")).toMatch(/10 joueurs/);
+    expect(formationError("quatre")).toMatch(/format/);
   });
 });

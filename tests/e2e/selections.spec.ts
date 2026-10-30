@@ -28,6 +28,31 @@ test("sélection nationale : convocation, publication sur le portail et lettres 
   await button(page, "Ajouter au calendrier").click();
   await expect(page.locator("main")).toContainText(`E2E Adversaire ${RUN}`);
 
+  // Compétition internationale : groupe, rattachement du match du Congo, match entre deux autres pays.
+  await page.getByText("Nouveau groupe").click();
+  // Formulaire du groupe (le calendrier a aussi un champ « Compétition »).
+  const groupForm = page.locator("form", { has: page.getByRole("button", { name: "Créer le groupe" }) });
+  await groupForm.locator('input[name="competition"]').fill(`E2E Éliminatoires ${RUN}`);
+  await groupForm.locator('input[name="name"]').fill("Groupe Z");
+  await groupForm.locator('textarea[name="countries"]').fill(`E2E Adversaire ${RUN}\nE2E Pays B ${RUN}\nE2E Pays C ${RUN}`);
+  await button(page, "Créer le groupe").click();
+  await expect(page.locator("main")).toContainText(`E2E Éliminatoires ${RUN} · Groupe Z`);
+  const fixtureRow = page.locator("li", { hasText: `E2E Adversaire ${RUN}` }).filter({ has: page.getByRole("button", { name: "Rattacher" }) });
+  await fixtureRow.locator('select[name="groupId"]').selectOption({ label: `E2E Éliminatoires ${RUN} · Groupe Z` });
+  await fixtureRow.locator('input[name="matchday"]').fill("1");
+  await fixtureRow.getByRole("button", { name: "Rattacher" }).click();
+  const matchForm = page.locator("form", { has: page.getByRole("button", { name: "Ajouter le match" }) });
+  await matchForm.locator('input[name="matchday"]').fill("1");
+  await matchForm.locator('select[name="home"]').selectOption(`E2E Pays B ${RUN}`);
+  await matchForm.locator('select[name="away"]').selectOption(`E2E Pays C ${RUN}`);
+  await button(page, "Ajouter le match").click();
+  const groupMatch = page.locator("li", { hasText: `E2E Pays B ${RUN} – E2E Pays C ${RUN}` });
+  await groupMatch.locator('select[name="status"]').selectOption("PLAYED");
+  await groupMatch.locator('input[name="homeGoals"]').fill("2");
+  await groupMatch.locator('input[name="awayGoals"]').fill("0");
+  await groupMatch.getByRole("button", { name: "OK" }).click();
+  await expect(groupMatch.locator('input[name="homeGoals"]')).toHaveValue("2");
+
   // Nouvelle liste de convoqués
   await page.fill('input[name="title"]', `E2E Stage de novembre ${RUN}`);
   await page.fill('input[name="location"]', "Brazzaville");
@@ -62,6 +87,49 @@ test("sélection nationale : convocation, publication sur le portail et lettres 
   await expect(visitor.locator("main")).toContainText(`E2E Stage de novembre ${RUN}`);
   await expect(visitor.locator("main")).toContainText(`E2E Joueur Expatrié ${RUN}`);
   await expect(visitor.locator("main")).toContainText(`E2E Sélectionneur ${RUN}`);
+
+  // Fiche du match depuis le calendrier de la sélection : score, avant-match, convoqués publiés.
+  await visitor.getByRole("link", { name: new RegExp(`E2E Adversaire ${RUN}`) }).click();
+  await expect(visitor).toHaveURL(/\/matchs\/selection\/\d+$/);
+  await expect(visitor.getByRole("region", { name: "Score" })).toContainText(`E2E Adversaire ${RUN}`, { ignoreCase: true });
+  await expect(visitor.getByRole("tab", { name: "Avant-match" })).toHaveAttribute("aria-selected", "true");
+  await visitor.getByRole("tab", { name: "Convoqués" }).click();
+  await expect(visitor.getByRole("tabpanel", { name: "Convoqués" })).toContainText(`E2E Joueur Expatrié ${RUN}`);
+  await visitor.getByRole("tab", { name: "Calendrier" }).click();
+  await expect(visitor.getByRole("tabpanel", { name: "Calendrier" })).toContainText(`E2E Adversaire ${RUN}`, { ignoreCase: true });
+  // Groupe : en-tête de la compétition, classement (le pays vainqueur en tête), journées.
+  await expect(visitor.getByRole("region", { name: "Score" })).toContainText(`E2E Éliminatoires ${RUN} · Groupe Z · Journée 1`, { ignoreCase: true });
+  await visitor.getByRole("tab", { name: "Classement", exact: true }).click();
+  await expect(visitor.getByRole("tabpanel", { name: "Total" }).locator("tbody tr").first()).toContainText(`E2E Pays B ${RUN}`);
+  await visitor.getByRole("tab", { name: "Journées", exact: true }).click();
+  await expect(visitor.getByRole("tabpanel", { name: "Journées" })).toContainText(`E2E Pays C ${RUN}`);
+
+  // Feuille de match de la sélection : composition (non publiée), but avec passeur, statistiques.
+  await page.goto("/admin/selections/A_LOCAL");
+  await page.locator("li", { hasText: `E2E Adversaire ${RUN}` }).getByRole("link", { name: "Feuille de match" }).click();
+  await expect(page).toHaveURL(/\/admin\/selections\/A_LOCAL\/matchs\/\d+$/);
+  const sheetUrl = page.url();
+  await page.getByLabel(`Rôle de E2E Joueur Expatrié ${RUN}`).selectOption("starter");
+  await page.fill('input[name="formation"]', "4-3-3");
+  await button(page, "Enregistrer la composition").click();
+  await expect(page.locator("main")).toContainText("Composition enregistrée (non publiée)");
+  await page.selectOption('select[name="type"]', "GOAL");
+  await page.fill('input[name="minute"]', "24");
+  await page.fill('input[name="player"]', `E2E Joueur Expatrié ${RUN}`);
+  await page.fill('input[name="secondPlayer"]', "E2E Passeur");
+  await button(page, "Ajouter l'événement").click();
+  await expect(page.locator("main")).toContainText("passe de E2E Passeur");
+  await page.getByLabel(/^Possession Congo/).fill("39");
+  await page.getByLabel(/^Corners Congo$/).fill("5");
+  await page.getByLabel(new RegExp(`^Corners E2E Adversaire ${RUN}$`, "i")).fill("6");
+  await button(page, "Enregistrer les statistiques").click();
+  await expect(page.locator("main")).toContainText("Statistiques enregistrées");
+  await visitor.goto(sheetUrl.replace(/.*\/matchs\//, "/matchs/selection/"));
+  await visitor.getByRole("tab", { name: "Événements", exact: true }).click();
+  await expect(visitor.getByRole("tabpanel", { name: "Événements" })).toContainText("passe de E2E Passeur");
+  await expect(visitor.getByRole("tabpanel", { name: "Événements" })).toContainText("61 %");
+  await visitor.getByRole("tab", { name: "Compositions", exact: true }).click();
+  await expect(visitor.getByRole("tabpanel", { name: "Compositions" })).toContainText("publiée ici par le staff");
 
   // Liste PDF / Excel et lettre de convocation au club national (EF-SEL-05).
   const id = listUrl.split("/").pop();

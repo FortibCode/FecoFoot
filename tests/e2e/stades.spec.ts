@@ -56,7 +56,7 @@ test("stade et billetterie : fiche du stade, avant-match, acheter un billet, age
   await expect(panel).toContainText(/25\s000 places/);
   await expect(panel).toContainText("Aucun joueur suspendu");
   await expect(visitor.getByRole("link", { name: /Acheter un billet/ })).toHaveAttribute("href", `/billetterie/${slug}`);
-  await expect(visitor.getByRole("link", { name: "Ajouter à mon agenda" })).toBeVisible();
+  await expect(visitor.getByRole("link", { name: "Ajouter ce match à mon agenda" })).toBeVisible();
   const ics = await visitor.request.get(`/matchs/${matchId}/agenda`);
   expect(ics.headers()["content-type"]).toContain("text/calendar");
   expect(await ics.text()).toContain(`LOCATION:${stadium}\\, Brazzaville`);

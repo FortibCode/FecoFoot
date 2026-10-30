@@ -22,8 +22,6 @@ import { departmentalLeagues, familyTabs, featuredFixtures, homeFixtures } from 
 import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
-import { nationalFixturesOverview } from "@/lib/queries/national";
-import { NationalFixtures } from "@/components/public/national-fixtures";
 import { NationalTeamCards } from "@/components/public/national-team-cards";
 import { featuredPhotos, latestPhotos, photoUrl } from "@/lib/photos";
 import { CountUp } from "@/components/count-up";
@@ -41,7 +39,7 @@ function Container({ children, className = "" }: { children: ReactNode; classNam
 /** Page d'accueil du portail public (EF-PUB-01). */
 export default async function HomePage() {
   await connection();
-  const [d, featured, gallery, nationalGames, elite] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), nationalFixturesOverview(3), eliteClubs()]);
+  const [d, featured, gallery, elite] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs()]);
   const [eliteLogos, standing, spotlight, tabs] = await Promise.all([
     clubLogos(elite?.teams.map((t) => t.id) ?? []),
     elite ? competitionTables(elite.competition.id) : null,
@@ -354,7 +352,6 @@ export default async function HomePage() {
               ) : undefined
             }
           />
-          <NationalFixtures {...nationalGames} />
           {gallery.length > 0 && (
             <Carousel
               label="En images"

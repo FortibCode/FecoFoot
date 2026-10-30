@@ -13,14 +13,16 @@ import { requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/roles";
 import { canReschedule, EVENT_TYPE_LABELS, GOAL_EVENTS, hasScore, MATCH_STATUS_LABELS, roundLabel } from "@/lib/competitions";
 import { db } from "@/lib/db";
-import { matchEvents, matches, matchLineups, matchOfficials, players, referees, stadiums, users } from "@/lib/db/schema";
+import { matchEvents, matches, matchLineups, matchOfficials, matchStats, players, referees, stadiums, users } from "@/lib/db/schema";
 import { formatDateTime } from "@/lib/format";
 import { entityHistory } from "@/lib/queries/audit";
 import { canEditMatchSheet, canManageMatch, eligiblePlayers, matchQuery, refereeOf } from "@/lib/queries/competitions";
 import { OFFICIAL_ROLE_LABELS, OFFICIAL_ROLES, REFEREE_GRADE_LABELS } from "@/lib/referees";
-import { addMatchEvent, deleteMatchEvent, designateOfficial, removeOfficial, scheduleMatch, setMatchFeatured, updateMatchSheet, validateResult } from "../actions";
+import { addMatchEvent, deleteMatchEvent, designateOfficial, removeOfficial, saveMatchStats, scheduleMatch, setMatchFeatured, updateMatchSheet, validateResult } from "../actions";
 import { FeaturedToggle } from "@/components/featured-toggle";
 import { DesignationForm, EventForm, ScheduleForm, SheetForm } from "../MatchForms";
+import { StatsForm } from "@/components/matches/stats-form";
+import type { MatchStatValues } from "@/lib/competitions";
 
 export const metadata: Metadata = { title: "Feuille de match — FECOFOOT" };
 
@@ -217,6 +219,17 @@ export default async function MatchPage({ params }: PageProps<"/admin/matchs/[id
                 teams={[home?.name ?? "Domicile", away?.name ?? "Extérieur"]}
               />
             )}
+          </section>
+        )}
+        {/* Statistiques du match (possession, tirs, corners…), affichées sur la fiche publique */}
+        {sheet && clubIds.length === 2 && (
+          <section className="flex flex-col gap-3 border-t pt-6">
+            <h2 className="font-semibold">Statistiques du match</h2>
+            <StatsForm
+              action={saveMatchStats.bind(null, id)}
+              teams={[home?.name ?? "Domicile", away?.name ?? "Extérieur"]}
+              values={Object.fromEntries((await db.select().from(matchStats).where(eq(matchStats.matchId, id))).map(({ period, ...v }) => [period, v as unknown as MatchStatValues]))}
+            />
           </section>
         )}
         {!sheet && m.report && (

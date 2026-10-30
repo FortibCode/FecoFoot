@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/lib/auth/guard";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { SELECTION_STATUS_LABELS } from "@/lib/national-teams";
-import { teamPage } from "@/lib/queries/national";
+import { teamGroups, teamPage } from "@/lib/queries/national";
+import { seasonOf } from "@/lib/licenses";
+import { RowActions } from "@/components/admin/row-actions";
 import { can } from "@/lib/auth/roles";
 import { photoUrl, teamPhotos } from "@/lib/photos";
-import { addFixture, addStaff, createSelection, removeStaff, setFixtureFeatured, setFixtureResult } from "../actions";
+import { addFixture, addGroupMatch, addStaff, createGroup, createSelection, deleteGroup, deleteGroupMatch, linkFixtureToGroup, removeStaff, setFixtureFeatured, setFixtureResult, setGroupMatchResult } from "../actions";
 import { FeaturedToggle } from "@/components/featured-toggle";
-import { FixtureForm, FixtureResultForm, SelectionCreateForm, StaffForm } from "../SelectionForms";
+import { FixtureForm, FixtureGroupForm, FixtureResultForm, GroupForm, GroupMatchForm, GroupMatchResultForm, SelectionCreateForm, StaffForm } from "../SelectionForms";
 
 export const metadata: Metadata = { title: "Sélection nationale — FECOFOOT" };
 
@@ -23,7 +25,8 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
   const data = await teamPage(code, { publishedOnly: false });
   if (!data) notFound();
   const { team, staff, fixtures, selections } = data;
-  const gallery = await teamPhotos(team.id);
+  const [gallery, groups] = await Promise.all([teamPhotos(team.id), teamGroups(team.id)]);
+  const groupOptions = groups.map((g) => ({ id: g.group.id, label: `${g.competition.name} · ${g.group.name}` }));
   const canManagePhotos = can(user.role, "communication.manage");
 
   return (
@@ -87,12 +90,62 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
                 <span className="flex flex-wrap items-center gap-2">
                   <FeaturedToggle action={setFixtureFeatured.bind(null, team.code, f.id)} featured={f.featured} />
                   <FixtureResultForm action={setFixtureResult.bind(null, team.code, f.id)} current={f} />
+                  {groupOptions.length > 0 && <FixtureGroupForm action={linkFixtureToGroup.bind(null, team.code, f.id)} groups={groupOptions} current={f} />}
+                  <Link href={`/admin/selections/${team.code}/matchs/${f.id}`} className="admin-btn admin-btn-outline h-8 px-3 text-xs">
+                    Feuille de match
+                  </Link>
                 </span>
               </li>
             ))}
             {fixtures.length === 0 && <li className="px-3 py-2 text-muted-foreground">Aucun match.</li>}
           </ul>
           <FixtureForm action={addFixture.bind(null, team.code)} />
+        </section>
+
+        {/* Compétitions internationales : groupes, pays, matchs entre les autres pays (classement public du groupe). */}
+        <section className="flex flex-col gap-4 border-t pt-6">
+          <div>
+            <h2 className="font-semibold">Compétitions et groupes</h2>
+            <p className="text-sm text-muted-foreground">
+              Rattachez chaque match du Congo à son groupe et à sa journée, puis saisissez les matchs entre les autres pays : la fiche publique du match affiche le
+              classement du groupe et ses journées.
+            </p>
+          </div>
+          {groups.map(({ group, competition, teams, matches }) => (
+            <div key={group.id} className="flex flex-col gap-3 rounded-lg border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold">
+                  {competition.name} · {group.name} <span className="font-normal text-muted-foreground">({teams.join(", ")} · {group.qualifiers} qualifié(s))</span>
+                </p>
+                <RowActions name={`${competition.name} · ${group.name}`} onDelete={deleteGroup.bind(null, team.code, group.id)} />
+              </div>
+              {matches.length > 0 && (
+                <ul className="flex flex-col divide-y rounded-md border text-sm">
+                  {matches.map((m) => (
+                    <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                      <span>
+                        <span className="text-muted-foreground">J{m.matchday}{m.kickoffAt ? ` · ${formatDateTime(m.kickoffAt)}` : ""}</span> ·{" "}
+                        <strong>
+                          {m.home} – {m.away}
+                        </strong>
+                      </span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        <GroupMatchResultForm action={setGroupMatchResult.bind(null, team.code, m.id)} current={m} />
+                        <RowActions name={`${m.home} – ${m.away}`} onDelete={deleteGroupMatch.bind(null, team.code, m.id)} />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {teams.length > 2 && <GroupMatchForm action={addGroupMatch.bind(null, team.code, group.id)} teams={teams} />}
+            </div>
+          ))}
+          <details className="rounded-lg border p-4">
+            <summary className="cursor-pointer text-sm font-semibold">Nouveau groupe</summary>
+            <div className="mt-4">
+              <GroupForm action={createGroup.bind(null, team.code)} season={seasonOf()} />
+            </div>
+          </details>
         </section>
         <section className="flex flex-col gap-3" aria-labelledby="photos-title">
           <div className="flex flex-wrap items-center justify-between gap-2">

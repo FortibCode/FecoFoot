@@ -1,13 +1,16 @@
-import Link from "next/link";
 import { ClubLogo } from "@/components/public/club-logo";
+import { CompareStats, FormRows, type FormItem } from "@/components/matches/form-rows";
 import { GOAL_BUCKETS } from "@/lib/competitions";
 
 type Team = { id: number; name: string; logo?: string | null } | null;
-type TeamRecord = { form: { id: number; result: "V" | "N" | "D"; label: string }[]; streaks: { wins: number; unbeaten: number } } | null;
+type TeamRecord = {
+  recent: FormItem[];
+  totals: { played: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number; scoringRun: number };
+  streaks: { wins: number; unbeaten: number };
+} | null;
 type Profile = { scored: number[]; conceded: number[]; scorers: { name: string; goals: number }[] } | null;
 type Suspension = { id: number; name: string; reason: string };
 
-const RESULT_TONE = { V: "bg-[var(--flag-green)] text-white", N: "bg-muted text-foreground", D: "bg-[var(--flag-red)] text-white" } as const;
 const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
 
 function TeamCard({ team, record, profile, suspended, upcoming }: { team: NonNullable<Team>; record: TeamRecord; profile: Profile; suspended: Suspension[]; upcoming: boolean }) {
@@ -19,29 +22,22 @@ function TeamCard({ team, record, profile, suspended, upcoming }: { team: NonNul
       </p>
       <div className="flex flex-col gap-5 p-4">
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Forme (8 derniers matchs)</h3>
-          {record && record.form.length > 0 ? (
-            <>
-              <ol aria-label={`Forme de ${team.name}, du plus ancien au plus récent`} className="flex flex-wrap gap-1.5">
-                {record.form.map((f) => (
-                  <li key={f.id}>
-                    <Link href={`/matchs/${f.id}`} title={f.label} aria-label={f.label} className={`grid size-7 place-items-center rounded-md text-xs font-bold ${RESULT_TONE[f.result]}`}>
-                      {f.result}
-                    </Link>
-                  </li>
-                ))}
-              </ol>
-              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
-                <li>
-                  <strong className="text-foreground tabular-nums">{record.streaks.wins}</strong> victoire{record.streaks.wins > 1 ? "s" : ""} d&apos;affilée
+          <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Forme récente</h3>
+          <FormRows items={record?.recent ?? []} />
+          {record && record.recent.length > 0 && (
+            <ul className="flex flex-wrap gap-2 text-xs">
+              {(
+                [
+                  [record.streaks.wins, "victoire", "victoires", "d'affilée"],
+                  [record.streaks.unbeaten, "match", "matchs", "sans défaite"],
+                  [record.totals.scoringRun, "match", "matchs", "avec au moins un but"],
+                ] as const
+              ).map(([n, one, many, tail]) => (
+                <li key={tail} className="rounded-full bg-muted px-2.5 py-1">
+                  <strong className="tabular-nums">{n}</strong> {n > 1 ? many : one} {tail}
                 </li>
-                <li>
-                  <strong className="text-foreground tabular-nums">{record.streaks.unbeaten}</strong> match{record.streaks.unbeaten > 1 ? "s" : ""} sans défaite
-                </li>
-              </ul>
-            </>
-          ) : (
-            <p className="text-muted-foreground">Aucun résultat officiel enregistré.</p>
+              ))}
+            </ul>
           )}
         </div>
 
@@ -202,8 +198,32 @@ export function PreMatch({
   upcoming: boolean;
 }) {
   const [home, away] = teams;
+  const [rh, ra] = records;
   return (
     <div className="flex flex-col gap-6">
+      {home && away && rh && ra && rh.totals.played + ra.totals.played > 0 && (
+        <section aria-labelledby="stats-generales" className="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <ClubLogo src={home.logo} name={home.name} className="size-8 text-[0.6rem]" />
+            <div className="text-center">
+              <h3 id="stats-generales" className="font-heading text-base font-bold uppercase">
+                Statistiques générales
+              </h3>
+              <p className="text-xs text-muted-foreground">10 derniers matchs officiels, toutes compétitions</p>
+            </div>
+            <ClubLogo src={away.logo} name={away.name} className="size-8 text-[0.6rem]" />
+          </div>
+          <CompareStats
+            rows={[
+              { label: "Victoires", home: rh.totals.wins, away: ra.totals.wins },
+              { label: "Nuls", home: rh.totals.draws, away: ra.totals.draws },
+              { label: "Défaites", home: rh.totals.losses, away: ra.totals.losses },
+              { label: "Buts marqués", home: rh.totals.goalsFor, away: ra.totals.goalsFor },
+              { label: "Buts encaissés", home: rh.totals.goalsAgainst, away: ra.totals.goalsAgainst },
+            ]}
+          />
+        </section>
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
         {teams.map((t, i) => (t ? <TeamCard key={t.id} team={t} record={records[i]} profile={profiles[i]} suspended={suspensions[i] ?? []} upcoming={upcoming} /> : null))}
       </div>

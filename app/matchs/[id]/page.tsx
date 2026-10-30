@@ -11,6 +11,11 @@ import {
 import { FixtureGroups } from "@/components/matches/fixture-groups";
 import { MatchStatusBadge } from "@/components/matches/match-card";
 import { MatchTabs } from "@/components/matches/match-tabs";
+import { StatsPanel } from "@/components/matches/stats-panel";
+import type { MatchStatValues } from "@/lib/competitions";
+import type { StatPeriod } from "@/lib/match-stats";
+import { MatchHeader } from "@/components/matches/match-header";
+import { Countdown } from "@/components/matches/countdown";
 import { PreMatch } from "@/components/matches/pre-match";
 import { ShareBar } from "@/components/matches/share-bar";
 import { Pitch, type LineupPlayer } from "@/components/matches/pitch";
@@ -39,6 +44,7 @@ import {
   players,
   referees,
   stadiums,
+  matchStats,
 } from "@/lib/db/schema";
 import { formatDateTime, formatMatchDate, kickoffTime } from "@/lib/format";
 import { championshipLogoUrl, leagueLogoUrl } from "@/lib/league-logo";
@@ -50,6 +56,7 @@ import {
   clubRecord,
   fromClub,
   headToHead,
+  homeAwayTables,
   openTicketSales,
   roundFixtures,
   suspendedFor,
@@ -294,6 +301,11 @@ export default async function PublicMatchPage({
       roundFixtures(c.id, m.round, m.pool, m.id),
     ]);
   const [formHome, formAway] = records.map((r) => r?.form.slice(-5) ?? []);
+  const entered = Object.fromEntries(
+    (
+      await db.select().from(matchStats).where(eq(matchStats.matchId, m.id))
+    ).map(({ period, ...v }) => [period, v as unknown as MatchStatValues]),
+  ) as Partial<Record<StatPeriod, MatchStatValues>>;
   const [[stadium], [ticket]] = await Promise.all([
     m.stadiumId
       ? db.select().from(stadiums).where(eq(stadiums.id, m.stadiumId)).limit(1)
@@ -302,9 +314,12 @@ export default async function PublicMatchPage({
   ]);
   const table =
     tables?.tables.find((t) => t.pool === (m.pool ?? "")) ?? tables?.tables[0];
-  const standingLogos = table
-    ? await clubLogos(table.rows.map((r) => r.clubId))
-    : new Map<number, string>();
+  const [standingLogos, split] = table
+    ? await Promise.all([
+        clubLogos(table.rows.map((r) => r.clubId)),
+        homeAwayTables(c.id, table.pool || null, table.rows),
+      ])
+    : [new Map<number, string>(), null];
   const squad = (team: typeof home): LineupSide | null =>
     team
       ? {
@@ -368,151 +383,132 @@ export default async function PublicMatchPage({
       `${m.attendance.toLocaleString("fr-FR")} spectateurs`,
     ]);
 
+  // Équipe de l'en-tête : logo, forme (5 derniers résultats validés) et bouton « Suivre ».
+  const teamSide = (team: typeof home, form: typeof formHome) =>
+    team
+      ? {
+          name: team.name,
+          logo: logos.get(team.id),
+          extra: (
+            <div className="flex flex-col items-center gap-1.5">
+              {form.length > 0 && (
+                <ol
+                  aria-label={`Forme de ${team.name} : 5 derniers résultats`}
+                  className="hidden gap-1 sm:flex"
+                >
+                  {form.map((f) => (
+                    <li key={f.id}>
+                      <Link
+                        href={`/matchs/${f.id}`}
+                        title={f.label}
+                        aria-label={f.label}
+                        className={`grid size-5 place-items-center rounded text-[0.65rem] font-bold ${f.result === "V" ? "bg-[var(--flag-green)] text-white" : f.result === "D" ? "bg-[var(--flag-red)] text-white" : "bg-[var(--flag-yellow)] text-brand-ink"}`}
+                      >
+                        {f.result}
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <FollowClubButton clubId={team.id} name={team.name} />
+            </div>
+          ),
+        }
+      : { name: "À déterminer" };
+
   return (
     <PublicShell
       eyebrow="Matchs"
       title={title(row)}
       subtitle={`${c.name} · ${seasonLabel(c.season)} · ${round}`}
       wide
+      // Pas de grand titre : l'en-tête du match (équipes, score) ouvre la page, comme sur les applications de résultats.
+      hero={<div className="h-2" />}
     >
       <div className="flex flex-col gap-10">
         {live && <LiveRefresh seconds={20} />}
         <FollowedMarks />
 
-        {/* Tableau de score */}
-        <section
-          aria-label="Score"
-          className="brand-band relative isolate overflow-hidden rounded-3xl px-4 py-6 shadow-lg sm:px-10 sm:py-10"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- dessin vectoriel décoratif */}
-          <img
-            src="/fecofoot-mark.svg"
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute -right-10 -bottom-16 -z-10 h-[140%] w-auto opacity-[0.06] select-none"
-          />
-          <div className="mb-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs font-semibold tracking-[0.14em] text-white/70 uppercase sm:mb-8">
-            {competitionLogo && (
-              // eslint-disable-next-line @next/next/no-img-element -- logo servi par la route des médias
-              <img
-                src={competitionLogo}
-                alt=""
-                className="size-7 rounded-md bg-white object-contain p-0.5"
-              />
-            )}
-            <Link
-              href={competitionHref}
-              className="text-[var(--flag-yellow)] hover:underline"
-            >
-              {c.name}
-            </Link>
-            <span>{round}</span>
-          </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-8">
-            {[home, null, away].map((team, i) =>
-              i === 1 ? (
-                <div
-                  key="score"
-                  className="flex flex-col items-center gap-2.5 text-center"
-                >
-                  <MatchStatusBadge item={item} size="lg" />
-                  <span className="font-display text-5xl leading-none font-bold text-white tabular-nums sm:text-7xl">
-                    {showScore
-                      ? `${item.score![0]} - ${item.score![1]}`
-                      : (upcomingTime ?? "–")}
-                  </span>
-                  {showScore && item.penalties && (
-                    <span className="text-xs font-semibold text-white/80">
-                      Tirs au but : {item.penalties[0]} - {item.penalties[1]}
-                    </span>
-                  )}
-                  {item.awaiting && (
-                    <span className="text-xs text-white/70">
-                      Résultat en attente de validation
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <div
-                  key={i}
-                  className="flex min-w-0 flex-col items-center gap-3 text-center"
-                >
-                  {team ? (
-                    <>
-                      <span className="grid size-20 place-items-center rounded-2xl bg-white p-2 shadow-md sm:size-28">
-                        <ClubLogo
-                          src={logos.get(team.id)}
-                          name={team.name}
-                          className="size-full text-lg"
-                        />
-                      </span>
-                      <span className="font-display text-base leading-tight font-bold text-white uppercase sm:text-2xl">
-                        {team.name}
-                      </span>
-                      {(i === 0 ? formHome : formAway).length > 0 && (
-                        <ol
-                          aria-label={`Forme de ${team.name} : 5 derniers résultats`}
-                          className="flex flex-wrap justify-center gap-1"
-                        >
-                          {(i === 0 ? formHome : formAway).map((f) => (
-                            <li key={f.id}>
-                              <Link
-                                href={`/matchs/${f.id}`}
-                                title={f.label}
-                                aria-label={f.label}
-                                className={`grid size-6 place-items-center rounded text-[0.7rem] font-bold ${f.result === "V" ? "bg-[var(--flag-green)] text-white" : f.result === "D" ? "bg-[var(--flag-red)] text-white" : "bg-white/25 text-white"}`}
-                              >
-                                {f.result}
-                              </Link>
-                            </li>
-                          ))}
-                        </ol>
-                      )}
-                      <FollowClubButton
-                        clubId={team.id}
-                        name={team.name}
-                        tone="dark"
-                      />
-                    </>
-                  ) : (
-                    <span className="text-white/70">À déterminer</span>
-                  )}
-                </div>
-              ),
-            )}
-          </div>
-          {/* Buteurs sous le score, comme sur un tableau d'affichage */}
-          {events.some((x) =>
-            ["GOAL", "PENALTY_GOAL", "OWN_GOAL"].includes(x.e.type),
-          ) && (
-            <div className="mt-6 grid grid-cols-2 gap-6 border-t border-white/15 pt-5 text-sm text-white/85">
-              {(["home", "away"] as const).map((s) => (
-                <ul
-                  key={s}
-                  className={`flex flex-col gap-1 ${s === "home" ? "items-end text-right" : ""}`}
-                >
-                  {events
-                    .filter(
-                      (x) =>
-                        ["GOAL", "PENALTY_GOAL", "OWN_GOAL"].includes(
-                          x.e.type,
-                        ) && side(x.e.clubId) === s,
-                    )
-                    .map(({ e, lastName }) => (
-                      <li key={e.id}>
-                        {lastName ?? "But"} {e.minute}&apos;
-                        {e.type === "PENALTY_GOAL"
-                          ? " (pen.)"
-                          : e.type === "OWN_GOAL"
-                            ? " (c.s.c.)"
-                            : ""}
-                      </li>
-                    ))}
-                </ul>
-              ))}
-            </div>
-          )}
-        </section>
+        {/* En-tête du match : compact, équipes de part et d'autre du score */}
+        <MatchHeader
+          actions={
+            <ShareBar
+              clubs={[m.homeClubId, m.awayClubId].filter(
+                (x): x is number => x !== null,
+              )}
+              title={`${title(row)} — ${c.name}`}
+              path={`/matchs/${m.id}`}
+              agenda={upcoming && m.kickoffAt ? `/matchs/${m.id}/agenda` : null}
+            />
+          }
+          title={title(row)}
+          stage={`${c.name} · ${round}${m.pool ? ` · Poule ${m.pool}` : ""}`}
+          stageHref={competitionHref}
+          stageLogo={competitionLogo}
+          home={teamSide(home, formHome)}
+          away={teamSide(away, formAway)}
+          main={
+            showScore
+              ? `${item.score![0]} - ${item.score![1]}`
+              : (upcomingTime ?? "–")
+          }
+          live={live}
+          date={m.kickoffAt}
+          status={
+            upcomingTime && m.kickoffAt ? (
+              <Countdown at={m.kickoffAt.toISOString()} />
+            ) : (
+              <MatchStatusBadge item={item} />
+            )
+          }
+          details={
+            <>
+              {showScore && item.penalties && (
+                <span className="text-xs font-semibold text-muted-foreground">
+                  Tirs au but : {item.penalties[0]} - {item.penalties[1]}
+                </span>
+              )}
+              {item.awaiting && (
+                <span className="text-xs text-muted-foreground">
+                  Résultat en attente de validation
+                </span>
+              )}
+            </>
+          }
+          below={
+            // Buteurs sous le score, comme sur un tableau d'affichage.
+            events.some((x) =>
+              ["GOAL", "PENALTY_GOAL", "OWN_GOAL"].includes(x.e.type),
+            ) ? (
+              <div className="mt-4 grid grid-cols-2 gap-6 border-t pt-3 text-xs text-muted-foreground sm:text-sm">
+                {(["home", "away"] as const).map((s) => (
+                  <ul
+                    key={s}
+                    className={`flex flex-col gap-0.5 ${s === "home" ? "items-end text-right" : ""}`}
+                  >
+                    {events
+                      .filter(
+                        (x) =>
+                          ["GOAL", "PENALTY_GOAL", "OWN_GOAL"].includes(
+                            x.e.type,
+                          ) && side(x.e.clubId) === s,
+                      )
+                      .map(({ e, lastName }) => (
+                        <li key={e.id}>
+                          {lastName ?? "But"} {e.minute}&apos;
+                          {e.type === "PENALTY_GOAL"
+                            ? " (pen.)"
+                            : e.type === "OWN_GOAL"
+                              ? " (c.s.c.)"
+                              : ""}
+                        </li>
+                      ))}
+                  </ul>
+                ))}
+              </div>
+            ) : undefined
+          }
+        />
 
         {ticket && (
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--flag-yellow)] bg-[color-mix(in_srgb,var(--flag-yellow)_14%,transparent)] p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -531,12 +527,6 @@ export default async function PublicMatchPage({
             </Link>
           </div>
         )}
-
-        <ShareBar
-          title={`${title(row)} — ${c.name}`}
-          path={`/matchs/${m.id}`}
-          agenda={upcoming && m.kickoffAt ? `/matchs/${m.id}/agenda` : null}
-        />
 
         <dl className="grid gap-4 rounded-2xl border bg-card p-5 text-sm sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
           {facts.map(([k, v]) => (
@@ -642,7 +632,15 @@ export default async function PublicMatchPage({
                   </div>
 
                   <aside className="flex min-w-0 flex-col gap-10">
-                    {started && (
+                    {/* Statistiques relevées par l'officiel (possession, tirs…) ; à défaut, décompte des événements saisis. */}
+                    {Object.keys(entered).length > 0 && (
+                      <Section title="Statistiques" id="statistiques">
+                        <div className="rounded-2xl border bg-card p-4">
+                          <StatsPanel stats={entered} />
+                        </div>
+                      </Section>
+                    )}
+                    {started && Object.keys(entered).length === 0 && (
                       <Section title="Statistiques" id="statistiques">
                         <div className="flex flex-col gap-4 rounded-2xl border bg-card p-4">
                           <p className="grid grid-cols-[2rem_1fr_2rem] items-center text-xs font-semibold text-muted-foreground">
@@ -813,17 +811,40 @@ export default async function PublicMatchPage({
                     label: "Classement",
                     panel: (
                       <div className="flex flex-col gap-3">
-                        <StandingsTable
-                          rows={table.rows}
-                          title={table.pool ? `Poule ${table.pool}` : undefined}
-                          logos={Object.fromEntries(standingLogos)}
-                          zones={{
-                            promotion: c.promotionSpots,
-                            relegation: c.relegationSpots,
-                          }}
-                          highlight={[m.homeClubId, m.awayClubId].filter(
-                            (x): x is number => x !== null,
-                          )}
+                        {/* Classement général (barème et départage de la compétition), puis à domicile / à l'extérieur. */}
+                        <MatchTabs
+                          label="Vue du classement"
+                          initial="total"
+                          tabs={(
+                            [
+                              ["total", "Total", table.rows],
+                              ["domicile", "Domicile", split?.home ?? []],
+                              ["exterieur", "Extérieur", split?.away ?? []],
+                            ] as const
+                          ).map(([id, label, rows]) => ({
+                            id,
+                            label,
+                            panel: (
+                              <StandingsTable
+                                rows={[...rows]}
+                                title={
+                                  table.pool ? `Poule ${table.pool}` : undefined
+                                }
+                                logos={Object.fromEntries(standingLogos)}
+                                zones={
+                                  id === "total"
+                                    ? {
+                                        promotion: c.promotionSpots,
+                                        relegation: c.relegationSpots,
+                                      }
+                                    : undefined
+                                }
+                                highlight={[m.homeClubId, m.awayClubId].filter(
+                                  (x): x is number => x !== null,
+                                )}
+                              />
+                            ),
+                          }))}
                         />
                         <Link
                           href={competitionHref}

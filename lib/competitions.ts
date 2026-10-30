@@ -224,6 +224,47 @@ export function pitchLines<T extends PitchPlayer>(starters: T[]): { lines: [T[],
   return { lines, formation: starters.length >= 7 && outfield.length >= 2 ? outfield.join("-") : null };
 }
 
+// ─── Classement d'un groupe (compétitions internationales, vues domicile / extérieur) ──
+
+export type GroupMatch = { home: string; away: string; homeGoals: number; awayGoals: number; date: Date | null };
+export type GroupRow = { team: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDiff: number; points: number; form: ("V" | "N" | "D")[] };
+export const GROUP_SCOPES = ["all", "home", "away"] as const;
+export type GroupScope = (typeof GROUP_SCOPES)[number];
+
+const sameTeam = (a: string, b: string) => a.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() === b.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+/**
+ * Classement d'un groupe à partir des résultats saisis : 3 points la victoire, 1 le nul ; à égalité,
+ * différence de buts puis buts marqués. `scope` : tous les matchs, ou seulement à domicile / à l'extérieur.
+ * Forme : 5 derniers résultats, du plus ancien au plus récent.
+ */
+export function groupTable(teams: string[], matches: GroupMatch[], scope: GroupScope = "all"): GroupRow[] {
+  const rows = teams.map((team) => ({ team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDiff: 0, points: 0, form: [] as ("V" | "N" | "D")[] }));
+  const ordered = [...matches].sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0));
+  for (const m of ordered) {
+    for (const side of ["home", "away"] as const) {
+      if (scope !== "all" && scope !== side) continue;
+      const row = rows.find((r) => sameTeam(r.team, side === "home" ? m.home : m.away));
+      if (!row) continue;
+      const [gf, ga] = side === "home" ? [m.homeGoals, m.awayGoals] : [m.awayGoals, m.homeGoals];
+      row.played++;
+      row.goalsFor += gf;
+      row.goalsAgainst += ga;
+      const r = gf > ga ? "V" : gf === ga ? "N" : "D";
+      if (r === "V") row.won++;
+      else if (r === "N") row.drawn++;
+      else row.lost++;
+      row.form.push(r);
+    }
+  }
+  for (const r of rows) {
+    r.goalDiff = r.goalsFor - r.goalsAgainst;
+    r.points = r.won * 3 + r.drawn;
+    r.form = r.form.slice(-5);
+  }
+  return rows.sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team, "fr"));
+}
+
 // ─── Avant-match ─────────────────────────────────────────────────────────────
 
 /** Séries en cours d'après les résultats, du plus récent au plus ancien : victoires d'affilée, matchs sans défaite. */
@@ -233,6 +274,21 @@ export function streaks(results: ("V" | "N" | "D")[]): { wins: number; unbeaten:
     return i === -1 ? results.length : i;
   };
   return { wins: run((r) => r === "V"), unbeaten: run((r) => r !== "D") };
+}
+
+/** Bilan sur une série de résultats : matchs, victoires, nuls, défaites, buts pour et contre, matchs d'affilée avec un but (du plus récent). */
+export function recordTotals(results: { goalsFor: number; goalsAgainst: number }[]) {
+  const t = { played: results.length, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, scoringRun: 0 };
+  for (const r of results) {
+    t.goalsFor += r.goalsFor;
+    t.goalsAgainst += r.goalsAgainst;
+    if (r.goalsFor > r.goalsAgainst) t.wins++;
+    else if (r.goalsFor === r.goalsAgainst) t.draws++;
+    else t.losses++;
+  }
+  const i = results.findIndex((r) => r.goalsFor === 0);
+  t.scoringRun = i === -1 ? results.length : i;
+  return t;
 }
 
 export const GOAL_BUCKETS = ["1-15", "16-30", "31-45", "46-60", "61-75", "76-90"] as const;
@@ -252,6 +308,50 @@ export function goalBuckets(events: { type: EventType; minute: number; clubId: n
     (forClub ? scored : conceded)[i]++;
   }
   return { scored, conceded };
+}
+
+// ─── Statistiques d'un match ─────────────────────────────────────────────────
+
+/** Statistiques relevées (domicile / extérieur), dans l'ordre d'affichage. La possession est en % pour le domicile. */
+export const MATCH_STATS = [
+  { key: "shots", label: "Tirs" },
+  { key: "shotsOnTarget", label: "Tirs cadrés" },
+  { key: "corners", label: "Corners" },
+  { key: "offsides", label: "Hors-jeu" },
+  { key: "fouls", label: "Fautes" },
+  { key: "saves", label: "Arrêts du gardien" },
+] as const;
+export type MatchStatKey = (typeof MATCH_STATS)[number]["key"];
+export type MatchStatValues = { possessionHome: number | null } & { [K in MatchStatKey as `${K}Home` | `${K}Away`]: number | null };
+
+/** Contrôle des statistiques saisies : possession de 0 à 100, tirs cadrés au plus égaux aux tirs. */
+export function statsError(v: MatchStatValues): string | null {
+  if (v.possessionHome !== null && (v.possessionHome < 0 || v.possessionHome > 100)) return "La possession est un pourcentage de 0 à 100.";
+  for (const side of ["Home", "Away"] as const) {
+    const shots = v[`shots${side}`];
+    const onTarget = v[`shotsOnTarget${side}`];
+    if (shots !== null && onTarget !== null && onTarget > shots) return "Les tirs cadrés ne peuvent pas dépasser le nombre de tirs.";
+  }
+  return null;
+}
+
+/** Lignes affichées : seulement les statistiques relevées pour les deux équipes. */
+export function statRows(v: MatchStatValues): { label: string; home: number; away: number; percent?: boolean }[] {
+  const rows: { label: string; home: number; away: number; percent?: boolean }[] = [];
+  if (v.possessionHome !== null) rows.push({ label: "Possession", home: v.possessionHome, away: 100 - v.possessionHome, percent: true });
+  for (const s of MATCH_STATS) {
+    const home = v[`${s.key}Home`];
+    const away = v[`${s.key}Away`];
+    if (home !== null && away !== null) rows.push({ label: s.label, home, away });
+  }
+  return rows;
+}
+
+/** Système de jeu annoncé (« 4-3-3 ») : lignes de champ totalisant 10 joueurs. */
+export function formationError(formation: string): string | null {
+  if (!/^\d(-\d){1,4}$/.test(formation)) return "Système de jeu au format « 4-3-3 ».";
+  const total = formation.split("-").reduce((a, n) => a + Number(n), 0);
+  return total === 10 ? null : "Le système de jeu doit compter 10 joueurs de champ.";
 }
 
 // ─── Minute de jeu en direct ─────────────────────────────────────────────────
