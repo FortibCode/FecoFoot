@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TeamBadge } from "@/components/public/team-badge";
-import { ArrowIcon, CalendarIcon, PinIcon, TrophyIcon } from "@/components/public/icons";
+import { CalendarIcon, PinIcon, TrophyIcon } from "@/components/public/icons";
 import { MatchStatusBadge, type FixtureItem } from "@/components/matches/match-card";
 import { kickoffTime } from "@/lib/format";
 
@@ -56,7 +56,7 @@ export function FixtureRow({ item, showCompetition = false }: { item: FixtureIte
           {item.group.detail && <span className="rounded-full bg-card px-2.5 py-0.5 text-[0.7rem] font-semibold">{item.group.detail}</span>}
           <Status item={item} />
         </span>
-        <span className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_9.5rem_minmax(0,1fr)_2.5rem] sm:gap-4">
+        <span className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_9.5rem_minmax(0,1fr)] sm:gap-4">
           <span className="flex min-w-0 flex-col-reverse items-center gap-2 text-center sm:flex-row sm:justify-end sm:gap-3 sm:text-right">
             <Name team={item.home} />
             <TeamBadge name={item.home.name} logo={item.home.logo} flag={item.home.flag} size="md" />
@@ -87,13 +87,9 @@ export function FixtureRow({ item, showCompetition = false }: { item: FixtureIte
             <TeamBadge name={item.away.name} logo={item.away.logo} flag={item.away.flag} size="md" />
             <Name team={item.away} />
           </span>
-
-          <span aria-hidden className="hidden size-9 place-items-center rounded-full bg-card text-foreground transition-colors group-hover:bg-[var(--flag-green)] group-hover:text-white sm:grid">
-            <ArrowIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
         </span>
         {item.venue && (
-          <span className="inline-flex min-w-0 items-center justify-center gap-1.5 text-xs text-muted-foreground sm:pr-14">
+          <span className="inline-flex min-w-0 items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <PinIcon className="size-3.5" />
             <span className="truncate">{item.venue}</span>
           </span>

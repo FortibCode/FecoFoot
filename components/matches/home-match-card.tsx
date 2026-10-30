@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TeamBadge } from "@/components/public/team-badge";
-import { ArrowIcon, CalendarIcon, ClockIcon, PinIcon, TrophyIcon } from "@/components/public/icons";
+import { CalendarIcon, ClockIcon, PinIcon, TrophyIcon } from "@/components/public/icons";
 import { MatchStatusBadge, type FixtureItem } from "@/components/matches/match-card";
 import { kickoffTime } from "@/lib/format";
 
@@ -31,7 +31,7 @@ function Team({ team }: { team: FixtureItem["home"] }) {
 
 /**
  * Carte de match de l'accueil : compétition, date et heure, les deux équipes face à face (« VS » ou
- * score validé), le stade et une flèche vers la fiche. Toute la carte mène à la fiche du match.
+ * score validé) et le stade. Toute la carte mène à la fiche du match.
  */
 export function HomeMatchCard({ item }: { item: FixtureItem }) {
   const showScore = item.score && !item.awaiting && (item.status === "LIVE" || item.status === "FINISHED" || item.status === "SUSPENDED");
@@ -52,9 +52,9 @@ export function HomeMatchCard({ item }: { item: FixtureItem }) {
           </span>
         </span>
 
-        <span className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[6.5rem_minmax(0,1fr)_auto] sm:gap-5">
+        <span className="grid items-center gap-3 sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:gap-5">
           {/* Date et heure : colonne à gauche sur grand écran, ligne au-dessus sur téléphone. */}
-          <span className="col-span-2 flex items-center justify-center gap-4 text-xs text-muted-foreground sm:col-span-1 sm:flex-col sm:items-start sm:gap-2 sm:border-r sm:pr-4">
+          <span className="flex items-center justify-center gap-4 text-xs text-muted-foreground sm:flex-col sm:items-start sm:gap-2 sm:border-r sm:pr-4">
             {item.kickoffAt && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap capitalize">
                 <CalendarIcon className="size-4 text-foreground" />
@@ -99,10 +99,6 @@ export function HomeMatchCard({ item }: { item: FixtureItem }) {
                 <span className="truncate">{item.venue}</span>
               </span>
             )}
-          </span>
-
-          <span aria-hidden className="hidden size-10 place-items-center rounded-full bg-muted text-foreground transition-colors group-hover:bg-[var(--flag-green)] group-hover:text-white sm:grid">
-            <ArrowIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
           </span>
         </span>
       </Link>
