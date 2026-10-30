@@ -24,13 +24,13 @@ const icon = (code: string, className: string): ReactNode =>
   code === "WOMEN" ? <WomanIcon className={className} /> : code === "A" ? <TrophyIcon className={className} /> : <GroupIcon className={className} />;
 
 /** Grand chevron qui déborde du bord droit : la forme d'accent de la carte (s'avance au survol). */
-function Chevron({ color }: { color: string }) {
+function Chevron({ color, small = false }: { color: string; small?: boolean }) {
   return (
     <svg
       aria-hidden
       viewBox="0 0 200 300"
       preserveAspectRatio="xMaxYMid slice"
-      className="absolute inset-y-0 right-0 -z-10 h-full w-[30%] transition-transform duration-500 ease-out motion-safe:group-hover:translate-x-2 sm:w-[46%]"
+      className={`absolute right-0 -z-10 transition-transform duration-500 ease-out motion-safe:group-hover:translate-x-2 ${small ? "bottom-0 h-[42%] w-[30%]" : "inset-y-0 h-full w-[30%] sm:w-[46%]"}`}
     >
       <polygon points="70,0 200,0 200,300 70,300 150,150" fill={color} />
       <polygon points="-30,0 22,0 102,150 22,300 -30,300 50,150" fill={color} opacity="0.35" />
@@ -46,6 +46,25 @@ function Badge({ code, children }: { code: string; children: ReactNode }) {
       <span aria-hidden className="h-5 w-px shrink-0 bg-white/70 sm:h-7" />
       <span className="line-clamp-2 font-display text-[0.65rem] leading-tight font-bold tracking-wide uppercase sm:text-sm">{children}</span>
     </span>
+  );
+}
+
+/** Photo de la sélection (photothèque) sous un voile à ses couleurs : le texte reste lisible. */
+function Photo({ src, color, tall }: { src: string; color: string; tall: boolean }) {
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element -- image servie par la route des médias */}
+      <img src={src} alt="" loading="lazy" className="absolute inset-0 -z-20 size-full object-cover object-[50%_25%] transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.04]" />
+      <span
+        aria-hidden
+        className="absolute inset-0 -z-10"
+        style={{
+          background: tall
+            ? `linear-gradient(to top, color-mix(in srgb, ${color} 94%, transparent) 0%, color-mix(in srgb, ${color} 55%, transparent) 42%, color-mix(in srgb, ${color} 10%, transparent) 70%), linear-gradient(to bottom, rgb(0 0 0 / 0.45), transparent 30%)`
+            : `linear-gradient(90deg, color-mix(in srgb, ${color} 92%, transparent) 0%, color-mix(in srgb, ${color} 65%, transparent) 45%, color-mix(in srgb, ${color} 15%, transparent) 80%)`,
+        }}
+      />
+    </>
   );
 }
 
@@ -65,23 +84,25 @@ function Lockup({ team, large = false }: { team: Team; large?: boolean }) {
 }
 
 /**
- * Carte d'une sélection, graphique : fond uni à ses couleurs, grand chevron d'accent qui déborde à droite,
- * écusson et nom empilés, badge encadré (sous-titre). Toute la carte est un lien vers la sélection.
+ * Carte d'une sélection : sa photo (photothèque) sous un voile à ses couleurs, ou à défaut un fond uni ;
+ * chevron d'accent, écusson et nom empilés, badge encadré (sous-titre). `tall` : format vertical
+ * (accueil, trois colonnes). Toute la carte est un lien vers la sélection.
  */
-export function TeamCard({ team }: { team: Team }) {
+export function TeamCard({ team, cover, tall = false }: { team: Team; cover?: string; tall?: boolean }) {
   const t = theme(team.code);
   return (
     <Link
       href={`/equipes-nationales/${team.slug}`}
       aria-label={team.name}
       style={{ backgroundColor: t.bg }}
-      className="group relative isolate flex aspect-[3/4] h-full flex-col justify-between overflow-hidden p-3.5 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green sm:aspect-[16/10] sm:p-6"
+      className={`group relative isolate flex h-full flex-col justify-between overflow-hidden p-3.5 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green sm:p-6 ${tall ? "aspect-[4/5]" : "aspect-[3/4] sm:aspect-[16/10]"}`}
     >
-      <Chevron color={t.accent} />
+      {cover && <Photo src={cover} color={t.bg} tall={tall} />}
+      <Chevron color={t.accent} small={Boolean(cover)} />
       <Lockup team={team} />
       {/* Téléphone : sous-titre en texte simple (la carte est étroite) ; plus large : badge encadré. */}
-      {team.tagline && <span className="max-w-[68%] font-display text-[0.7rem] leading-tight font-bold tracking-wide text-white/85 uppercase sm:hidden">{team.tagline}</span>}
-      <span className="hidden max-w-[62%] sm:flex">
+      {team.tagline && <span className={`max-w-[68%] font-display text-[0.7rem] leading-tight font-bold tracking-wide text-white/85 uppercase ${tall ? "hidden" : "sm:hidden"}`}>{team.tagline}</span>}
+      <span className={`max-w-[62%] ${tall ? "flex max-w-[70%]" : "hidden sm:flex"}`}>
         <Badge code={team.code}>{team.tagline ?? team.name}</Badge>
       </span>
     </Link>
@@ -106,7 +127,7 @@ function Frieze({ color, id, bottom = false }: { color: string; id: string; bott
  * Grande carte de l'équipe A : frises de chevrons en haut et en bas, au centre l'écusson et le nom,
  * un trait vertical, puis le badge « Découvrir la sélection ».
  */
-export function FeaturedTeamCard({ team }: { team: Team }) {
+export function FeaturedTeamCard({ team, cover }: { team: Team; cover?: string }) {
   const t = theme(team.code);
   return (
     <Link
@@ -115,6 +136,7 @@ export function FeaturedTeamCard({ team }: { team: Team }) {
       style={{ backgroundColor: t.bg }}
       className="group relative isolate flex min-h-80 items-center justify-center overflow-hidden px-5 py-14 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green sm:aspect-[21/8] sm:min-h-0 sm:px-10"
     >
+      {cover && <Photo src={cover} color={t.bg} tall={false} />}
       <Frieze color={t.accent} id={`frise-haut-${team.slug}`} />
       <Frieze color={t.accent} id={`frise-bas-${team.slug}`} bottom />
       <span className="flex flex-col items-center gap-5 transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.02] sm:flex-row sm:gap-10">
@@ -130,27 +152,32 @@ export function FeaturedTeamCard({ team }: { team: Team }) {
 }
 
 /**
- * Sélections nationales : l'équipe A en grande carte, puis les autres sélections en cartes de même format
- * (deux colonnes sur téléphone et tablette, trois sur ordinateur).
+ * Sélections nationales de l'accueil : trois cartes verticales côte à côte, avec leurs photos (les sélections
+ * illustrées d'abord, dans l'ordre officiel), puis « Voir plus » vers la page de toutes les sélections.
  */
-export function NationalTeamCards({ teams, reveal = false }: { teams: readonly Team[]; reveal?: boolean }) {
-  const first = teams.find((t) => t.code === "A") ?? teams[0];
-  const rest = teams.filter((t) => t !== first);
-  const rv = (i: number) => (reveal ? { "data-reveal": "up", style: { ["--rd" as string]: `${i * 70}ms` } } : {});
+export function NationalTeamCards({ teams, covers = {}, count = 3, reveal = false }: { teams: readonly Team[]; covers?: Record<string, string>; count?: number; reveal?: boolean }) {
+  const rv = (i: number) => (reveal ? { "data-reveal": "up", style: { ["--rd" as string]: `${i * 90}ms` } } : {});
+  // Les sélections qui ont une photo d'abord (ordre officiel conservé) ; les autres sont sur la page complète.
+  const shown = [...teams.filter((t) => covers[t.slug]), ...teams.filter((t) => !covers[t.slug])].slice(0, count);
   return (
-    <div className="flex flex-col gap-3 sm:gap-4">
-      {first && (
-        <div {...rv(0)}>
-          <FeaturedTeamCard team={first} />
-        </div>
-      )}
-      <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        {rest.map((t, i) => (
-          <li key={t.slug} {...rv(i + 1)}>
-            <TeamCard team={t} />
+    <div className="flex flex-col gap-6">
+      <ul className="grid gap-4 sm:grid-cols-3">
+        {shown.map((t, i) => (
+          <li key={t.slug} {...rv(i)}>
+            <TeamCard team={t} cover={covers[t.slug]} tall />
           </li>
         ))}
       </ul>
+      {teams.length > count && (
+        <Link
+          href="/equipes-nationales"
+          className="group inline-flex items-center gap-2 self-center bg-[var(--flag-green)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green"
+        >
+          Voir plus
+          <span className="font-normal text-white/80">· toutes les sélections ({teams.length})</span>
+          <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
+        </Link>
+      )}
     </div>
   );
 }

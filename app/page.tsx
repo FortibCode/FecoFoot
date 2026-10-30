@@ -25,7 +25,7 @@ import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
 import { NationalTeamCards } from "@/components/public/national-team-cards";
-import { featuredPhotos, latestPhotos, photoUrl } from "@/lib/photos";
+import { featuredPhotos, latestPhotos, photoUrl, teamCovers } from "@/lib/photos";
 import { CountUp } from "@/components/count-up";
 import { HeroSlideshow } from "@/components/public/hero-slideshow";
 
@@ -41,7 +41,7 @@ function Container({ children, className = "" }: { children: ReactNode; classNam
 /** Page d'accueil du portail public (EF-PUB-01). */
 export default async function HomePage() {
   await connection();
-  const [d, featured, gallery, elite, teams] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs(), nationalTeamList()]);
+  const [d, featured, gallery, elite, teams, covers] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs(), nationalTeamList(), teamCovers()]);
   const [eliteLogos, standing, spotlight, tabs] = await Promise.all([
     clubLogos(elite?.teams.map((t) => t.id) ?? []),
     elite ? competitionTables(elite.competition.id) : null,
@@ -387,7 +387,7 @@ export default async function HomePage() {
             <h3 data-reveal="left" className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
               Nos sélections <span className="text-[var(--flag-green)]">nationales</span>
             </h3>
-            <NationalTeamCards teams={teams} reveal />
+            <NationalTeamCards teams={teams} covers={covers} reveal />
           </div>
         </Container>
       </section>

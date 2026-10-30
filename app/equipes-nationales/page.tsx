@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { FeaturedTeamCard, TeamCard } from "@/components/public/national-team-cards";
+import { teamCovers } from "@/lib/photos";
 import { PublicShell } from "@/components/public/public-shell";
 import { db } from "@/lib/db";
 import { nationalTeams } from "@/lib/db/schema";
@@ -20,7 +21,7 @@ const GROUPS: { title: string; description: string; slugs: string[] }[] = [
 export default async function PublicNationalTeamsPage() {
   // Liste vivante : calculée à chaque visite, jamais figée à la construction.
   await connection();
-  const rows = await db.select().from(nationalTeams);
+  const [rows, covers] = await Promise.all([db.select().from(nationalTeams), teamCovers()]);
   const bySlug = new Map(rows.map((t) => [t.slug, t]));
   const first = rows.find((t) => t.code === "A");
   return (
@@ -39,7 +40,7 @@ export default async function PublicNationalTeamsPage() {
               </h2>
               <p className="text-sm text-muted-foreground">Les Diables Rouges A, sélection nationale du Congo.</p>
             </div>
-            <FeaturedTeamCard team={first} />
+            <FeaturedTeamCard team={first} cover={covers[first.slug]} />
           </section>
         )}
         {(() => {
@@ -57,7 +58,7 @@ export default async function PublicNationalTeamsPage() {
                 <ul className={`grid gap-3 sm:gap-4 ${wide ? "grid-cols-2" : ""}`}>
                   {teams.map((t) => (
                     <li key={t.slug}>
-                      <TeamCard team={t} />
+                      <TeamCard team={t} cover={covers[t.slug]} />
                     </li>
                   ))}
                 </ul>

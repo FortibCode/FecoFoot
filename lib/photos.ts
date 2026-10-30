@@ -68,7 +68,7 @@ export async function teamPhotos(teamId: number) {
 }
 
 /**
- * Photo de couverture de chaque sélection (bandeau de sa fiche) : une photo publiée de sa photothèque,
+ * Photo de couverture de chaque sélection (cartes et bandeau de sa fiche) : une photo publiée de sa photothèque,
  * de préférence mise à la une et en paysage, sauf la photo d'ouverture du bandeau d'accueil. Une sélection sans photo
  * n'en reçoit aucune.
  */
