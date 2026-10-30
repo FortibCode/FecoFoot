@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { TeamCard } from "@/components/public/national-team-cards";
+import { FeaturedTeamCard, TeamCard } from "@/components/public/national-team-cards";
 import { PublicShell } from "@/components/public/public-shell";
 import { db } from "@/lib/db";
 import { nationalTeams } from "@/lib/db/schema";
-import { teamCovers } from "@/lib/photos";
 
 export const metadata: Metadata = {
   title: "Nos sélections nationales — FECOFOOT",
@@ -21,7 +20,7 @@ const GROUPS: { title: string; description: string; slugs: string[] }[] = [
 export default async function PublicNationalTeamsPage() {
   // Liste vivante : calculée à chaque visite, jamais figée à la construction.
   await connection();
-  const [rows, covers] = await Promise.all([db.select().from(nationalTeams), teamCovers()]);
+  const rows = await db.select().from(nationalTeams);
   const bySlug = new Map(rows.map((t) => [t.slug, t]));
   const first = rows.find((t) => t.code === "A");
   return (
@@ -40,7 +39,7 @@ export default async function PublicNationalTeamsPage() {
               </h2>
               <p className="text-sm text-muted-foreground">Les Diables Rouges A, sélection nationale du Congo.</p>
             </div>
-            <TeamCard team={first} cover={covers[first.slug]} featured />
+            <FeaturedTeamCard team={first} />
           </section>
         )}
         {(() => {
@@ -55,10 +54,10 @@ export default async function PublicNationalTeamsPage() {
                   </h2>
                   <p className="text-sm text-muted-foreground">{g.description}</p>
                 </div>
-                <ul className={`grid gap-4 ${wide ? "sm:grid-cols-2 lg:grid-cols-4" : ""}`}>
+                <ul className={`grid gap-3 sm:gap-4 ${wide ? "grid-cols-2" : ""}`}>
                   {teams.map((t) => (
                     <li key={t.slug}>
-                      <TeamCard team={t} cover={covers[t.slug]} />
+                      <TeamCard team={t} />
                     </li>
                   ))}
                 </ul>

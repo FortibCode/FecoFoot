@@ -68,7 +68,7 @@ function Feed({ items }: { items: NewsItem[] }) {
                   {a.publishedAt && <time dateTime={a.publishedAt.toISOString()}>{dayMonth.format(a.publishedAt)}</time>}
                   <span className="truncate uppercase text-[var(--flag-green)]">{ARTICLE_CATEGORY_LABELS[a.category]}</span>
                 </span>
-                <span className="mt-1 line-clamp-3 text-sm leading-snug font-semibold break-words group-hover:text-primary">{a.title}</span>
+                <span className="mt-1 line-clamp-3 text-sm leading-snug font-semibold text-pretty break-words group-hover:text-primary">{a.title}</span>
               </span>
               <Cover a={a} className="size-14 shrink-0" />
             </Link>
@@ -88,8 +88,14 @@ function Feed({ items }: { items: NewsItem[] }) {
  * et le fil d'infos à droite. Sur téléphone, les vignettes s'empilent et le fil suit.
  */
 export function NewsMosaic({ items }: { items: NewsItem[] }) {
-  const [a, b, c, d, ...rest] = items;
-  const tiles = [a, b, c, d].filter(Boolean);
+  const recent = items.slice(0, 4);
+  const rest = items.slice(4);
+  // Grandes places (1re et 4e) aux actualités qui ont une photo ; l'ordre de parution est gardé dans chaque groupe.
+  const pictured = recent.filter((t) => coverUrl(t));
+  const plain = recent.filter((t) => !coverUrl(t));
+  const big = [...pictured, ...plain].slice(0, 2);
+  const small = recent.filter((t) => !big.includes(t));
+  const tiles = [big[0], small[0], small[1], big[1]].filter(Boolean);
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-stretch">
       <ul className="grid auto-rows-[15rem] gap-5 sm:grid-cols-3 lg:auto-rows-[17.5rem]">
@@ -97,8 +103,8 @@ export function NewsMosaic({ items }: { items: NewsItem[] }) {
           <Tile key={t.id} a={t} index={i} className={i === 0 || i === 3 ? "sm:col-span-2" : ""} />
         ))}
       </ul>
-      {/* Fil d'infos sans défilement interne : les 4 articles suivants, titres sur 3 lignes au plus. */}
-      {rest.length > 0 && <Feed items={rest.slice(0, 4)} />}
+      {/* Fil d'infos sans défilement interne : les 5 articles suivants, titres sur 3 lignes au plus. */}
+      {rest.length > 0 && <Feed items={rest.slice(0, 5)} />}
     </div>
   );
 }

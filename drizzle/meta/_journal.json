@@ -274,6 +274,13 @@
       "when": 1793399668726,
       "tag": "0038_portraits_convoques",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793401564914,
+      "tag": "0039_parametres_site",
+      "breakpoints": true
     }
   ]
 }

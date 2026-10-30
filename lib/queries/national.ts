@@ -253,6 +253,8 @@ export async function fixtureSheet(fixtureId: number, lineupPublished: boolean) 
 
 /** Sélections enregistrées, dans l'ordre officiel (A, A', U-23… Dames) : noms et adresses lus en base. */
 export async function nationalTeamList() {
-  const rows = await db.select({ id: nationalTeams.id, code: nationalTeams.code, name: nationalTeams.name, slug: nationalTeams.slug }).from(nationalTeams);
+  const rows = await db
+    .select({ id: nationalTeams.id, code: nationalTeams.code, name: nationalTeams.name, slug: nationalTeams.slug, tagline: nationalTeams.tagline, shortLabel: nationalTeams.shortLabel })
+    .from(nationalTeams);
   return rows.sort((a, b) => NATIONAL_TEAM_CODES.indexOf(a.code) - NATIONAL_TEAM_CODES.indexOf(b.code));
 }

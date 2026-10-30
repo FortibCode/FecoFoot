@@ -2,7 +2,7 @@ import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { divisionName } from "@/lib/competitions";
 import { db } from "@/lib/db";
-import { championships, clubs, leagues } from "@/lib/db/schema";
+import { championships, clubs, leagues, siteSettings } from "@/lib/db/schema";
 
 /** Listes de référence pour les formulaires (ligues, clubs). */
 
@@ -50,5 +50,16 @@ export async function publicDivisions(): Promise<{ code: string; name: string }[
       { code: "ligue-1", name: "Ligue 1" },
       { code: "ligue-2", name: "Ligue 2" },
     ];
+  }
+}
+
+/** Paramètres du portail (ligne unique) : informations de la fédération et réseaux sociaux officiels. */
+export async function siteSettingsRow() {
+  try {
+    const [row] = await db.select().from(siteSettings).where(eq(siteSettings.id, 1)).limit(1);
+    return row ?? null;
+  } catch {
+    // Base indisponible (construction, panne) : le portail s'affiche sans ces informations.
+    return null;
   }
 }

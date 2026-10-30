@@ -44,19 +44,12 @@ export function HomeMatchCard({ item }: { item: FixtureItem }) {
         href={item.href}
         className="group flex flex-col gap-4 bg-card p-4 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-flag-green sm:p-5"
       >
-        <span className="flex items-start justify-between gap-3">
-          <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-semibold">
-            <TrophyIcon className="size-3.5 text-[var(--flag-green)]" />
-            <span className="truncate">
-              {item.group.title}
-              {item.group.detail && <span className="font-normal text-muted-foreground"> · {item.group.detail}</span>}
-            </span>
+        <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 self-start rounded-full bg-muted px-3 py-1 text-xs font-semibold" title={[item.group.title, item.group.detail].filter(Boolean).join(" · ")}>
+          <TrophyIcon className="size-3.5 text-[var(--flag-green)]" />
+          <span className="truncate">
+            {item.group.title}
+            {item.group.detail && <span className="font-normal text-muted-foreground"> · {item.group.detail}</span>}
           </span>
-          {done ? (
-            <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--flag-green)]">Terminé</span>
-          ) : (
-            <MatchStatusBadge item={item} />
-          )}
         </span>
 
         <span className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[6.5rem_minmax(0,1fr)_auto] sm:gap-5">
@@ -68,23 +61,34 @@ export function HomeMatchCard({ item }: { item: FixtureItem }) {
                 {day.format(item.kickoffAt)}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 font-semibold whitespace-nowrap text-foreground tabular-nums">
-              <ClockIcon className="size-4" />
-              {time ?? "Heure à confirmer"}
-            </span>
+            {/* Heure inconnue : « à confirmer » pour un match à venir, rien pour un match passé. */}
+            {(time || item.status === "UPCOMING") && (
+              <span className="inline-flex items-center gap-1.5 font-semibold whitespace-nowrap text-foreground tabular-nums">
+                <ClockIcon className="size-4" />
+                {time ?? "À confirmer"}
+              </span>
+            )}
           </span>
 
           <span className="flex min-w-0 flex-col gap-3">
             <span className="flex items-start justify-center gap-2 sm:gap-4">
               <Team team={item.home} />
-              <span className={`mt-1.5 grid min-w-14 place-items-center bg-muted px-2.5 py-2 font-display text-lg leading-none font-bold tabular-nums ${item.status === "LIVE" ? "text-[var(--flag-red)]" : ""}`}>
-                {showScore ? (
-                  <span>
-                    {item.score![0]} - {item.score![1]}
-                    {item.penalties && <span className="block pt-1 text-center text-[0.65rem] font-normal text-muted-foreground">t.a.b. {item.penalties[0]}-{item.penalties[1]}</span>}
-                  </span>
+              {/* Score (ou « VS ») et, dessous, le statut du match : « Terminé », direct, reporté… */}
+              <span className="mt-1.5 flex flex-col items-center gap-1.5">
+                <span className={`grid min-w-14 place-items-center bg-muted px-2.5 py-2 font-display text-lg leading-none font-bold tabular-nums ${item.status === "LIVE" ? "text-[var(--flag-red)]" : ""}`}>
+                  {showScore ? (
+                    <span>
+                      {item.score![0]} - {item.score![1]}
+                      {item.penalties && <span className="block pt-1 text-center text-[0.65rem] font-normal text-muted-foreground">t.a.b. {item.penalties[0]}-{item.penalties[1]}</span>}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">VS</span>
+                  )}
+                </span>
+                {done ? (
+                  <span className="rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] px-2.5 py-0.5 text-[0.7rem] font-semibold whitespace-nowrap text-[var(--flag-green)]">Terminé</span>
                 ) : (
-                  <span className="text-sm text-muted-foreground">VS</span>
+                  <MatchStatusBadge item={item} />
                 )}
               </span>
               <Team team={item.away} />

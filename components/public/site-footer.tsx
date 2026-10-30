@@ -1,30 +1,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { DivisionFooterLinks } from "@/components/public/divisions";
-
-/** Comptes officiels de la FECOFOOT (repris du site fecofoot.cg). */
-const SOCIALS = [
-  {
-    name: "Facebook",
-    href: "https://www.facebook.com/fecofootcg",
-    path: "M13.5 21v-7.5h2.5l.4-3H13.5V8.6c0-.9.3-1.5 1.5-1.5h1.5V4.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.8 1.3-3.8 3.8v2.4H8v3h2.5V21h3z",
-  },
-  {
-    name: "Instagram",
-    href: "https://www.instagram.com/fecofoot_rc",
-    path: "M12 7.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm4.8-8.9a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zM20.9 8c-.1-1.4-.4-2.7-1.4-3.6-1-1-2.2-1.3-3.6-1.4H8.1c-1.4.1-2.7.4-3.6 1.4-1 1-1.3 2.2-1.4 3.6v7.9c.1 1.4.4 2.7 1.4 3.6 1 1 2.2 1.3 3.6 1.4h7.8c1.4-.1 2.7-.4 3.6-1.4 1-1 1.3-2.2 1.4-3.6V8zm-1.6 8.5c-.2.5-.6 1-1.1 1.2-.8.3-2.6.2-3.4.2h-5.6c-.8 0-2.7.1-3.4-.2-.5-.2-.9-.6-1.1-1.2-.3-.8-.2-2.6-.2-3.4v-2.3c0-.8-.1-2.7.2-3.4.2-.5.6-1 1.1-1.2.8-.3 2.6-.2 3.4-.2h5.6c.8 0 2.7-.1 3.4.2.5.2.9.6 1.1 1.2.3.8.2 2.6.2 3.4v2.3c0 .8.1 2.7-.2 3.4z",
-  },
-  {
-    name: "X",
-    href: "https://x.com/fecofoot_cg",
-    path: "M17.8 3h3.1l-6.8 7.8 8 10.2h-6.3l-4.9-6.4L5.3 21H2.2l7.3-8.3L1.8 3h6.4l4.4 5.8L17.8 3zm-1.1 16.2h1.7L7.3 4.7H5.4l11.3 14.5z",
-  },
-  {
-    name: "YouTube",
-    href: "https://www.youtube.com/channel/UCmOWGzjrFxOh36xvlYGmWIg",
-    path: "M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3L10 15z",
-  },
-] as const;
+import { FooterSocials } from "@/components/public/site-settings";
 
 const COLUMNS = [
   {
@@ -79,26 +56,8 @@ export function SiteFooter() {
           <p className="max-w-sm">
             Licences, compétitions, équipes nationales, billetterie et supporters : la plateforme officielle du football congolais.
           </p>
-          <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Suivez-nous</p>
-            <ul className="flex gap-2.5">
-              {SOCIALS.map((s) => (
-                <li key={s.name}>
-                  <a
-                    href={s.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`FECOFOOT sur ${s.name}`}
-                    className="flex size-10 items-center justify-center rounded-md border border-white/20 text-white transition motion-safe:hover:-translate-y-0.5 hover:border-[var(--flag-yellow)] hover:bg-[var(--flag-yellow)] hover:text-brand-ink focus-visible:outline-white"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden className="size-[1.15rem]" fill="currentColor">
-                      <path d={s.path} />
-                    </svg>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Comptes officiels : paramètres du portail (administration). */}
+          <FooterSocials />
         </div>
         <nav aria-label="Liens utiles" className="grid grid-cols-2 gap-8 sm:grid-cols-3">
           {COLUMNS.map((c, i) => (

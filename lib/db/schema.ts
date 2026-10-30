@@ -760,6 +760,9 @@ export const nationalTeams = pgTable(
     slug: varchar("slug", { length: 40 }).notNull(),
     // Présentation publique de la sélection (rédigée par la fédération).
     description: text("description"),
+    // Sous-titre (« Moins de 17 ans ») et repère court (« U-17 ») des cartes et de la fiche publique.
+    tagline: varchar("tagline", { length: 120 }),
+    shortLabel: varchar("short_label", { length: 16 }),
   },
   (t) => [uniqueIndex("national_teams_code_uq").on(t.code), uniqueIndex("national_teams_slug_uq").on(t.slug)],
 );
@@ -1707,3 +1710,20 @@ export const grantExpenses = pgTable(
   (t) => [index("grant_expenses_grant_idx").on(t.grantId)],
 )
 ;
+
+/**
+ * Paramètres du portail (une seule ligne, id = 1) : informations institutionnelles de la page « La Fédération »
+ * et comptes officiels des réseaux sociaux (pied de page). Modifiables par la communication.
+ */
+export const siteSettings = pgTable("site_settings", {
+  id: integer("id").primaryKey(),
+  foundedYear: integer("founded_year"),
+  headquarters: varchar("headquarters", { length: 240 }),
+  affiliations: varchar("affiliations", { length: 160 }),
+  facebookUrl: varchar("facebook_url", { length: 300 }),
+  instagramUrl: varchar("instagram_url", { length: 300 }),
+  xUrl: varchar("x_url", { length: 300 }),
+  youtubeUrl: varchar("youtube_url", { length: 300 }),
+  updatedBy: integer("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

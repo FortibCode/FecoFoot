@@ -102,7 +102,7 @@ export function Carousel({ label, children, heading, autoplay }: { label: string
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHold(false);
         }}
       >
-        {scrollable && arrow(-1)}
+        {scrollable && <span className="hidden sm:contents">{arrow(-1)}</span>}
         <ul
           ref={track}
           onScroll={update}
@@ -111,8 +111,14 @@ export function Carousel({ label, children, heading, autoplay }: { label: string
         >
           {children}
         </ul>
-        {scrollable && arrow(1)}
+        {scrollable && <span className="hidden sm:contents">{arrow(1)}</span>}
       </div>
+      {scrollable && (
+        <div className="flex justify-center gap-3 sm:hidden">
+          {arrow(-1)}
+          {arrow(1)}
+        </div>
+      )}
     </div>
   );
 }

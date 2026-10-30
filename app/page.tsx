@@ -25,7 +25,7 @@ import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
 import { NationalTeamCards } from "@/components/public/national-team-cards";
-import { featuredPhotos, latestPhotos, photoUrl, teamCovers } from "@/lib/photos";
+import { featuredPhotos, latestPhotos, photoUrl } from "@/lib/photos";
 import { CountUp } from "@/components/count-up";
 import { HeroSlideshow } from "@/components/public/hero-slideshow";
 
@@ -41,7 +41,7 @@ function Container({ children, className = "" }: { children: ReactNode; classNam
 /** Page d'accueil du portail public (EF-PUB-01). */
 export default async function HomePage() {
   await connection();
-  const [d, featured, gallery, elite, covers, teams] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs(), teamCovers(), nationalTeamList()]);
+  const [d, featured, gallery, elite, teams] = await Promise.all([homeData(), featuredPhotos(), latestPhotos(12), eliteClubs(), nationalTeamList()]);
   const [eliteLogos, standing, spotlight, tabs] = await Promise.all([
     clubLogos(elite?.teams.map((t) => t.id) ?? []),
     elite ? competitionTables(elite.competition.id) : null,
@@ -72,12 +72,13 @@ export default async function HomePage() {
     .sort((a, b) => a.next! - b.next!)[0];
   const initialTab =
     tabs.find((_, i) => hasLive(panels[i].upcoming))?.family ?? soonest?.t.family ?? tabs.find((_, i) => panels[i].recent.length > 0)?.family ?? tabs[0]?.family ?? "";
-  const figures = [
+  // Chiffres clés : seulement ceux qui ont une valeur (un « 0 » ne dit rien d'utile au visiteur).
+  const figures = ([
     [d.clubsCount, "Clubs affiliés"],
     [d.licensesCount, "Licences validées"],
     [d.leaguesCount, "Ligues départementales"],
     [teams.length, "Sélections nationales"],
-  ] as const;
+  ] as const).filter(([n]) => n > 0);
 
   // Liens rapides en colonne sur le bord gauche du bandeau (très grand écran, dans la marge).
   const quickLinks = [
@@ -103,7 +104,7 @@ export default async function HomePage() {
         src="/fecofoot-mark.svg"
         alt=""
         aria-hidden
-        className="pointer-events-none absolute top-[11%] right-[-10%] -z-10 h-[40%] w-auto opacity-20 select-none sm:right-[-6%] md:top-[12%] md:right-[4%] md:h-[62%] md:opacity-45 lg:right-[7%] lg:h-[72%] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-1000"
+        className="pointer-events-none absolute top-[11%] right-[-10%] -z-10 h-[40%] w-auto opacity-10 select-none sm:right-[-6%] md:top-[12%] md:right-[4%] md:h-[62%] md:opacity-25 lg:opacity-35 lg:right-[7%] lg:h-[72%] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-1000"
       />
 
       <nav aria-label="Accès rapide" className="absolute top-1/2 left-6 hidden -translate-y-1/2 2xl:block">
@@ -342,7 +343,7 @@ export default async function HomePage() {
       </section>
 
       {/* Actualités : mosaïque et fil d'infos */}
-      <section className="pb-12 sm:pb-14">
+      <section className="pb-6 sm:pb-8">
         <Container className="flex flex-col gap-8">
           <div data-reveal="up" className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex flex-col gap-3">
@@ -360,7 +361,7 @@ export default async function HomePage() {
       </section>
 
       {/* Équipes nationales */}
-      <section className="py-12 sm:py-14">
+      <section className="pt-10 pb-12 sm:pt-12 sm:pb-14">
         <Container className="flex flex-col gap-8">
           <SectionHead
             title="Les Diables"
@@ -374,7 +375,7 @@ export default async function HomePage() {
                 autoplay={4000}
               >
                 {gallery.map((p, i) => (
-                  <li key={p.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[70%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
+                  <li key={p.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
                     {/* Touchée, la photo se retourne et affiche sa légende. */}
                     <FlipPhoto src={photoUrl(p)} caption={p.caption} team={p.team} credit={p.credit} href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"} />
                   </li>
@@ -382,11 +383,11 @@ export default async function HomePage() {
               </Carousel>
             </div>
           )}
-          <div className="flex flex-col gap-4">
+          <div className="mt-6 flex flex-col gap-6 sm:mt-10">
             <h3 data-reveal="left" className="text-4xl leading-[1.02] font-bold uppercase sm:text-5xl">
               Nos sélections <span className="text-[var(--flag-green)]">nationales</span>
             </h3>
-            <NationalTeamCards teams={teams} covers={covers} reveal />
+            <NationalTeamCards teams={teams} reveal />
           </div>
         </Container>
       </section>

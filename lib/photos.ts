@@ -68,8 +68,9 @@ export async function teamPhotos(teamId: number) {
 }
 
 /**
- * Photo de couverture de chaque sélection (cartes « Nos sélections ») : une photo publiée de sa photothèque,
- * de préférence mise à la une et en paysage. Une sélection sans photo n'en reçoit aucune.
+ * Photo de couverture de chaque sélection (bandeau de sa fiche) : une photo publiée de sa photothèque,
+ * de préférence mise à la une et en paysage, sauf la photo d'ouverture du bandeau d'accueil. Une sélection sans photo
+ * n'en reçoit aucune.
  */
 export async function teamCovers(): Promise<Record<string, string>> {
   const rows = await db
@@ -78,7 +79,16 @@ export async function teamCovers(): Promise<Record<string, string>> {
     .innerJoin(nationalTeams, eq(photos.teamId, nationalTeams.id))
     .where(eq(photos.published, true))
     .orderBy(desc(photos.createdAt), desc(photos.id));
-  const score = (p: (typeof rows)[number]) => (p.featured ? 2 : 0) + (p.width > p.height ? 1 : 0);
+  // La photo d'ouverture du bandeau d'accueil (la plus récente à la une, cf. featuredPhotos) n'est pas reprise
+  // en couverture : la même image s'afficherait deux fois en grand sur l'accueil.
+  const [hero] = await db
+    .select({ id: photos.id })
+    .from(photos)
+    .where(and(eq(photos.featured, true), eq(photos.published, true)))
+    .orderBy(desc(photos.createdAt), desc(photos.id))
+    .limit(1);
+  const heroId = hero?.id;
+  const score = (p: (typeof rows)[number]) => (p.id === heroId ? -10 : 0) + (p.featured ? 2 : 0) + (p.width > p.height ? 1 : 0);
   const best = new Map<string, (typeof rows)[number]>();
   for (const p of rows) {
     const cur = best.get(p.slug);

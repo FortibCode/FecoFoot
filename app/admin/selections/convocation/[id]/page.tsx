@@ -13,8 +13,8 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { POSITION_LABELS } from "@/lib/licenses";
 import { SELECTION_STATUS_LABELS } from "@/lib/national-teams";
 import { calledPlayers } from "@/lib/queries/national";
-import { addCalledPlayer, removeCalledPlayer, setSelectionPublished } from "../../actions";
-import { CallUpForm } from "../../SelectionForms";
+import { addCalledPlayer, removeCalledPlayer, removeCalledPortrait, setCalledPortrait, setSelectionPublished } from "../../actions";
+import { CallUpForm, PortraitForm } from "../../SelectionForms";
 
 export const metadata: Metadata = { title: "Liste de convoqués — FECOFOOT" };
 
@@ -67,20 +67,47 @@ export default async function SelectionPage({ params }: PageProps<"/admin/select
 
         <ul className="flex flex-col divide-y rounded-lg border text-sm">
           {list.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2">
-              <span>
-                <span className="inline-block w-8 font-bold tabular-nums">{p.shirtNumber ?? ""}</span>
-                <strong>{p.name}</strong>
-                <span className="ml-2 text-muted-foreground">
-                  {p.position ? POSITION_LABELS[p.position] : ""} · {p.club}
+            <li key={p.id} className="flex flex-col gap-2 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="inline-block w-8 font-bold tabular-nums">{p.shirtNumber ?? ""}</span>
+                  {p.portrait && (
+                    // eslint-disable-next-line @next/next/no-img-element -- portrait servi par la route des médias
+                    <img src={p.portrait} alt="" className="size-9 shrink-0 rounded-full object-cover object-top" />
+                  )}
+                  <span className="min-w-0">
+                    <strong>{p.name}</strong>
+                    <span className="ml-2 text-muted-foreground">
+                      {p.position ? POSITION_LABELS[p.position] : ""} · {p.club}
+                    </span>
+                    {p.abroad && <span className="ml-2 rounded bg-muted px-1 text-xs">étranger</span>}
+                    {p.portraitCredit && <span className="block text-xs text-muted-foreground">Photo : {p.portraitCredit}</span>}
+                  </span>
                 </span>
-                {p.abroad && <span className="ml-2 rounded bg-muted px-1 text-xs">étranger</span>}
-              </span>
-              <form action={removeCalledPlayer.bind(null, id, p.id)}>
-                <Button type="submit" variant="ghost" size="sm">
-                  Retirer
-                </Button>
-              </form>
+                <span className="flex shrink-0 items-center gap-1">
+                  {p.portrait && (
+                    <form action={removeCalledPortrait.bind(null, id, p.id)}>
+                      <Button type="submit" variant="ghost" size="sm">
+                        Retirer la photo
+                      </Button>
+                    </form>
+                  )}
+                  <form action={removeCalledPlayer.bind(null, id, p.id)}>
+                    <Button type="submit" variant="ghost" size="sm">
+                      Retirer
+                    </Button>
+                  </form>
+                </span>
+              </div>
+              {/* Joueur hors registre : portrait et crédit (un joueur du registre a la photo de sa licence, avec son accord). */}
+              {p.abroad && (
+                <details className="pl-10 text-sm">
+                  <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground">{p.portrait ? "Modifier le portrait" : "Ajouter un portrait"}</summary>
+                  <div className="pt-2">
+                    <PortraitForm action={setCalledPortrait.bind(null, id, p.id)} credit={p.portraitCredit} hasPortrait={Boolean(p.portrait)} />
+                  </div>
+                </details>
+              )}
             </li>
           ))}
           {list.length === 0 && <li className="px-3 py-2 text-muted-foreground">Aucun joueur convoqué.</li>}

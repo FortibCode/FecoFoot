@@ -331,10 +331,15 @@ export function NationalEventForm({ action, congoPlayers, opponent }: { action: 
 }
 
 /** Présentation de la sélection (page publique). */
-export function TeamDescriptionForm({ action, description }: { action: Action; description: string | null }) {
+export function TeamDescriptionForm({ action, description, tagline, shortLabel }: { action: Action; description: string | null; tagline: string | null; shortLabel: string | null }) {
   const { state, pending, formProps } = useActionForm(action);
+  const fe = state?.fieldErrors;
   return (
     <form {...formProps} className="flex max-w-3xl flex-col gap-3">
+      <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
+        <TextField label="Sous-titre (cartes et fiche)" name="tagline" maxLength={120} defaultValue={tagline ?? ""} placeholder="Moins de 17 ans" errors={fe?.tagline} />
+        <TextField label="Repère court" name="shortLabel" maxLength={16} defaultValue={shortLabel ?? ""} placeholder="U-17" hint="Affiché en grand sans photo." errors={fe?.shortLabel} />
+      </div>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Présentation de la sélection
         <textarea name="description" rows={5} maxLength={4000} defaultValue={description ?? ""} placeholder="Histoire, palmarès, ambitions, sélectionneur…" className="rounded-md border bg-background px-3 py-2 font-normal" />
@@ -357,6 +362,26 @@ export function TeamVideoForm({ action }: { action: Action }) {
       <TextField label="Adresse (YouTube ou Facebook)" name="url" type="url" required placeholder="https://www.youtube.com/watch?v=…" errors={fe?.url} />
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
         <Submit pending={pending} label="Ajouter la vidéo" />
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}
+
+/** Portrait d'un convoqué hors registre : photo (facultative si un portrait existe déjà) et crédit obligatoire. */
+export function PortraitForm({ action, credit, hasPortrait }: { action: Action; credit: string | null; hasPortrait: boolean }) {
+  const { state, pending, formProps } = useActionForm(action);
+  const fe = state?.fieldErrors;
+  return (
+    <form {...formProps} encType="multipart/form-data" className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <label className="flex flex-col gap-1 text-xs font-medium">
+        {hasPortrait ? "Remplacer la photo" : "Photo"} (JPEG, PNG, WebP · 5 Mo)
+        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required={!hasPortrait} className="text-xs file:mr-2 file:rounded file:border file:bg-muted file:px-2 file:py-1" />
+        {fe?.photo && <span className="text-destructive">{fe.photo[0]}</span>}
+      </label>
+      <TextField label="Crédit (auteur, licence)" name="credit" required maxLength={240} defaultValue={credit ?? ""} placeholder="Nom · CC BY 4.0 · Wikimedia Commons" errors={fe?.credit} />
+      <Submit pending={pending} label={hasPortrait ? "Mettre à jour" : "Ajouter le portrait"} />
+      <div className="sm:col-span-3">
         <FormMessage state={state} />
       </div>
     </form>

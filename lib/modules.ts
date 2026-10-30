@@ -39,6 +39,7 @@ export const ADMIN_MODULES: AdminModule[] = [
   { code: "M14", label: "Actualités", href: "/admin/actualites", anyOf: ["communication.manage"], group: "Communication", ready: true },
   { code: "M14", label: "Photothèque", href: "/admin/photos", anyOf: ["communication.manage"], group: "Communication", ready: true },
   { code: "M13", label: "Accréditations médias", href: "/admin/accreditations", anyOf: ["communication.manage"], group: "Communication", ready: true },
+  { code: "M14", label: "Paramètres du site", href: "/admin/parametres", anyOf: ["communication.manage"], group: "Communication", ready: true },
   { code: "M10", label: "Billetterie", href: "/admin/billetterie", anyOf: ["ticketing.manage"], group: "Services et finances", ready: true },
   { code: "M11", label: "Supporters (Fan ID)", href: "/admin/supporters", anyOf: ["ticketing.manage"], group: "Services et finances", ready: true },
   { code: "M21", label: "Formations", href: "/admin/formations", anyOf: ["programs.manage", "programs.participate"], group: "Services et finances", ready: true },

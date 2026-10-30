@@ -112,7 +112,7 @@ export default async function NationalTeamPage({ params }: PageProps<"/admin/sel
         {/* Présentation et vidéos de la sélection (page publique) */}
         <section className="flex flex-col gap-4 border-t pt-6">
           <h2 className="font-semibold">Présentation et vidéos</h2>
-          <TeamDescriptionForm action={updateTeamDescription.bind(null, team.code)} description={team.description} />
+          <TeamDescriptionForm action={updateTeamDescription.bind(null, team.code)} description={team.description} tagline={team.tagline} shortLabel={team.shortLabel} />
           {videos.length > 0 && (
             <ul className="flex flex-col divide-y rounded-lg border text-sm">
               {videos.map((v) => (

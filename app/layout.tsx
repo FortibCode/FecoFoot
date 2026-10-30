@@ -5,7 +5,8 @@ import "./globals.css";
 import { DevPerformanceGuard } from "@/components/dev-performance-guard";
 import { RevealObserver } from "@/components/reveal-observer";
 import { DivisionsProvider } from "@/components/public/divisions";
-import { publicDivisions } from "@/lib/queries/reference";
+import { SocialsProvider } from "@/components/public/site-settings";
+import { publicDivisions, siteSettingsRow } from "@/lib/queries/reference";
 
 // next/font auto-héberge la police au build : aucun appel à Google côté visiteur.
 // Inter : toute l'interface, titres (700-800) et chiffres (scores, statistiques en chiffres alignés).
@@ -28,12 +29,15 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Rendu à chaque requête : nécessaire pour que Next applique le nonce CSP de la requête à ses scripts (ENF-09).
   await connection();
-  const divisions = await publicDivisions();
+  const [divisions, settings] = await Promise.all([publicDivisions(), siteSettingsRow()]);
+  const socials = { facebook: settings?.facebookUrl ?? null, instagram: settings?.instagramUrl ?? null, x: settings?.xUrl ?? null, youtube: settings?.youtubeUrl ?? null };
   return (
     <html lang="fr" className={`${inter.variable} ${oswald.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <DevPerformanceGuard />
-        <DivisionsProvider divisions={divisions}>{children}</DivisionsProvider>
+        <DivisionsProvider divisions={divisions}>
+          <SocialsProvider socials={socials}>{children}</SocialsProvider>
+        </DivisionsProvider>
         <RevealObserver />
       </body>
     </html>

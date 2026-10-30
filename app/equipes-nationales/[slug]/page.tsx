@@ -13,7 +13,6 @@ import { db } from "@/lib/db";
 import { articles, nationalTeams, nationalTeamVideos } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
 import { POSITION_LABELS } from "@/lib/licenses";
-import { NATIONAL_TEAM_SHORT, NATIONAL_TEAM_TAGLINES } from "@/lib/national-teams";
 import { photoUrl, teamCovers, teamPhotos } from "@/lib/photos";
 import { PhotoPager } from "@/components/public/photo-pager";
 import { fromNational, openTicketSales } from "@/lib/queries/matches";
@@ -64,7 +63,7 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
   const items = (rows: typeof fixtures) => rows.map((f) => fromNational({ f, team: team.name, teamSlug: team.slug }));
   const next = upcoming[0];
   const cover = covers[team.slug];
-  const tagline = NATIONAL_TEAM_TAGLINES[team.slug];
+  const tagline = team.tagline ?? undefined;
 
   return (
     <PublicShell eyebrow="Équipes nationales" title={team.name} subtitle={tagline} wide hero={<div className="h-2" />}>
@@ -79,7 +78,7 @@ export default async function PublicNationalTeamPage({ params }: PageProps<"/equ
             </>
           ) : (
             <span aria-hidden className="absolute top-4 left-6 -z-10 font-display text-[8rem] leading-none font-bold text-white/10 sm:text-[11rem]">
-              {NATIONAL_TEAM_SHORT[team.slug] ?? ""}
+              {team.shortLabel ?? ""}
             </span>
           )}
           <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--flag-green)_0_33.33%,var(--flag-yellow)_33.33%_66.66%,var(--flag-red)_66.66%)]" />

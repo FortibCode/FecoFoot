@@ -14,6 +14,10 @@ import { parseStats } from "@/lib/match-stats";
 import { POSITIONS } from "@/lib/licenses";
 import { calledPlayerError, FIXTURE_STATUSES, shirtNumberError } from "@/lib/national-teams";
 import { isUniqueViolation } from "@/lib/queries/players";
+import { randomUUID } from "node:crypto";
+import { MAX_FILE_SIZE, sniffKind } from "@/lib/documents";
+import { imageSize } from "@/lib/image-size";
+import { deleteFile, putFile } from "@/lib/storage";
 
 async function team(code: string) {
   const [t] = await db.select().from(nationalTeams).where(eq(nationalTeams.code, code as (typeof nationalTeams.$inferSelect)["code"])).limit(1);
@@ -169,9 +173,72 @@ export async function addCalledPlayer(selectionId: number, _state: ActionState, 
 
 export async function removeCalledPlayer(selectionId: number, entryId: number): Promise<void> {
   const user = await requirePermission("national_teams.manage");
-  await db.delete(selectionPlayers).where(and(eq(selectionPlayers.id, entryId), eq(selectionPlayers.selectionId, selectionId)));
+  const [removed] = await db
+    .delete(selectionPlayers)
+    .where(and(eq(selectionPlayers.id, entryId), eq(selectionPlayers.selectionId, selectionId)))
+    .returning({ photoKey: selectionPlayers.photoKey });
+  if (removed?.photoKey) await deleteFile(removed.photoKey).catch(() => undefined);
   await logAudit({ userId: user.id, action: "CALL_UP_REMOVE", entity: "selection", entityId: selectionId, details: { entryId } });
   revalidatePath(`/admin/selections/convocation/${selectionId}`);
+}
+
+/** Convoqué hors registre de la liste (le portrait d'un joueur du registre vient de sa licence, avec son accord). */
+async function externalEntry(selectionId: number, entryId: number) {
+  const [row] = await db
+    .select()
+    .from(selectionPlayers)
+    .where(and(eq(selectionPlayers.id, entryId), eq(selectionPlayers.selectionId, selectionId)))
+    .limit(1);
+  return row && row.playerId === null ? row : null;
+}
+
+/** Portrait d'un joueur convoqué hors registre : image (JPEG, PNG, WebP, 5 Mo) et crédit obligatoire. */
+export async function setCalledPortrait(selectionId: number, entryId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("national_teams.manage");
+  const entry = await externalEntry(selectionId, entryId);
+  if (!entry) return { error: "Joueur introuvable dans cette liste (ou joueur du registre : photo de sa licence)." };
+  const credit = String(formData.get("credit") ?? "").trim();
+  if (credit.length < 2 || credit.length > 240) return { error: "Crédit requis.", fieldErrors: { credit: ["Auteur ou source de la photo (240 caractères au plus)."] } };
+  const file = formData.get("photo");
+  const bytes = file instanceof File && file.size > 0 ? new Uint8Array(await file.arrayBuffer()) : null;
+  // Sans nouveau fichier : mise à jour du crédit seul.
+  if (!bytes) {
+    if (!entry.photoKey) return { error: "Choisissez une photo.", fieldErrors: { photo: ["Photo requise."] } };
+    await db.update(selectionPlayers).set({ photoCredit: credit }).where(eq(selectionPlayers.id, entryId));
+  } else {
+    if (bytes.length > MAX_FILE_SIZE) return { error: "La photo dépasse 5 Mo.", fieldErrors: { photo: ["5 Mo au plus."] } };
+    const kind = sniffKind(bytes);
+    if (!kind || kind === "pdf" || !imageSize(bytes)) return { error: "Format non accepté : JPEG, PNG ou WebP.", fieldErrors: { photo: ["JPEG, PNG ou WebP."] } };
+    const key = `convoques/${selectionId}/${randomUUID()}.${kind}`;
+    await putFile(key, bytes);
+    await db.update(selectionPlayers).set({ photoKey: key, photoCredit: credit }).where(eq(selectionPlayers.id, entryId));
+    if (entry.photoKey) await deleteFile(entry.photoKey).catch(() => undefined);
+  }
+  await logAudit({ userId: user.id, action: "UPDATE", entity: "selection", entityId: selectionId, details: { entryId, portrait: true } });
+  await revalidateSelection(selectionId);
+  return { success: "Portrait enregistré." };
+}
+
+export async function removeCalledPortrait(selectionId: number, entryId: number): Promise<void> {
+  const user = await requirePermission("national_teams.manage");
+  const entry = await externalEntry(selectionId, entryId);
+  if (!entry?.photoKey) return;
+  await db.update(selectionPlayers).set({ photoKey: null, photoCredit: null }).where(eq(selectionPlayers.id, entryId));
+  await deleteFile(entry.photoKey).catch(() => undefined);
+  await logAudit({ userId: user.id, action: "UPDATE", entity: "selection", entityId: selectionId, details: { entryId, portrait: false } });
+  await revalidateSelection(selectionId);
+}
+
+/** Liste modifiée : page d'administration et fiche publique de la sélection. */
+async function revalidateSelection(selectionId: number) {
+  revalidatePath(`/admin/selections/convocation/${selectionId}`);
+  const [t] = await db
+    .select({ code: nationalTeams.code, slug: nationalTeams.slug })
+    .from(selections)
+    .innerJoin(nationalTeams, eq(nationalTeams.id, selections.teamId))
+    .where(eq(selections.id, selectionId))
+    .limit(1);
+  if (t) revalidateTeam(t.code, t.slug);
 }
 
 /** Publication sur le portail (EF-SEL-03). */
@@ -446,9 +513,16 @@ export async function updateTeamDescription(code: string, _state: ActionState, f
   if (!t) return { error: "Sélection introuvable." };
   const description = z.preprocess(blankToNull, z.string().trim().max(4000).nullable()).safeParse(formData.get("description"));
   if (!description.success) return { error: "Présentation trop longue (4 000 caractères au plus)." };
-  await db.update(nationalTeams).set({ description: description.data }).where(eq(nationalTeams.id, t.id));
-  await logAudit({ userId: user.id, action: "UPDATE", entity: "national_team", entityId: t.id, details: { description: Boolean(description.data) } });
+  const tagline = z.preprocess(blankToNull, z.string().trim().max(120).nullable()).safeParse(formData.get("tagline"));
+  if (!tagline.success) return { error: "Sous-titre trop long.", fieldErrors: { tagline: ["120 caractères au plus."] } };
+  const shortLabel = z.preprocess(blankToNull, z.string().trim().max(16).nullable()).safeParse(formData.get("shortLabel"));
+  if (!shortLabel.success) return { error: "Repère trop long.", fieldErrors: { shortLabel: ["16 caractères au plus."] } };
+  await db.update(nationalTeams).set({ description: description.data, tagline: tagline.data, shortLabel: shortLabel.data }).where(eq(nationalTeams.id, t.id));
+  await logAudit({ userId: user.id, action: "UPDATE", entity: "national_team", entityId: t.id, details: { description: Boolean(description.data), tagline: tagline.data, shortLabel: shortLabel.data } });
   revalidateTeam(code, t.slug);
+  // Sous-titre et repère : aussi sur les cartes de l'accueil et de la page des sélections.
+  revalidatePath("/");
+  revalidatePath("/equipes-nationales");
   return { success: "Présentation enregistrée." };
 }
 
