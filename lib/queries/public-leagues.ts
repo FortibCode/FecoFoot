@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, count, desc, eq, getTableColumns, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { clubs, competitions, competitionTeams, leagues, matches } from "@/lib/db/schema";
+import { championships, clubs, competitions, competitionTeams, leagues, matches } from "@/lib/db/schema";
 import { matchQuery } from "@/lib/queries/competitions";
 
 /**
@@ -25,15 +25,34 @@ export async function leaguesOverview() {
     .orderBy(asc(leagues.name));
 }
 
-/** Divisions nationales publiées (championnats organisés par la fédération). */
+/**
+ * Divisions nationales publiées (championnats organisés par la fédération) : championnat de rattachement (nom,
+ * code, logo officiel, niveau) et clubs engagés, pour les cartes du portail.
+ */
 export async function nationalDivisions() {
-  return db
-    .select({ c: competitions, teams: count(competitionTeams.id), played: sql<number>`(select count(*)::int from ${matches} where ${matches.competitionId} = ${competitions.id} and ${matches.status} in ('FINISHED', 'LIVE', 'HALF_TIME'))` })
+  const rows = await db
+    .select({
+      c: competitions,
+      championship: { id: championships.id, code: championships.code, name: championships.name, logoKey: championships.logoKey, tier: championships.tier },
+      teams: count(competitionTeams.id),
+      played: sql<number>`(select count(*)::int from ${matches} where ${matches.competitionId} = ${competitions.id} and ${matches.status} in ('FINISHED', 'LIVE', 'HALF_TIME'))`,
+    })
     .from(competitions)
+    .leftJoin(championships, eq(competitions.championshipId, championships.id))
     .leftJoin(competitionTeams, eq(competitionTeams.competitionId, competitions.id))
     .where(and(isNull(competitions.leagueId), eq(competitions.type, "LEAGUE"), ne(competitions.status, "DRAFT")))
-    .groupBy(competitions.id)
-    .orderBy(desc(competitions.season), asc(competitions.name));
+    .groupBy(competitions.id, championships.id)
+    .orderBy(desc(competitions.season), asc(championships.tier), asc(competitions.name));
+  const ids = rows.map((r) => r.c.id);
+  const engaged = ids.length
+    ? await db
+        .select({ competitionId: competitionTeams.competitionId, id: clubs.id, name: clubs.name, shortName: clubs.shortName })
+        .from(competitionTeams)
+        .innerJoin(clubs, eq(competitionTeams.clubId, clubs.id))
+        .where(inArray(competitionTeams.competitionId, ids))
+        .orderBy(asc(clubs.name))
+    : [];
+  return rows.map((r) => ({ ...r, clubs: engaged.filter((e) => e.competitionId === r.c.id) }));
 }
 
 /** Fiche publique d'une ligue active (par son code, insensible à la casse). */
