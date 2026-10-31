@@ -6,6 +6,7 @@ import { DevPerformanceGuard } from "@/components/dev-performance-guard";
 import { RevealObserver } from "@/components/reveal-observer";
 import { DivisionsProvider } from "@/components/public/divisions";
 import { SocialsProvider } from "@/components/public/site-settings";
+import { LaunchScreen } from "@/components/public/launch-screen";
 import { publicDivisions, siteSettingsRow } from "@/lib/queries/reference";
 
 // next/font auto-héberge la police au build : aucun appel à Google côté visiteur.
@@ -38,6 +39,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <DivisionsProvider divisions={divisions}>
           <SocialsProvider socials={socials}>{children}</SocialsProvider>
         </DivisionsProvider>
+        {/* Écran d'ouverture : première page publique de la visite seulement. */}
+        <LaunchScreen />
         <RevealObserver />
       </body>
     </html>
