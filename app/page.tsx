@@ -25,7 +25,7 @@ import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
 import { NationalTeamCards } from "@/components/public/national-team-cards";
-import { SectionFocus } from "@/components/section-focus";
+import { SectionStack } from "@/components/section-stack";
 import { featuredPhotos, latestPhotos, photoUrl, teamCovers } from "@/lib/photos";
 import { CountUp } from "@/components/count-up";
 import { HeroSlideshow } from "@/components/public/hero-slideshow";
@@ -90,7 +90,7 @@ export default async function HomePage() {
   ] as const;
 
   const hero = (
-    <section className="brand-band relative isolate flex min-h-[max(36rem,100svh)] flex-col overflow-hidden">
+    <section data-stack className="brand-band relative isolate flex min-h-[max(36rem,100svh)] flex-col overflow-hidden">
       {cover && <HeroSlideshow slides={slides} variant="background" className="-z-20" />}
       {/* Voile aux couleurs de la marque : léger en haut, dense en bas où se trouve le titre. */}
       <div
@@ -172,10 +172,10 @@ export default async function HomePage() {
 
   return (
     <PublicShell eyebrow="Fédération Congolaise de Football" title="Suivre les compétitions, soutenir les Diables Rouges, vivre le football congolais" wide hero={hero} bare overlayHeader>
-      <SectionFocus />
+      <SectionStack />
       {/* Clubs du championnat d'élite : bandeau de logos */}
       {elite && (
-        <section data-focus aria-labelledby="elite-title" className="border-b bg-card/80 backdrop-blur-[2px]">
+        <section data-stack aria-labelledby="elite-title" className="relative border-b bg-card">
           <Container className="flex flex-col gap-4 py-6 lg:flex-row lg:items-center lg:gap-8">
             <div data-reveal="left" className="shrink-0">
               <h2 id="elite-title" className="font-heading text-2xl font-bold uppercase">
@@ -211,7 +211,7 @@ export default async function HomePage() {
       )}
 
       {/* Matchs et résultats : à la une, puis une sélection courte par catégorie */}
-      <section data-focus aria-labelledby="matchs-title" className="py-12 sm:py-14">
+      <section data-stack aria-labelledby="matchs-title" className="relative bg-background py-12 sm:py-14">
         <Container className="flex flex-col gap-8">
           <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
             <div data-reveal="left" className="flex flex-col gap-3">
@@ -346,7 +346,7 @@ export default async function HomePage() {
       </section>
 
       {/* Actualités : mosaïque et fil d'infos */}
-      <section data-focus className="pb-6 sm:pb-8">
+      <section data-stack className="relative bg-background pt-12 pb-6 sm:pt-14 sm:pb-8">
         <Container className="flex flex-col gap-8">
           <div data-reveal="up" className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex flex-col gap-3">
@@ -364,7 +364,7 @@ export default async function HomePage() {
       </section>
 
       {/* Équipes nationales */}
-      <section data-focus className="pt-10 pb-12 sm:pt-12 sm:pb-14">
+      <section data-stack className="relative bg-background pt-10 pb-12 sm:pt-12 sm:pb-14">
         <Container className="flex flex-col gap-8">
           <SectionHead
             title="Les Diables"

@@ -251,14 +251,22 @@
   opacity: 1;
   transform: none;
 }
-/* Section principale au défilement (components/section-focus.tsx) : --focus va de 0 (hors de l'écran) à 1. */
-.focus-ready [data-focus] {
-  opacity: calc(0.35 + 0.65 * var(--focus, 1));
-  transform: scale(calc(0.94 + 0.06 * var(--focus, 1)));
+/* Sections empilées au défilement (components/section-stack.tsx) : la suivante glisse par-dessus la précédente. */
+.stack-ready [data-stack] {
+  position: sticky;
+  top: var(--stack-top, 0px);
+  transform: scale(calc(1 - 0.06 * var(--cover, 0)));
   transform-origin: center top;
-  transition:
-    opacity 0.25s linear,
-    transform 0.25s linear;
+}
+/* Section recouverte : assombrie au fur et à mesure que la suivante la remplace. */
+.stack-ready [data-stack]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: var(--brand-ink);
+  opacity: calc(0.55 * var(--cover, 0));
+  pointer-events: none;
 }
 
 /* Barre de points du classement : se remplit à l'apparition de la ligne. */
