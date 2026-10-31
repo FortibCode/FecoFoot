@@ -28,10 +28,10 @@ const DIVISION_THEMES = [
 function SectionTitle({ id, icon, title, text }: { id: string; icon: ReactNode; title: string; text: string }) {
   return (
     <div className="flex items-start gap-4">
-      <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] text-[var(--flag-green)]">
+      <span data-reveal="zoom" aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] text-[var(--flag-green)]">
         {icon}
       </span>
-      <div className="flex flex-col gap-1">
+      <div data-reveal="left" style={{ ["--rd" as string]: "100ms" }} className="flex flex-col gap-1">
         <h2 id={id} className="text-2xl leading-tight font-bold uppercase sm:text-3xl">
           {title}
         </h2>
@@ -63,12 +63,14 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
                 const logo = championship ? championshipLogoUrl(championship) : null;
                 const href = championship ? `/championnats/${championship.code}?saison=${c.season}` : `/competitions/${c.slug}`;
                 const name = championship?.name ?? c.name;
+                // Délai d'apparition des éléments de la carte, en cascade après la carte elle-même.
+                const at = (ms: number) => ({ ["--rd" as string]: `${i * 140 + ms}ms` });
                 return (
                   <li key={c.id} data-reveal="left" style={{ ["--rd" as string]: `${i * 140}ms` }}>
                     <Link
                       href={href}
                       style={{ backgroundColor: t.bg }}
-                      className="group relative isolate flex h-full flex-col gap-6 overflow-hidden p-5 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green sm:p-7"
+                      className="group relative isolate flex h-full flex-col gap-6 overflow-hidden p-5 text-white transition-[transform,box-shadow] duration-300 ease-out hover:shadow-[0_24px_48px_-20px_rgb(0_0_0/0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-1.5 sm:p-7"
                     >
                       {/* Chevron d'accent qui déborde à droite (s'avance au survol). */}
                       <svg aria-hidden viewBox="0 0 200 300" preserveAspectRatio="xMaxYMid slice" className="absolute inset-y-0 right-0 -z-10 h-full w-[14%] transition-transform duration-500 ease-out motion-safe:group-hover:translate-x-2 sm:w-[34%]">
@@ -77,49 +79,57 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
                       </svg>
 
                       <span className="flex items-center gap-4 sm:gap-5">
-                        <span className="grid size-20 shrink-0 place-items-center bg-white p-2 shadow-[0_10px_30px_-10px_rgb(0_0_0/0.5)] sm:size-24">
-                          {logo ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- logo officiel servi par la route des médias
-                            <img src={logo} alt={`Logo ${name}`} className="size-full object-contain" />
-                          ) : (
-                            <TrophyIcon className="size-10 text-brand-ink" />
-                          )}
+                        <span data-reveal="zoom" style={at(180)} className="shrink-0">
+                          <span className="grid size-20 place-items-center bg-white p-2 shadow-[0_10px_30px_-10px_rgb(0_0_0/0.5)] transition-transform duration-500 ease-out motion-safe:group-hover:-rotate-3 motion-safe:group-hover:scale-105 sm:size-24">
+                            {logo ? (
+                              // eslint-disable-next-line @next/next/no-img-element -- logo officiel servi par la route des médias
+                              <img src={logo} alt={`Logo ${name}`} className="size-full object-contain" />
+                            ) : (
+                              <TrophyIcon className="size-10 text-brand-ink" />
+                            )}
+                          </span>
                         </span>
-                        <span className="flex min-w-0 flex-col gap-1">
+                        <span data-reveal="left" style={at(280)} className="flex min-w-0 flex-col gap-1">
                           <span className="font-display text-[0.7rem] font-bold tracking-[0.2em] text-white/75 uppercase">Championnat national</span>
                           <span className="font-display text-2xl leading-none font-bold uppercase sm:text-4xl">{name}</span>
                         </span>
                       </span>
 
                       <span className="flex max-w-[84%] flex-wrap gap-2 text-xs font-semibold sm:max-w-[70%]">
-                        <span className="inline-flex items-center gap-1.5 border border-white/60 px-2.5 py-1">
+                        <span data-reveal="up" style={at(380)} className="inline-flex items-center gap-1.5 border border-white/60 px-2.5 py-1">
                           <CalendarIcon className="size-3.5" />
                           Saison {seasonLabel(c.season)}
                         </span>
-                        <span className="inline-flex items-center gap-1.5 border border-white/60 px-2.5 py-1">
+                        <span data-reveal="up" style={at(460)} className="inline-flex items-center gap-1.5 border border-white/60 px-2.5 py-1">
                           <GroupIcon className="size-3.5" />
                           {teams} club{teams > 1 ? "s" : ""}
                         </span>
-                        <span className="inline-flex items-center gap-1.5 bg-white px-2.5 py-1 text-brand-ink">{publicStatusLabel(c.status, played)}</span>
+                        <span data-reveal="up" style={at(540)} className="inline-flex items-center gap-1.5 bg-white px-2.5 py-1 text-brand-ink">{publicStatusLabel(c.status, played)}</span>
                       </span>
 
                       {/* Clubs engagés : leurs logos ; sinon la liste reste à publier. */}
                       <span className="mt-auto flex max-w-[84%] flex-col gap-3 sm:max-w-[72%]">
                         {clubs.length > 0 ? (
                           <span className="flex flex-wrap gap-1.5" aria-label={`Clubs engagés : ${clubs.map((k) => k.name).join(", ")}`}>
-                            {clubs.slice(0, 12).map((k) => (
-                              <span key={k.id} title={k.name} className="grid size-9 place-items-center rounded-full bg-white p-1">
-                                <ClubLogo src={logos.get(k.id)} name={k.name} className="size-full text-[0.55rem]" />
+                            {clubs.slice(0, 12).map((k, j) => (
+                              <span key={k.id} data-reveal="zoom" style={at(620 + j * 45)}>
+                                <span title={k.name} className="grid size-9 place-items-center rounded-full bg-white p-1 transition-transform duration-200 ease-out motion-safe:hover:scale-125">
+                                  <ClubLogo src={logos.get(k.id)} name={k.name} className="size-full text-[0.55rem]" />
+                                </span>
                               </span>
                             ))}
-                            {clubs.length > 12 && <span className="grid size-9 place-items-center rounded-full bg-white/20 text-xs font-bold">+{clubs.length - 12}</span>}
+                            {clubs.length > 12 && (
+                              <span data-reveal="zoom" style={at(620 + 12 * 45)} className="grid size-9 place-items-center rounded-full bg-white/20 text-xs font-bold">
+                                +{clubs.length - 12}
+                              </span>
+                            )}
                           </span>
                         ) : (
                           <span className="text-sm text-white/80">Liste des clubs engagés à publier.</span>
                         )}
-                        <span className="inline-flex items-center gap-2 text-sm font-semibold">
-                          Voir le championnat
-                          <ArrowIcon className="size-4 transition-transform group-hover:translate-x-1" />
+                        <span className="inline-flex items-center gap-2 self-start text-sm font-semibold">
+                          <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_2px] bg-bottom-left bg-no-repeat pb-0.5 transition-[background-size] duration-300 ease-out group-hover:bg-[length:100%_2px]">Voir le championnat</span>
+                          <ArrowIcon className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-1.5" />
                         </span>
                       </span>
                     </Link>
@@ -134,21 +144,23 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
           <div className="flex flex-wrap items-end justify-between gap-4">
             <SectionTitle id="departementales" icon={<ShieldIcon className="size-5" />} title="Ligues départementales" text="Les ligues de la fédération dans chaque département : clubs affiliés et compétitions." />
             {all.length > 0 && (
-              <form role="search" className="flex w-full gap-2 sm:w-auto">
+              <form role="search" data-reveal="right" style={{ ["--rd" as string]: "200ms" }} className="flex w-full gap-2 sm:w-auto">
                 <label className="relative flex min-w-0 flex-1 items-center sm:w-72 sm:flex-none">
                   <span className="sr-only">Rechercher une ligue</span>
                   <SearchIcon className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
-                  <input name="q" defaultValue={q} placeholder="Ligue ou département" className="h-10 w-full rounded-md border bg-background pr-3 pl-9 text-sm" />
+                  <input name="q" defaultValue={q} placeholder="Ligue ou département" className="h-10 w-full rounded-md border bg-background pr-3 pl-9 text-sm transition-[border-color,box-shadow] duration-200 focus:border-[var(--flag-green)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--flag-green)_20%,transparent)] focus:outline-none" />
                 </label>
-                <button type="submit" className="h-10 rounded-md bg-brand-ink px-4 text-sm font-semibold text-white">
+                <button type="submit" className="h-10 rounded-md bg-brand-ink px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 hover:bg-[var(--flag-green)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:active:scale-95">
                   Rechercher
                 </button>
               </form>
             )}
           </div>
           {rows.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 bg-muted/60 px-6 py-12 text-center">
-              <ShieldIcon className="size-9 text-[var(--flag-green)]" />
+            <div data-reveal="up" style={{ ["--rd" as string]: "150ms" }} className="flex flex-col items-center gap-3 bg-muted/60 px-6 py-12 text-center">
+              <span data-reveal="zoom" style={{ ["--rd" as string]: "350ms" }}>
+                <ShieldIcon className="size-9 text-[var(--flag-green)]" />
+              </span>
               <p className="font-semibold">{q ? `Aucune ligue ne correspond à « ${q} ».` : "Aucune ligue départementale publiée pour le moment."}</p>
               <p className="max-w-md text-sm text-muted-foreground">Les ligues apparaîtront ici dès leur enregistrement par la fédération, avec leurs clubs et leurs compétitions.</p>
               {q && (
@@ -165,11 +177,11 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
                   <li key={l.id} data-reveal="left" style={{ ["--rd" as string]: `${Math.min(i, 8) * 60}ms` }}>
                     <Link
                       href={`/ligues/${l.code.toLowerCase()}`}
-                      className="group flex h-full flex-col gap-5 bg-muted/60 p-5 transition-colors hover:bg-muted"
+                      className="group flex h-full flex-col gap-5 bg-muted/60 p-5 transition-[background-color,transform,box-shadow] duration-300 ease-out hover:bg-muted hover:shadow-[0_18px_36px_-20px_rgb(0_0_0/0.35)] motion-safe:hover:-translate-y-1"
                       data-testid="public-league"
                     >
                       <span className="flex items-center gap-4">
-                        <span className="grid size-16 shrink-0 place-items-center bg-white p-1.5">
+                        <span className="grid size-16 shrink-0 place-items-center bg-white p-1.5 transition-transform duration-500 ease-out motion-safe:group-hover:scale-110">
                           {logo ? (
                             // eslint-disable-next-line @next/next/no-img-element -- logo servi par la route des médias
                             <img src={logo} alt="" className="size-full object-contain" />
