@@ -5,17 +5,19 @@ import { useEffect, useState } from "react";
 import { LAUNCH_COOKIE } from "@/lib/launch";
 
 /** Secours si la fin de l'animation n'est pas signalée (onglet en arrière-plan…). */
-const FALLBACK = 4000;
+const FALLBACK = 11_000;
 /** Pas d'écran d'ouverture : espace fédéral, connexion, et ce qu'on présente au stade (billets, badges, vérifications). */
 const SKIP = /^\/(admin|connexion|mot-de-passe-oublie|reinitialiser|accord|paiement|billet\/|accreditations\/(badge|suivi)|verifier\/)/;
 
 /**
  * Animation d'ouverture : chevrons aux couleurs du drapeau, écusson qui apparaît, « FECOFOOT » lettre par lettre,
- * barre tricolore, puis l'écran s'efface vers le haut. N'intercepte aucun clic ; Échap le passe ; absent si
- * l'appareil demande moins d'animations (globals.css).
+ * barre tricolore, puis l'écran s'efface vers le haut (10 s). Un clic, un toucher ou Échap le passe ; une navigation
+ * aussi. Absent si l'appareil demande moins d'animations (globals.css).
  */
 export function LaunchOverlay() {
-  const skipped = SKIP.test(usePathname());
+  const pathname = usePathname();
+  const skipped = SKIP.test(pathname);
+  const [first] = useState(pathname);
   const [done, setDone] = useState(false);
   useEffect(() => {
     if (skipped) return;
@@ -29,13 +31,15 @@ export function LaunchOverlay() {
       window.removeEventListener("keydown", skip);
     };
   }, [skipped]);
-  if (done || skipped) return null;
+  // Une navigation (lien suivi pendant l'animation) met fin à l'écran d'ouverture.
+  if (done || skipped || pathname !== first) return null;
   return (
     <div
       aria-hidden
       // Retiré dès la fin de l'effacement vers le haut.
       onAnimationEnd={(e) => e.animationName === "launch-out" && setDone(true)}
-      className="launch-screen pointer-events-none fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-brand-ink text-white">
+      onClick={() => setDone(true)}
+      className="launch-screen fixed inset-0 cursor-pointer z-[100] grid place-items-center overflow-hidden bg-brand-ink text-white">
       {/* Chevrons aux couleurs du drapeau qui traversent l'écran. */}
       <svg viewBox="0 0 200 300" preserveAspectRatio="xMidYMid slice" className="launch-chevrons absolute inset-y-0 -left-1/4 h-full w-[60%]">
         <polygon points="0,0 60,0 140,150 60,300 0,300 80,150" fill="var(--flag-green)" opacity="0.55" />
@@ -61,6 +65,7 @@ export function LaunchOverlay() {
           <span className="launch-bar absolute inset-0 origin-left bg-[linear-gradient(90deg,var(--flag-green)_0_33.33%,var(--flag-yellow)_33.33%_66.66%,var(--flag-red)_66.66%)]" />
         </span>
       </div>
+      <p className="launch-skip absolute bottom-8 text-xs tracking-[0.2em] text-white/50 uppercase">Touchez l&apos;écran pour passer</p>
     </div>
   );
 }

@@ -28,6 +28,8 @@ export default defineConfig({
     locale: "fr-FR",
     timezoneId: "Africa/Brazzaville",
     trace: "retain-on-failure",
+    // Écran d'ouverture déjà vu : les parcours testent le site, pas l'animation de 10 s.
+    storageState: { cookies: [{ name: "fecofoot_intro", value: "1", domain: "localhost", path: "/", expires: -1, httpOnly: false, secure: false, sameSite: "Lax" }], origins: [] },
   },
   webServer: {
     command: process.env.CI ? "npm run start:standalone" : "npm run dev",
