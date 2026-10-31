@@ -189,9 +189,9 @@ export function RequestForm({ action }: { action: (s: ActionState, f: FormData) 
         </div>
       </Step>
 
-      <div className="flex flex-col gap-3 bg-brand-ink p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <p className="text-sm text-white/80">En envoyant la demande, vous recevez un lien de suivi personnel : le badge y apparaît dès la validation.</p>
-        <Button type="submit" size="lg" disabled={pending} className="h-11 shrink-0 bg-[var(--flag-green)] px-6 text-white hover:bg-[var(--flag-yellow)] hover:text-brand-ink">
+      <div className="flex flex-col gap-3 bg-muted/60 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <p className="text-sm text-muted-foreground">En envoyant la demande, vous recevez un lien de suivi personnel : le badge y apparaît dès la validation.</p>
+        <Button type="submit" size="lg" disabled={pending} className="h-11 shrink-0 bg-[var(--flag-green)] px-6 text-white hover:bg-brand-ink">
           {pending ? "Envoi en cours…" : "Envoyer la demande"}
         </Button>
       </div>
