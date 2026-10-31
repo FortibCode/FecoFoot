@@ -251,12 +251,14 @@
   opacity: 1;
   transform: none;
 }
-/* Sections empilées au défilement (components/section-stack.tsx) : la suivante glisse par-dessus la précédente. */
+/* Sections empilées au défilement (components/section-stack.tsx) : chacune occupe tout l'écran sous la barre de
+   navigation, s'y colle, et la suivante glisse par-dessus. */
 .stack-ready [data-stack] {
   position: sticky;
   top: var(--stack-top, 0px);
-  transform: scale(calc(1 - 0.06 * var(--cover, 0)));
-  transform-origin: center top;
+}
+.stack-ready [data-stack]:not(:first-of-type) {
+  min-height: calc(100svh - var(--stack-header, 0px));
 }
 /* Section recouverte : assombrie au fur et à mesure que la suivante la remplace. */
 .stack-ready [data-stack]::after {

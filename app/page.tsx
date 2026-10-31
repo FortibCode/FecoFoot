@@ -175,7 +175,7 @@ export default async function HomePage() {
       <SectionStack />
       {/* Clubs du championnat d'élite : bandeau de logos */}
       {elite && (
-        <section data-stack aria-labelledby="elite-title" className="relative border-b bg-card">
+        <section aria-labelledby="elite-title" className="relative z-[1] border-b bg-card">
           <Container className="flex flex-col gap-4 py-6 lg:flex-row lg:items-center lg:gap-8">
             <div data-reveal="left" className="shrink-0">
               <h2 id="elite-title" className="font-heading text-2xl font-bold uppercase">

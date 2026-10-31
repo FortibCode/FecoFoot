@@ -5,8 +5,8 @@ import { useEffect } from "react";
 /**
  * Sections empilées au défilement (page d'accueil) : chaque section marquée `data-stack` reste en place une fois
  * entièrement lue, et la suivante glisse par-dessus pour la remplacer (bandeau, puis matchs, puis actualités…).
- * Une section plus haute que l'écran défile d'abord jusqu'en bas (son `top` collant est négatif) ; recouverte,
- * elle s'assombrit et recule légèrement (variable --cover, globals.css).
+ * Chaque section occupe tout l'écran sous la barre de navigation et s'y colle ; plus haute que l'écran, elle défile
+ * d'abord jusqu'en bas (son `top` collant est négatif). Recouverte, elle s'assombrit (variable --cover, globals.css).
  * Sans JavaScript, ou si l'appareil demande moins d'animations, la page défile normalement.
  */
 export function SectionStack() {
@@ -22,6 +22,7 @@ export function SectionStack() {
     const measure = () => {
       const vh = window.innerHeight;
       const header = document.querySelector("header")?.offsetHeight ?? 0;
+      root.style.setProperty("--stack-header", `${header}px`);
       sections.forEach((s, i) => {
         s.style.setProperty("--stack-top", `${Math.min(i === 0 ? 0 : header, vh - s.offsetHeight)}px`);
         s.style.zIndex = String(i + 1);
@@ -44,6 +45,9 @@ export function SectionStack() {
     };
     const ro = new ResizeObserver(measure);
     sections.forEach((s) => ro.observe(s));
+    // La barre de navigation s'affine une fois la page défilée : les sections restent collées contre elle.
+    const nav = document.querySelector("header");
+    if (nav) ro.observe(nav);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", schedule, { passive: true });
     measure();
@@ -53,6 +57,7 @@ export function SectionStack() {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", schedule);
       root.classList.remove("stack-ready");
+      root.style.removeProperty("--stack-header");
       for (const s of sections) {
         s.style.removeProperty("--stack-top");
         s.style.removeProperty("--cover");
