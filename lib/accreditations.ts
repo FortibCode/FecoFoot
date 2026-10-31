@@ -71,3 +71,25 @@ export function badgeValidity(ctx: { status: AccreditationStatus; kickoffAt: Dat
 
 /** Jours entiers restants avant la clôture des demandes (0 le dernier jour). */
 export const requestDaysLeft = (kickoffAt: Date, now = Date.now()) => Math.max(0, Math.ceil((requestDeadline(kickoffAt).getTime() - now) / 86_400_000));
+
+/** Justificatif de la qualité de journaliste : carte de presse (numéro, scan facultatif) ou ordre de mission du média. */
+export const PRESS_PROOF_KINDS = ["CARD", "MISSION_LETTER"] as const;
+export type PressProofKind = (typeof PRESS_PROOF_KINDS)[number];
+export const PRESS_PROOF_LABELS: Record<PressProofKind, string> = { CARD: "Scan de la carte de presse", MISSION_LETTER: "Ordre de mission du média" };
+
+/**
+ * Pièces exigées : avec une carte de presse, son numéro (le scan est facultatif) ; sans carte (pigiste, stagiaire,
+ * correspondant), l'ordre de mission signé par le média. Renvoie le champ en défaut et le message, sinon null.
+ */
+export function pressProofError(p: { hasCard: boolean; cardNumber: string; hasFile: boolean }): { field: "pressCardNumber" | "proof"; message: string } | null {
+  if (p.hasCard) {
+    const n = p.cardNumber.trim();
+    if (n.length < 3 || n.length > 40) return { field: "pressCardNumber", message: "Numéro de carte de presse requis." };
+    return null;
+  }
+  if (!p.hasFile) return { field: "proof", message: "Joignez l'ordre de mission signé par votre média." };
+  return null;
+}
+
+/** Ce qui prouve la qualité de journaliste, tel qu'affiché (badge, contrôle, administration). */
+export const pressCredential = (a: { pressCardNumber: string | null }) => (a.pressCardNumber ? `Carte de presse ${a.pressCardNumber}` : "Ordre de mission du média");

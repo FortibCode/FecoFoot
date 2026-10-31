@@ -15,7 +15,7 @@ const longDay = new Intl.DateTimeFormat("fr-FR", { timeZone: "Africa/Brazzaville
 
 /** Ce qu'il faut avoir sous la main avant de commencer. */
 const CHECKLIST = [
-  "Une carte de presse en cours de validité",
+  "Une carte de presse, ou à défaut l'ordre de mission signé par votre média",
   "Une photo d'identité récente, de face (JPEG ou PNG)",
   "Une demande par match et par personne",
   `Au plus tard ${REQUEST_DEADLINE_HOURS} h avant le coup d'envoi`,

@@ -120,7 +120,8 @@ const EditSchema = z.object({
   email: z.preprocess(blankToNull, z.email({ error: "Adresse e-mail invalide." }).nullable()),
   outlet: z.string().trim().min(2, { error: "Organe de presse requis." }).max(160),
   role: z.enum(PRESS_ROLES, { error: "Fonction requise." }),
-  pressCardNumber: z.string().trim().toUpperCase().min(3, { error: "Numéro de carte de presse requis." }).max(40),
+  // Vide pour un journaliste accrédité sur ordre de mission de son média (sans carte de presse).
+  pressCardNumber: z.preprocess(blankToNull, z.string().trim().toUpperCase().min(3, { error: "Numéro trop court." }).max(40).nullable()),
 });
 
 /** Correction de la fiche d'un membre de la presse (identité, média, fonction, carte, contacts). */
@@ -177,6 +178,7 @@ export async function deleteAccreditation(accreditationId: number): Promise<Acti
   if (acc.entries > 0) return { error: `Ce badge a déjà servi au stade (${acc.entries} entrée(s)) : retirez l'accréditation au lieu de la supprimer.` };
   await db.delete(accreditations).where(eq(accreditations.id, accreditationId));
   if (acc.photoKey) await deleteFile(acc.photoKey);
+  if (acc.proofKey) await deleteFile(acc.proofKey).catch(() => undefined);
   await logAudit({ userId: user.id, action: "DELETE", entity: "accreditation", entityId: accreditationId, details: { number: acc.number, name: `${acc.firstName} ${acc.lastName}`, outlet: acc.outlet } });
   revalidatePath(path(acc.eventId));
   return { success: "Demande supprimée." };

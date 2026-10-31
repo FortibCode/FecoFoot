@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { badgeValidity, formatAccreditationNumber, pressPhotoUrl, quotaError, requestDeadline, requestError } from "@/lib/accreditations";
+import { badgeValidity, formatAccreditationNumber, pressCredential, pressPhotoUrl, pressProofError, quotaError, requestDeadline, requestError } from "@/lib/accreditations";
 
 const kickoffAt = new Date("2026-10-18T15:00:00Z");
 
@@ -41,5 +41,20 @@ describe("validité d'un badge au scan (RG-16)", () => {
   it("adresse de la photo seulement si le badge en a une", () => {
     expect(pressPhotoUrl({ badgeToken: "abc", photoKey: null })).toBeNull();
     expect(pressPhotoUrl({ badgeToken: "abc", photoKey: "accreditations/1/0123456789ab-cdef.png" })).toMatch(/^\/accreditations\/photo\/abc\?v=/);
+  });
+});
+
+describe("justificatif de la qualité de journaliste", () => {
+  it("avec une carte de presse : le numéro suffit (scan facultatif)", () => {
+    expect(pressProofError({ hasCard: true, cardNumber: "CP-2026-114", hasFile: false })).toBeNull();
+    expect(pressProofError({ hasCard: true, cardNumber: " ", hasFile: true })?.field).toBe("pressCardNumber");
+  });
+  it("sans carte (pigiste, stagiaire) : l'ordre de mission du média est exigé", () => {
+    expect(pressProofError({ hasCard: false, cardNumber: "", hasFile: true })).toBeNull();
+    expect(pressProofError({ hasCard: false, cardNumber: "", hasFile: false })?.field).toBe("proof");
+  });
+  it("affiche la carte, ou l'ordre de mission à défaut", () => {
+    expect(pressCredential({ pressCardNumber: "CP-1" })).toBe("Carte de presse CP-1");
+    expect(pressCredential({ pressCardNumber: null })).toBe("Ordre de mission du média");
   });
 });

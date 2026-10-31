@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PublicShell } from "@/components/public/public-shell";
-import { badgeValidity, PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, PRESS_ZONES, pressPhotoUrl } from "@/lib/accreditations";
+import { badgeValidity, PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, PRESS_ZONES, pressPhotoUrl, pressCredential } from "@/lib/accreditations";
 import { formatDateTime } from "@/lib/format";
 import { accreditationByBadge } from "@/lib/queries/accreditations";
 import { parseEventTitle } from "@/lib/ticketing";
@@ -51,7 +51,7 @@ export default async function VerifyBadgePage({ params }: PageProps<"/accreditat
             <p>{acc.firstName}</p>
             <p className="mt-1 font-semibold">{acc.outlet}</p>
             <p className="text-muted-foreground">
-              {PRESS_ROLE_LABELS[acc.role]} · carte de presse {acc.pressCardNumber}
+              {PRESS_ROLE_LABELS[acc.role]} · {pressCredential(acc).toLowerCase()}
             </p>
             <p className="mt-1 font-mono text-xs">{acc.number}</p>
           </div>

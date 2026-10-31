@@ -6,7 +6,7 @@ import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { PageHeader } from "@/components/admin/page-header";
 import { RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { ACCREDITATION_STATUS_LABELS, pressPhotoUrl, PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, type PressZone } from "@/lib/accreditations";
+import { ACCREDITATION_STATUS_LABELS, pressPhotoUrl, PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, type PressZone, pressCredential } from "@/lib/accreditations";
 import { requirePermission } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { accreditationQuotas, accreditations, ticketEvents } from "@/lib/db/schema";
@@ -97,7 +97,7 @@ export default async function AdminAccreditationsPage({ searchParams }: PageProp
                   <StatusBadge tone={r.status === "APPROVED" ? "ok" : r.status === "REFUSED" ? "bad" : "wait"}>{ACCREDITATION_STATUS_LABELS[r.status]}</StatusBadge>
                 </p>
                 <p className="text-muted-foreground">
-                  {r.number} · {r.outlet} · {PRESS_ROLE_LABELS[r.role]} · carte {r.pressCardNumber}
+                  {r.number} · {r.outlet} · {PRESS_ROLE_LABELS[r.role]} · {pressCredential(r).toLowerCase()}
                 </p>
                 <p className="text-muted-foreground">
                   {formatCongoPhone(r.phone)}

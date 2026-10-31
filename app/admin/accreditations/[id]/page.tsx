@@ -7,7 +7,7 @@ import { RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { UploadForm } from "@/components/admin/upload-form";
 import { requirePermission } from "@/lib/auth/guard";
-import { ACCREDITATION_STATUS_LABELS, PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, PRESS_ZONES, pressPhotoUrl } from "@/lib/accreditations";
+import { ACCREDITATION_STATUS_LABELS, PRESS_PROOF_LABELS, PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, PRESS_ZONES, pressCredential, pressPhotoUrl, type PressProofKind } from "@/lib/accreditations";
 import { db } from "@/lib/db";
 import { accreditations, ticketEvents, users } from "@/lib/db/schema";
 import { formatDateTime } from "@/lib/format";
@@ -38,7 +38,7 @@ export default async function AccreditationPage({ params }: PageProps<"/admin/ac
     ["Match", `${event.title} — ${formatDateTime(event.kickoffAt)}`],
     ["Média", acc.outlet],
     ["Fonction", PRESS_ROLE_LABELS[acc.role]],
-    ["Carte de presse", acc.pressCardNumber],
+    ["Qualité de journaliste", pressCredential(acc)],
     ["Téléphone", formatCongoPhone(acc.phone)],
     ["E-mail", acc.email ?? "—"],
     ["Demande reçue le", formatDateTime(acc.createdAt)],
@@ -86,6 +86,14 @@ export default async function AccreditationPage({ params }: PageProps<"/admin/ac
                 </div>
               ))}
             </dl>
+            {/* Justificatif joint à la demande : à consulter avant de décider. */}
+            {acc.proofKey ? (
+              <a href={`/admin/accreditations/${acc.id}/justificatif`} target="_blank" rel="noreferrer" className="admin-btn admin-btn-outline w-fit">
+                Voir le justificatif : {PRESS_PROOF_LABELS[(acc.proofKind ?? "CARD") as PressProofKind]}
+              </a>
+            ) : (
+              <p className="text-xs text-muted-foreground">Aucun justificatif joint (numéro de carte seul).</p>
+            )}
             <ul aria-label="Zones" className="flex flex-wrap gap-2 text-xs">
               {PRESS_ZONES.map((z) => {
                 const granted = acc.grantedZones?.includes(z);

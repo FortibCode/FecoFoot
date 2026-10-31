@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { blankToNull, fromZodError, type ActionState } from "@/lib/action-state";
-import { PRESS_ROLES, PRESS_ZONES, requestError, formatAccreditationNumber } from "@/lib/accreditations";
+import { PRESS_ROLES, PRESS_ZONES, pressProofError, requestError, formatAccreditationNumber } from "@/lib/accreditations";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { accreditationNumberSeq, accreditations, ticketEvents } from "@/lib/db/schema";
@@ -29,7 +29,7 @@ const RequestSchema = z.object({
   email: z.preprocess(blankToNull, z.email({ error: "Adresse e-mail invalide." }).nullable()),
   outlet: z.string().trim().min(2, { error: "Organe de presse requis." }).max(160),
   role: z.enum(PRESS_ROLES, { error: "Fonction requise." }),
-  pressCardNumber: z.string().trim().toUpperCase().min(3, { error: "Numéro de carte de presse requis." }).max(40),
+  pressCardNumber: z.preprocess(blankToNull, z.string().trim().toUpperCase().max(40).nullable()),
 });
 
 /** Demande d'accréditation en ligne pour un match (EF-MED-01, EF-MED-02). */
@@ -50,6 +50,21 @@ export async function requestAccreditation(eventId: number, _state: ActionState,
   const kind = sniffKind(photo);
   if ((kind !== "jpeg" && kind !== "png") || !imageSize(photo)) return { error: "Photo non acceptée : JPEG ou PNG.", fieldErrors: { photo: ["JPEG ou PNG."] } };
 
+  // Qualité de journaliste : numéro de carte (scan facultatif), ou ordre de mission du média pour qui n'a pas de carte.
+  const hasCard = formData.get("credential") !== "MISSION_LETTER";
+  const proofFile = formData.get("proof");
+  const proofEntry = proofFile instanceof File && proofFile.size > 0 ? proofFile : null;
+  const proofProblem = pressProofError({ hasCard, cardNumber: parsed.data.pressCardNumber ?? "", hasFile: Boolean(proofEntry) });
+  if (proofProblem) return { error: proofProblem.message, fieldErrors: { [proofProblem.field]: [proofProblem.message] } };
+  let proof: Uint8Array | null = null;
+  let proofKind: ReturnType<typeof sniffKind> = null;
+  if (proofEntry) {
+    if (proofEntry.size > MAX_FILE_SIZE) return { error: "Le justificatif dépasse 5 Mo.", fieldErrors: { proof: ["5 Mo au plus."] } };
+    proof = new Uint8Array(await proofEntry.arrayBuffer());
+    proofKind = sniffKind(proof);
+    if (proofKind !== "pdf" && proofKind !== "jpeg" && proofKind !== "png") return { error: "Justificatif non accepté : PDF, JPEG ou PNG.", fieldErrors: { proof: ["PDF, JPEG ou PNG."] } };
+  }
+
   const [event] = await db.select().from(ticketEvents).where(eq(ticketEvents.id, eventId)).limit(1);
   if (!event || event.salesStatus === "DRAFT") return { error: "Match introuvable." };
   const problem = requestError({ kickoffAt: event.kickoffAt, eventCancelled: event.salesStatus === "CANCELLED", zones });
@@ -58,12 +73,18 @@ export async function requestAccreditation(eventId: number, _state: ActionState,
   const tracking = randomToken();
   const photoKey = `accreditations/${eventId}/${randomUUID()}.${kind}`;
   await putFile(photoKey, photo);
+  const proofKey = proof && proofKind ? `accreditations/${eventId}/${randomUUID()}.${proofKind}` : null;
+  if (proofKey && proof) await putFile(proofKey, proof);
   let created: { id: number; number: string };
   try {
     [created] = await db
       .insert(accreditations)
       .values({
         ...parsed.data,
+        pressCardNumber: hasCard ? parsed.data.pressCardNumber : null,
+        proofKind: proofKey ? (hasCard ? "CARD" : "MISSION_LETTER") : null,
+        proofKey,
+        proofType: proofKey && proofKind ? MIME[proofKind] : null,
         lastName: parsed.data.lastName.toUpperCase(),
         phone,
         eventId,
@@ -77,6 +98,7 @@ export async function requestAccreditation(eventId: number, _state: ActionState,
       .returning({ id: accreditations.id, number: accreditations.number });
   } catch (e) {
     await deleteFile(photoKey);
+    if (proofKey) await deleteFile(proofKey).catch(() => undefined);
     if (isUniqueViolation(e, "accreditations_event_phone_uq")) return { error: "Une demande existe déjà avec ce numéro pour ce match." };
     throw e;
   }

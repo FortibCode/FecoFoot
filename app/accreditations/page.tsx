@@ -15,7 +15,7 @@ const weekday = new Intl.DateTimeFormat("fr-FR", { timeZone: "Africa/Brazzaville
 
 /** Les trois étapes d'une accréditation, de la demande au badge. */
 const STEPS = [
-  { icon: <IdCardIcon className="size-5" />, title: "Demande en ligne", text: `Un formulaire par match, au plus tard ${REQUEST_DEADLINE_HOURS} h avant le coup d'envoi, avec votre carte de presse et une photo d'identité.` },
+  { icon: <IdCardIcon className="size-5" />, title: "Demande en ligne", text: `Un formulaire par match, au plus tard ${REQUEST_DEADLINE_HOURS} h avant le coup d'envoi, avec votre carte de presse (ou l'ordre de mission de votre média) et une photo d'identité.` },
   { icon: <CheckCircleIcon className="size-5" />, title: "Validation", text: "Le service communication de la fédération examine chaque demande et les zones demandées, selon les places disponibles." },
   { icon: <QrIcon className="size-5" />, title: "Badge numérique", text: "Une fois validée, votre badge à QR code est disponible depuis votre lien de suivi : présentez-le à l'entrée du stade." },
 ];

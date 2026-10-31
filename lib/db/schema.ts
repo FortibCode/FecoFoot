@@ -1293,7 +1293,12 @@ export const accreditations = pgTable(
     email: varchar("email", { length: 255 }),
     outlet: varchar("outlet", { length: 160 }).notNull(),
     role: pressRoleEnum("role").notNull(),
-    pressCardNumber: varchar("press_card_number", { length: 40 }).notNull(),
+    // Numéro de carte de presse ; absent pour un pigiste ou un stagiaire, qui joint alors l'ordre de mission de son média.
+    pressCardNumber: varchar("press_card_number", { length: 40 }),
+    // Justificatif joint (privé, service communication) : scan de la carte (CARD) ou ordre de mission (MISSION_LETTER).
+    proofKind: varchar("proof_kind", { length: 16 }),
+    proofKey: varchar("proof_key", { length: 255 }),
+    proofType: varchar("proof_type", { length: 64 }),
     // Photo d'identité du badge (stockage des fichiers) ; absente pour les demandes antérieures à son introduction.
     photoKey: varchar("photo_key", { length: 255 }),
     photoType: varchar("photo_type", { length: 64 }),

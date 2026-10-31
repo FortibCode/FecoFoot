@@ -3,6 +3,8 @@ import type { Page } from "@playwright/test";
 import { extractLink, latestNotification, withDb } from "./db";
 import { admin, button, createUser, e2eEmail, formAlert, login, logout, RUN } from "./helpers";
 
+// Ordre de mission minimal (PDF reconnu à sa signature « %PDF »).
+const PDF_LETTER = Buffer.from("%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
 const PNG_1PX = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
 async function createEvent(page: Page, title: string, kickoff: Date) {
@@ -25,7 +27,7 @@ async function createEvent(page: Page, title: string, kickoff: Date) {
   return id;
 }
 
-async function requestFor(p: Page, title: string, who: { last: string; phone: string; role: string; zones: string[] }) {
+async function requestFor(p: Page, title: string, who: { last: string; phone: string; role: string; zones: string[]; letter?: boolean }) {
   await p.goto("/accreditations");
   await p.getByRole("link", { name: new RegExp(title) }).click();
   await p.fill('input[name="lastName"]', who.last);
@@ -33,7 +35,13 @@ async function requestFor(p: Page, title: string, who: { last: string; phone: st
   await p.fill('input[name="phone"]', who.phone);
   await p.fill('input[name="outlet"]', "Journal E2E");
   await p.selectOption('select[name="role"]', who.role);
-  await p.fill('input[name="pressCardNumber"]', `CP-${who.phone.replace(/\D/g, "")}`);
+  // Sans carte de presse : ordre de mission du média, à la place du numéro de carte.
+  if (who.letter) {
+    await p.check('input[name="credential"][value="MISSION_LETTER"]');
+    await p.locator('input[name="proof"]').setInputFiles({ name: "ordre-de-mission.pdf", mimeType: "application/pdf", buffer: PDF_LETTER });
+  } else {
+    await p.fill('input[name="pressCardNumber"]', `CP-${who.phone.replace(/\D/g, "")}`);
+  }
   for (const box of await p.locator('input[name="zones"]').all()) await box.uncheck();
   for (const z of who.zones) await p.check(`input[name="zones"][value="${z}"]`);
   await p.locator('input[name="photo"]').setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: PNG_1PX });
@@ -72,7 +80,7 @@ test("accréditations : demande, quotas, validation, badge et contrôle d'accès
   await expect(formAlert(press)).toContainText("existe déjà");
   await requestFor(press, title, { last: `E2EPHOTOB${RUN}`, phone: phoneB, role: "PHOTOGRAPHER", zones: ["PITCHSIDE"] });
   await expect(press).toHaveURL(/\/accreditations\/suivi\//);
-  await requestFor(press, title, { last: `E2EATTENTE${RUN}`, phone: phoneC, role: "JOURNALIST", zones: ["MIXED_ZONE"] });
+  await requestFor(press, title, { last: `E2EATTENTE${RUN}`, phone: phoneC, role: "JOURNALIST", zones: ["MIXED_ZONE"], letter: true });
   await expect(press).toHaveURL(/\/accreditations\/suivi\//);
 
   // Communication : quota d'une place en bord terrain (EF-MED-05), validations (EF-MED-03)
@@ -147,9 +155,22 @@ test("accréditations : demande, quotas, validation, badge et contrôle d'accès
   await expect(page.locator("dialog[open]").getByRole("alert")).toContainText("déjà servi au stade");
   await page.locator("dialog[open]").getByRole("button", { name: "Fermer" }).click();
 
-  // Demande en attente : suppression depuis la liste.
+  // Demande sans carte de presse : ordre de mission consultable par la communication seulement.
   await page.goto(`/admin/accreditations?event=${eventId}`);
   const nameWait = `Reporter ${`E2EATTENTE${RUN}`.toUpperCase()}`;
+  await page.getByRole("link", { name: `Voir ${nameWait}` }).click();
+  await expect(page.locator("main")).toContainText("Ordre de mission du média");
+  const proofHref = (await page.getByRole("link", { name: /Voir le justificatif/ }).getAttribute("href"))!;
+  const proof = await page.request.get(proofHref);
+  expect(proof.status()).toBe(200);
+  expect(proof.headers()["content-type"]).toBe("application/pdf");
+  // Hors de l'espace fédéral : renvoyé vers la connexion, jamais le document.
+  const outside = await press.request.get(proofHref, { maxRedirects: 0 });
+  expect(outside.status()).toBe(307);
+  expect(outside.headers()["content-type"] ?? "").not.toContain("pdf");
+
+  // Demande en attente : suppression depuis la liste.
+  await page.goto(`/admin/accreditations?event=${eventId}`);
   await page.getByRole("button", { name: `Supprimer ${nameWait}` }).click();
   await page.locator("dialog[open]").getByRole("button", { name: "Supprimer" }).click();
   await expect(page.locator("main")).not.toContainText(nameWait);

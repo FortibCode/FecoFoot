@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
-import { PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, PRESS_ZONES, type PressRole, type PressZone } from "@/lib/accreditations";
+import { PRESS_ROLE_LABELS, PRESS_ZONE_LABELS, PRESS_ZONES, type PressRole, type PressZone, pressCredential } from "@/lib/accreditations";
 import { parseEventTitle } from "@/lib/ticketing";
 
 const MM = 72 / 25.4;
@@ -33,7 +33,7 @@ export type PressBadgePdfData = {
   firstName: string;
   outlet: string;
   role: PressRole;
-  pressCardNumber: string;
+  pressCardNumber: string | null;
   grantedZones: PressZone[];
   event: string;
   kickoffAt: Date;
@@ -85,7 +85,7 @@ export async function pressBadgePdf(a: PressBadgePdfData): Promise<Buffer> {
   doc.roundedRect(ix, roleY, iw, 6 * MM, 3 * MM).fill(INK);
   doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(7.5).text(PRESS_ROLE_LABELS[a.role].toUpperCase(), ix, roleY + 1.8 * MM, { width: iw, align: "center", characterSpacing: 0.8 });
   doc.fillColor(INK).font("Helvetica-Bold").fontSize(9).text(a.outlet, ix, roleY + 9 * MM, { width: iw });
-  doc.font("Helvetica").fontSize(7).fillColor(GREY).text(`Carte de presse ${a.pressCardNumber}`, ix, doc.y + 1 * MM, { width: iw });
+  doc.font("Helvetica").fontSize(7).fillColor(GREY).text(pressCredential(a), ix, doc.y + 1 * MM, { width: iw });
 
   // Zones numérotées : accordées en vert, refusées en gris barré.
   const zy = 82 * MM;

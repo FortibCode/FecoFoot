@@ -68,7 +68,7 @@ export function QuotaForm({ action, quotas }: { action: Action; quotas: Partial<
   );
 }
 
-type Values = { lastName: string; firstName: string; phone: string; email: string | null; outlet: string; role: PressRole; pressCardNumber: string };
+type Values = { lastName: string; firstName: string; phone: string; email: string | null; outlet: string; role: PressRole; pressCardNumber: string | null };
 
 /** Fiche d'un membre de la presse : identité, contacts, média, fonction, carte de presse. */
 export function AccreditationForm({ action, initial }: { action: Action; initial: Values }) {
@@ -88,7 +88,7 @@ export function AccreditationForm({ action, initial }: { action: Action; initial
           </option>
         ))}
       </SelectField>
-      <TextField label="N° de carte de presse" name="pressCardNumber" required defaultValue={initial.pressCardNumber} errors={fe?.pressCardNumber} />
+      <TextField label="N° de carte de presse" name="pressCardNumber" defaultValue={initial.pressCardNumber ?? ""} hint="Vide si accrédité sur ordre de mission du média." errors={fe?.pressCardNumber} />
       <div className="flex flex-col gap-3 sm:col-span-2">
         <FormMessage state={state} />
         <Button type="submit" disabled={pending} className="h-10 w-fit">
