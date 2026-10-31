@@ -40,25 +40,35 @@ function MemberCard({ m, index }: { m: Member; index: number }) {
   const photo = memberPhotoUrl(m);
   const president = positionRank(m.position) === 0;
   return (
-    <li data-reveal="up" style={{ ["--rd" as string]: `${150 + Math.min(index, 8) * 90}ms` }}>
+    // Distribution : depuis la gauche, le bas, puis la droite, à tour de rôle, une carte après l'autre.
+    <li
+      data-reveal="deal"
+      style={{
+        ["--rd" as string]: `${200 + Math.min(index, 10) * 220}ms`,
+        ["--deal-x" as string]: ["-120px", "0px", "120px"][index % 3],
+        ["--deal-r" as string]: ["-8deg", "3deg", "8deg"][index % 3],
+      }}
+    >
       <figure
         tabIndex={0}
         className="group flex h-full cursor-pointer flex-col overflow-hidden bg-brand-ink transition-[transform,box-shadow] duration-300 ease-out outline-none hover:shadow-[0_22px_44px_-22px_rgb(0_0_0/0.6)] focus-visible:ring-2 focus-visible:ring-[var(--flag-green)] focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1.5 motion-safe:focus:-translate-y-1.5"
       >
-        <div className={`relative aspect-[3/4] overflow-hidden bg-[linear-gradient(160deg,#6b7470_0%,#3f4744_100%)] ${president ? "border-b-4 border-[var(--flag-yellow)]" : ""}`}>
-          {photo ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element -- portrait servi par la route des médias */}
-              <img src={photo} alt={`${m.fullName}, ${m.position}`} loading="lazy" className="size-full object-cover object-top transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.06] motion-safe:group-focus:scale-[1.06]" />
-              {m.photoCredit && <span className="absolute right-2 bottom-2 bg-black/45 px-1.5 py-0.5 text-[0.6rem] text-white/85">© {m.photoCredit}</span>}
-            </>
-          ) : (
-            // Sans photo officielle : écusson en filigrane et initiales.
-            <div aria-hidden className="relative grid size-full place-items-center overflow-hidden bg-[linear-gradient(160deg,var(--flag-green)_0%,var(--brand-ink)_85%)]">
-              <span className="absolute -right-10 -bottom-8 aspect-[1741/1975] h-[85%] bg-white opacity-[0.08] [mask:url(/fecofoot-mark.svg)_center/contain_no-repeat]" />
-              <span className="font-display text-6xl font-bold tracking-wide text-white/90 transition-opacity duration-300 group-hover:opacity-0 group-focus:opacity-0 sm:text-7xl">{initials(m.fullName)}</span>
-            </div>
-          )}
+        <div className={`relative aspect-[3/4] overflow-hidden bg-brand-ink ${president ? "border-b-4 border-[var(--flag-yellow)]" : ""}`}>
+          <div className="deal-photo absolute inset-0 bg-[linear-gradient(160deg,#6b7470_0%,#3f4744_100%)]">
+            {photo ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- portrait servi par la route des médias */}
+                <img src={photo} alt={`${m.fullName}, ${m.position}`} loading="lazy" className="size-full object-cover object-top transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.06] motion-safe:group-focus:scale-[1.06]" />
+                {m.photoCredit && <span className="absolute right-2 bottom-2 bg-black/45 px-1.5 py-0.5 text-[0.6rem] text-white/85">© {m.photoCredit}</span>}
+              </>
+            ) : (
+              // Sans photo officielle : écusson en filigrane et initiales.
+              <div aria-hidden className="relative grid size-full place-items-center overflow-hidden bg-[linear-gradient(160deg,var(--flag-green)_0%,var(--brand-ink)_85%)]">
+                <span className="absolute -right-10 -bottom-8 aspect-[1741/1975] h-[85%] bg-white opacity-[0.08] [mask:url(/fecofoot-mark.svg)_center/contain_no-repeat]" />
+                <span className="font-display text-6xl font-bold tracking-wide text-white/90 transition-opacity duration-300 group-hover:opacity-0 group-focus:opacity-0 sm:text-7xl">{initials(m.fullName)}</span>
+              </div>
+            )}
+          </div>
           {/* Au toucher : voile aux couleurs de la fédération, nom et fonction au centre de la photo. */}
           <div
             aria-hidden
