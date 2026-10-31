@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
  * Onglets (catégories de l'accueil, rubriques de la fiche d'un match). Tous les panneaux sont rendus par le serveur : changer
  * d'onglet est immédiat, sans requête. Clavier : flèches gauche / droite, Début, Fin.
  */
-export function MatchTabs({ tabs, initial, label = "Catégories de matchs" }: { tabs: { id: string; label: string; icon?: ReactNode; live?: boolean; panel: ReactNode }[]; initial: string; label?: string }) {
+export function MatchTabs({ tabs, initial, label = "Catégories de matchs", reveal = false }: { tabs: { id: string; label: string; icon?: ReactNode; live?: boolean; panel: ReactNode }[]; initial: string; label?: string; /** Onglets qui apparaissent l'un après l'autre, de gauche à droite (accueil). */ reveal?: boolean }) {
   const [active, setActive] = useState(tabs.some((t) => t.id === initial) ? initial : tabs[0]?.id);
   const base = useId();
   // Lien direct vers un onglet (« …#photos ») : l'onglet de l'ancre s'ouvre à l'arrivée.
@@ -41,6 +41,7 @@ export function MatchTabs({ tabs, initial, label = "Catégories de matchs" }: { 
               }}
               type="button"
               role="tab"
+              {...(reveal ? { "data-reveal": "left", style: { ["--rd" as string]: `${i * 70}ms` } } : {})}
               id={`${base}-tab-${t.id}`}
               aria-selected={selected}
               aria-controls={`${base}-panel-${t.id}`}

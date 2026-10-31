@@ -25,6 +25,7 @@ import { championshipLogoUrl } from "@/lib/league-logo";
 import { LiveRefresh } from "@/components/live-refresh";
 import { seasonLabel } from "@/lib/licenses";
 import { NationalTeamCards } from "@/components/public/national-team-cards";
+import { SectionFocus } from "@/components/section-focus";
 import { featuredPhotos, latestPhotos, photoUrl, teamCovers } from "@/lib/photos";
 import { CountUp } from "@/components/count-up";
 import { HeroSlideshow } from "@/components/public/hero-slideshow";
@@ -171,9 +172,10 @@ export default async function HomePage() {
 
   return (
     <PublicShell eyebrow="Fédération Congolaise de Football" title="Suivre les compétitions, soutenir les Diables Rouges, vivre le football congolais" wide hero={hero} bare overlayHeader>
+      <SectionFocus />
       {/* Clubs du championnat d'élite : bandeau de logos */}
       {elite && (
-        <section aria-labelledby="elite-title" className="border-b bg-card/80 backdrop-blur-[2px]">
+        <section data-focus aria-labelledby="elite-title" className="border-b bg-card/80 backdrop-blur-[2px]">
           <Container className="flex flex-col gap-4 py-6 lg:flex-row lg:items-center lg:gap-8">
             <div data-reveal="left" className="shrink-0">
               <h2 id="elite-title" className="font-heading text-2xl font-bold uppercase">
@@ -188,7 +190,7 @@ export default async function HomePage() {
             {/* Logos seuls (noms complets en infobulle et pour les lecteurs d'écran) : pas de noms tronqués. */}
             <ul className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:px-0 lg:flex-1 lg:justify-between lg:gap-1">
               {elite.teams.map((t, i) => (
-                <li key={t.id} data-reveal="zoom" style={{ ["--rd" as string]: `${i * 55}ms` }} className="shrink-0 snap-start">
+                <li key={t.id} data-reveal="left" style={{ ["--rd" as string]: `${i * 60}ms` }} className="shrink-0 snap-start">
                   <Link
                     href={`/clubs/${t.slug}`}
                     title={t.name}
@@ -209,7 +211,7 @@ export default async function HomePage() {
       )}
 
       {/* Matchs et résultats : à la une, puis une sélection courte par catégorie */}
-      <section aria-labelledby="matchs-title" className="py-12 sm:py-14">
+      <section data-focus aria-labelledby="matchs-title" className="py-12 sm:py-14">
         <Container className="flex flex-col gap-8">
           <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
             <div data-reveal="left" className="flex flex-col gap-3">
@@ -244,6 +246,7 @@ export default async function HomePage() {
 
           {tabs.length > 0 ? (
             <MatchTabs
+              reveal
               initial={initialTab}
               tabs={tabs.map((t, i) => {
                 const p = panels[i];
@@ -252,7 +255,7 @@ export default async function HomePage() {
                 const column = (kind: "upcoming" | "recent", items: FixtureItem[]) => {
                   const upcoming = kind === "upcoming";
                   return (
-                    <div className="flex min-w-0 flex-col gap-4 bg-muted/60 p-4 sm:p-6">
+                    <div data-reveal="left" style={{ ["--rd" as string]: upcoming ? "0ms" : "160ms" }} className="flex min-w-0 flex-col gap-4 bg-muted/60 p-4 sm:p-6">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <h3 className="flex flex-col gap-2">
                           <span className="flex items-center gap-2.5 font-heading text-xl font-bold uppercase">
@@ -279,8 +282,8 @@ export default async function HomePage() {
                         <p className="bg-card px-4 py-6 text-center text-sm text-muted-foreground">{upcoming ? "Aucun match programmé pour le moment." : "Aucun résultat publié pour le moment."}</p>
                       ) : (
                         <ul className="flex flex-col gap-3">
-                          {items.map((item) => (
-                            <HomeMatchCard key={item.key} item={item} />
+                          {items.map((item, i) => (
+                            <HomeMatchCard key={item.key} item={item} index={i} />
                           ))}
                         </ul>
                       )}
@@ -343,7 +346,7 @@ export default async function HomePage() {
       </section>
 
       {/* Actualités : mosaïque et fil d'infos */}
-      <section className="pb-6 sm:pb-8">
+      <section data-focus className="pb-6 sm:pb-8">
         <Container className="flex flex-col gap-8">
           <div data-reveal="up" className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex flex-col gap-3">
@@ -361,7 +364,7 @@ export default async function HomePage() {
       </section>
 
       {/* Équipes nationales */}
-      <section className="pt-10 pb-12 sm:pt-12 sm:pb-14">
+      <section data-focus className="pt-10 pb-12 sm:pt-12 sm:pb-14">
         <Container className="flex flex-col gap-8">
           <SectionHead
             title="Les Diables"
@@ -375,7 +378,7 @@ export default async function HomePage() {
                 autoplay={4000}
               >
                 {gallery.map((p, i) => (
-                  <li key={p.id} data-reveal="zoom" style={{ ["--rd" as string]: `${Math.min(i, 4) * 90}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
+                  <li key={p.id} data-reveal="left" style={{ ["--rd" as string]: `${Math.min(i, 4) * 120}ms` }} className="w-[78%] shrink-0 snap-start sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]">
                     {/* Touchée, la photo se retourne et affiche sa légende. */}
                     <FlipPhoto src={photoUrl(p)} caption={p.caption} team={p.team} credit={p.credit} href={p.teamSlug ? `/equipes-nationales/${p.teamSlug}#photos` : "/equipes-nationales"} />
                   </li>

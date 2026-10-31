@@ -32,7 +32,7 @@ function Cover({ a, className = "", large = false }: { a: NewsItem; className?: 
 /** Grande vignette : photo pleine, rubrique en étiquette et titre sur un dégradé sombre. */
 function Tile({ a, className = "", index = 0 }: { a: NewsItem; className?: string; index?: number }) {
   return (
-    <li data-reveal="up" style={{ ["--rd" as string]: `${index * 110}ms` }} className={`min-h-60 ${className}`}>
+    <li data-reveal="left" style={{ ["--rd" as string]: `${index * 130}ms` }} className={`min-h-60 ${className}`}>
       <Link href={`/actualites/${a.slug}`} className="group relative flex h-full overflow-hidden bg-brand-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green">
         <Cover a={a} large className="absolute inset-0 size-full transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]" />
         <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_30%,rgb(0_0_0/0.55)_62%,rgb(0_0_0/0.9)_100%)]" />

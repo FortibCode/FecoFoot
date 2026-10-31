@@ -33,13 +33,14 @@ function Team({ team }: { team: FixtureItem["home"] }) {
  * Carte de match de l'accueil : compétition, date et heure, les deux équipes face à face (« VS » ou
  * score validé) et le stade. Toute la carte mène à la fiche du match.
  */
-export function HomeMatchCard({ item }: { item: FixtureItem }) {
+export function HomeMatchCard({ item, index = 0 }: { item: FixtureItem; index?: number }) {
   const showScore = item.score && !item.awaiting && (item.status === "LIVE" || item.status === "FINISHED" || item.status === "SUSPENDED");
   const time = item.kickoffAt ? kickoffTime(item.kickoffAt) : null;
   const done = item.status === "FINISHED" && !item.awaiting;
   const clubs = [item.home.id, item.away.id].filter(Boolean).join(" ");
   return (
-    <li data-clubs={clubs || undefined}>
+    // Apparition en cascade, de haut en bas.
+    <li data-clubs={clubs || undefined} data-reveal="down" style={{ ["--rd" as string]: `${Math.min(index, 5) * 120}ms` }}>
       <Link
         href={item.href}
         className="group flex flex-col gap-4 bg-card p-4 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-flag-green sm:p-5"

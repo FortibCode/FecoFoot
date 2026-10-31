@@ -156,7 +156,7 @@ export function FeaturedTeamCard({ team, cover }: { team: Team; cover?: string }
  * illustrées d'abord, dans l'ordre officiel), puis « Voir plus » vers la page de toutes les sélections.
  */
 export function NationalTeamCards({ teams, covers = {}, count = 3, reveal = false }: { teams: readonly Team[]; covers?: Record<string, string>; count?: number; reveal?: boolean }) {
-  const rv = (i: number) => (reveal ? { "data-reveal": "up", style: { ["--rd" as string]: `${i * 90}ms` } } : {});
+  const rv = (i: number) => (reveal ? { "data-reveal": "left", style: { ["--rd" as string]: `${i * 150}ms` } } : {});
   // Les sélections qui ont une photo d'abord (ordre officiel conservé) ; les autres sont sur la page complète.
   const shown = [...teams.filter((t) => covers[t.slug]), ...teams.filter((t) => !covers[t.slug])].slice(0, count);
   return (
