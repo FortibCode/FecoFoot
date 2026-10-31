@@ -32,9 +32,9 @@ function initials(name: string) {
 type Member = { id: number; fullName: string; position: string; photoKey: string | null; photoCredit: string | null };
 
 /**
- * Carte portrait d'un membre : sa photo officielle en grand (ou, à défaut, un portrait aux couleurs de la
- * fédération avec ses initiales), puis son nom et sa fonction sur un bandeau foncé. Le président : filet jaune.
- * Au toucher, au survol ou au clavier : un voile couvre la photo et le nom et la fonction viennent en son centre.
+ * Carte portrait d'un membre : sa photo officielle seule (ou, à défaut, un portrait aux couleurs de la fédération
+ * avec ses initiales) ; le président : filet jaune. Au toucher, au survol ou au clavier : un voile couvre la photo
+ * et le nom et la fonction apparaissent en son centre.
  */
 function MemberCard({ m, index }: { m: Member; index: number }) {
   const photo = memberPhotoUrl(m);
@@ -45,7 +45,7 @@ function MemberCard({ m, index }: { m: Member; index: number }) {
         tabIndex={0}
         className="group flex h-full cursor-pointer flex-col overflow-hidden bg-brand-ink transition-[transform,box-shadow] duration-300 ease-out outline-none hover:shadow-[0_22px_44px_-22px_rgb(0_0_0/0.6)] focus-visible:ring-2 focus-visible:ring-[var(--flag-green)] focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1.5 motion-safe:focus:-translate-y-1.5"
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(160deg,#6b7470_0%,#3f4744_100%)]">
+        <div className={`relative aspect-[3/4] overflow-hidden bg-[linear-gradient(160deg,#6b7470_0%,#3f4744_100%)] ${president ? "border-b-4 border-[var(--flag-yellow)]" : ""}`}>
           {photo ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element -- portrait servi par la route des médias */}
@@ -69,9 +69,9 @@ function MemberCard({ m, index }: { m: Member; index: number }) {
             <span className={`translate-y-4 text-sm font-semibold transition-transform delay-100 duration-500 ease-out group-hover:translate-y-0 group-focus:translate-y-0 ${president ? "text-[var(--flag-yellow)]" : "text-white/85"}`}>{m.position}</span>
           </div>
         </div>
-        <figcaption className={`flex flex-1 flex-col items-center justify-center gap-0.5 px-3 py-3.5 text-center text-white transition-opacity duration-300 group-hover:opacity-0 group-focus:opacity-0 ${president ? "border-t-4 border-[var(--flag-yellow)]" : ""}`}>
-          <span className="font-semibold leading-tight sm:text-lg">{m.fullName}</span>
-          <span className={`text-sm ${president ? "text-[var(--flag-yellow)]" : "text-white/70"}`}>{m.position}</span>
+        {/* Nom et fonction : affichés au centre de la photo au toucher ; toujours lus par les lecteurs d'écran. */}
+        <figcaption className="sr-only">
+          {m.fullName}, {m.position}
         </figcaption>
       </figure>
     </li>
