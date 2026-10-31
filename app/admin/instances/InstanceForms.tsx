@@ -73,3 +73,25 @@ export function EndMandateForm({ action, who }: { action: Action; who: string })
     </form>
   );
 }
+
+/** Portrait officiel d'un membre : photo (facultative si un portrait existe déjà) et crédit obligatoire. */
+export function MemberPhotoForm({ action, credit, hasPhoto }: { action: Action; credit: string | null; hasPhoto: boolean }) {
+  const { state, pending, formProps } = useActionForm(action);
+  const fe = state?.fieldErrors;
+  return (
+    <form {...formProps} encType="multipart/form-data" className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <label className="flex flex-col gap-1 text-xs font-medium">
+        {hasPhoto ? "Remplacer la photo" : "Photo"} (JPEG, PNG, WebP · 5 Mo · de préférence en portrait)
+        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required={!hasPhoto} className="text-xs file:mr-2 file:rounded file:border file:bg-muted file:px-2 file:py-1" />
+        {fe?.photo && <span className="text-destructive">{fe.photo[0]}</span>}
+      </label>
+      <TextField label="Crédit (auteur ou source)" name="credit" required maxLength={240} defaultValue={credit ?? ""} placeholder="FECOFOOT" errors={fe?.credit} />
+      <Button type="submit" variant="outline" disabled={pending} className="h-10 w-fit">
+        {hasPhoto ? "Mettre à jour" : "Ajouter la photo"}
+      </Button>
+      <div className="sm:col-span-3">
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}

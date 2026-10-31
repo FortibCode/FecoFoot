@@ -3,9 +3,8 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { selectionPlayers, selections } from "@/lib/db/schema";
+import { portraitType } from "@/lib/portraits";
 import { getFileOrNull } from "@/lib/storage";
-
-const TYPES: Record<string, string> = { jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
 
 /**
  * Portrait d'un joueur convoqué hors registre : public une fois la liste publiée ; avant, visible seulement
@@ -30,7 +29,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/media/convoques
   if (!bytes) return new Response("Introuvable", { status: 404 });
   return new Response(new Uint8Array(bytes), {
     headers: {
-      "Content-Type": TYPES[row.key.split(".").pop() ?? ""] ?? "application/octet-stream",
+      "Content-Type": portraitType(row.key),
       "X-Content-Type-Options": "nosniff",
       // Aperçu d'une liste non publiée : jamais mis en cache partagé.
       "Cache-Control": published ? "public, max-age=86400" : "private, no-store",

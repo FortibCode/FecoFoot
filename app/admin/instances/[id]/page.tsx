@@ -10,8 +10,9 @@ import { db } from "@/lib/db";
 import { governanceBodies, governanceMembers } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
 import { GOVERNANCE_BODY_KIND_LABELS, sortMembers } from "@/lib/governance";
-import { addMember, deleteMember, endMemberMandate, updateBody } from "../actions";
-import { BodyForm, EndMandateForm, MemberForm } from "../InstanceForms";
+import { addMember, deleteMember, endMemberMandate, removeMemberPhoto, setMemberPhoto, updateBody } from "../actions";
+import { BodyForm, EndMandateForm, MemberForm, MemberPhotoForm } from "../InstanceForms";
+import { memberPhotoUrl } from "@/lib/member-photo";
 
 export const metadata: Metadata = { title: "Instance — FECOFOOT" };
 
@@ -44,9 +45,33 @@ export default async function InstancePage({ params }: PageProps<"/admin/instanc
           {active.length === 0 ? (
             <EmptyState icon="users" title="Aucun membre en fonction" compact />
           ) : (
-            <DataTable head={["Nom", "Fonction", "Depuis", "Référence", ""]}>
+            <DataTable head={["Photo", "Nom", "Fonction", "Depuis", "Référence", ""]}>
               {active.map((m) => (
                 <tr key={m.id}>
+                  <td className="px-3 py-2 align-top">
+                    {/* Portrait de la page « La Fédération » : aperçu, ajout ou remplacement, retrait. */}
+                    <div className="flex flex-col gap-2">
+                      {memberPhotoUrl(m) ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- portrait servi par la route des médias
+                        <img src={memberPhotoUrl(m)!} alt="" className="h-16 w-12 object-cover object-top" />
+                      ) : (
+                        <span className="grid h-16 w-12 place-items-center bg-muted text-[0.65rem] text-muted-foreground">Aucune</span>
+                      )}
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground">{m.photoKey ? "Modifier" : "Ajouter"}</summary>
+                        <div className="flex w-[34rem] max-w-[80vw] flex-col gap-2 pt-2">
+                          <MemberPhotoForm action={setMemberPhoto.bind(null, id, m.id)} credit={m.photoCredit} hasPhoto={Boolean(m.photoKey)} />
+                          {m.photoKey && (
+                            <form action={removeMemberPhoto.bind(null, id, m.id)}>
+                              <button type="submit" className="text-xs font-semibold text-destructive hover:underline">
+                                Retirer la photo
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      </details>
+                    </div>
+                  </td>
                   <td className="px-3 py-2 font-medium">{m.fullName}</td>
                   <td className="px-3 py-2">{m.position}</td>
                   <td className="px-3 py-2 tabular-nums">{m.startDate ? formatDate(new Date(`${m.startDate}T12:00:00`)) : "—"}</td>

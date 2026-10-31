@@ -1,6 +1,8 @@
 import { expect, test } from "./fixtures";
 import { admin, button, login, RUN } from "./helpers";
 
+const PNG_1PX = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+
 /** Instances et commissions : création, membres, fin de mandat, page publique « La Fédération ». */
 test("instances : commission, membres, mandat clos et page publique", async ({ page, browser }) => {
   const name = `E2E Commission ${RUN}`;
@@ -25,12 +27,25 @@ test("instances : commission, membres, mandat clos et page publique", async ({ p
   }
   await expect(page.locator("main table").first().locator("tbody tr").first()).toContainText("E2EPRESIDENT Jean");
 
+  // Portrait officiel du président, avec son crédit.
+  const president = page.locator("main table").first().locator("tr").filter({ hasText: "E2EPRESIDENT Jean" });
+  await president.getByText("Ajouter", { exact: true }).click();
+  await president.locator('input[name="photo"]').setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: PNG_1PX });
+  await president.locator('input[name="credit"]').fill("E2E Photographe");
+  await president.getByRole("button", { name: "Ajouter la photo" }).click();
+  await expect(president.locator('img[src^="/media/membres/"]')).toBeVisible();
+
   // Page publique : la commission et ses membres.
   const visitor = await (await browser.newContext()).newPage();
   await visitor.goto("/federation");
   const section = visitor.getByRole("region", { name });
   await expect(section).toContainText("E2EPRESIDENT Jean");
   await expect(section).toContainText("E2EMEMBRE Paul");
+  // Carte portrait : photo et crédit du président, servie sans session.
+  const portrait = section.getByRole("img", { name: "E2EPRESIDENT Jean, Président" });
+  await expect(portrait).toBeVisible();
+  await expect(section).toContainText("© E2E Photographe");
+  expect((await visitor.request.get((await portrait.getAttribute("src"))!)).status()).toBe(200);
 
   // Fin de mandat : le membre passe dans l'historique et quitte la page publique.
   const row = page.locator("main table").first().locator("tr").filter({ hasText: "E2EMEMBRE Paul" });

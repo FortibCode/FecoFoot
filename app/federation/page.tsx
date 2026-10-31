@@ -6,6 +6,7 @@ import { PublicShell } from "@/components/public/public-shell";
 import { GOVERNANCE_BODY_KIND_LABELS, positionRank, type GovernanceBodyKind } from "@/lib/governance";
 import { publishedBodies } from "@/lib/queries/governance";
 import { siteSettingsRow } from "@/lib/queries/reference";
+import { memberPhotoUrl } from "@/lib/member-photo";
 
 export const metadata: Metadata = {
   title: "La Fédération — FECOFOOT",
@@ -28,15 +29,52 @@ function initials(name: string) {
   return ((words[0]?.[0] ?? "") + (words.length > 1 ? (words.at(-1)?.[0] ?? "") : "")).toUpperCase();
 }
 
-/** Médaillon d'initiales dans un anneau aux couleurs du drapeau. */
-function Avatar({ name, size = "md" }: { name: string; size?: "md" | "lg" }) {
+type Member = { id: number; fullName: string; position: string; photoKey: string | null; photoCredit: string | null };
+
+/**
+ * Carte portrait d'un membre : sa photo officielle en grand (ou, à défaut, un portrait aux couleurs de la
+ * fédération avec ses initiales), puis son nom et sa fonction sur un bandeau foncé. Le président : filet jaune.
+ * Au toucher, au survol ou au clavier : un voile couvre la photo et le nom et la fonction viennent en son centre.
+ */
+function MemberCard({ m, index }: { m: Member; index: number }) {
+  const photo = memberPhotoUrl(m);
+  const president = positionRank(m.position) === 0;
   return (
-    <span
-      aria-hidden
-      className={`grid shrink-0 place-items-center rounded-full bg-[conic-gradient(var(--flag-green)_0_33%,var(--flag-yellow)_33%_66%,var(--flag-red)_66%_100%)] p-[3px] ${size === "lg" ? "size-16" : "size-12"}`}
-    >
-      <span className={`grid size-full place-items-center rounded-full bg-brand-ink font-display font-bold text-white ${size === "lg" ? "text-xl" : "text-base"}`}>{initials(name)}</span>
-    </span>
+    <li data-reveal="up" style={{ ["--rd" as string]: `${150 + Math.min(index, 8) * 90}ms` }}>
+      <figure
+        tabIndex={0}
+        className="group flex h-full cursor-pointer flex-col overflow-hidden bg-brand-ink transition-[transform,box-shadow] duration-300 ease-out outline-none hover:shadow-[0_22px_44px_-22px_rgb(0_0_0/0.6)] focus-visible:ring-2 focus-visible:ring-[var(--flag-green)] focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1.5 motion-safe:focus:-translate-y-1.5"
+      >
+        <div className="relative aspect-[3/4] overflow-hidden bg-[linear-gradient(160deg,#6b7470_0%,#3f4744_100%)]">
+          {photo ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- portrait servi par la route des médias */}
+              <img src={photo} alt={`${m.fullName}, ${m.position}`} loading="lazy" className="size-full object-cover object-top transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.06] motion-safe:group-focus:scale-[1.06]" />
+              {m.photoCredit && <span className="absolute right-2 bottom-2 bg-black/45 px-1.5 py-0.5 text-[0.6rem] text-white/85">© {m.photoCredit}</span>}
+            </>
+          ) : (
+            // Sans photo officielle : écusson en filigrane et initiales.
+            <div aria-hidden className="relative grid size-full place-items-center overflow-hidden bg-[linear-gradient(160deg,var(--flag-green)_0%,var(--brand-ink)_85%)]">
+              <span className="absolute -right-10 -bottom-8 aspect-[1741/1975] h-[85%] bg-white opacity-[0.08] [mask:url(/fecofoot-mark.svg)_center/contain_no-repeat]" />
+              <span className="font-display text-6xl font-bold tracking-wide text-white/90 transition-opacity duration-300 group-hover:opacity-0 group-focus:opacity-0 sm:text-7xl">{initials(m.fullName)}</span>
+            </div>
+          )}
+          {/* Au toucher : voile aux couleurs de la fédération, nom et fonction au centre de la photo. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--brand-ink)_55%,transparent)_0%,color-mix(in_srgb,var(--flag-green)_62%,var(--brand-ink))_100%)] px-4 text-center text-white opacity-0 transition-opacity duration-400 ease-out group-hover:opacity-100 group-focus:opacity-100"
+          >
+            <span className="translate-y-4 font-display text-xl leading-tight font-bold uppercase transition-transform duration-500 ease-out group-hover:translate-y-0 group-focus:translate-y-0 sm:text-2xl">{m.fullName}</span>
+            <span aria-hidden className="h-1 w-12 translate-y-4 bg-[linear-gradient(90deg,var(--flag-green)_0_33.33%,var(--flag-yellow)_33.33%_66.66%,var(--flag-red)_66.66%)] transition-transform delay-75 duration-500 ease-out group-hover:translate-y-0 group-focus:translate-y-0" />
+            <span className={`translate-y-4 text-sm font-semibold transition-transform delay-100 duration-500 ease-out group-hover:translate-y-0 group-focus:translate-y-0 ${president ? "text-[var(--flag-yellow)]" : "text-white/85"}`}>{m.position}</span>
+          </div>
+        </div>
+        <figcaption className={`flex flex-1 flex-col items-center justify-center gap-0.5 px-3 py-3.5 text-center text-white transition-opacity duration-300 group-hover:opacity-0 group-focus:opacity-0 ${president ? "border-t-4 border-[var(--flag-yellow)]" : ""}`}>
+          <span className="font-semibold leading-tight sm:text-lg">{m.fullName}</span>
+          <span className={`text-sm ${president ? "text-[var(--flag-yellow)]" : "text-white/70"}`}>{m.position}</span>
+        </figcaption>
+      </figure>
+    </li>
   );
 }
 
@@ -114,8 +152,6 @@ export default async function FederationPage() {
             </nav>
 
             {bodies.map((b) => {
-              const leaders = b.members.filter((m) => positionRank(m.position) <= 1);
-              const others = b.members.filter((m) => positionRank(m.position) > 1);
               const kind = GOVERNANCE_BODY_KIND_LABELS[b.kind];
               return (
                 <section key={b.id} aria-labelledby={`instance-${b.id}`} className="flex scroll-mt-28 flex-col gap-6">
@@ -138,49 +174,11 @@ export default async function FederationPage() {
                       Composition à publier.
                     </p>
                   ) : (
-                    <div className="flex flex-col gap-3">
-                      {leaders.length > 0 && (
-                        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {leaders.map((m, i) => {
-                            // Le président : carte foncée mise en valeur ; les vice-présidents : cartes claires.
-                            const president = positionRank(m.position) === 0;
-                            return (
-                              <li key={m.id} data-reveal="left" style={{ ["--rd" as string]: `${150 + i * 120}ms` }}>
-                                <div
-                                  className={`group relative isolate flex h-full items-center gap-4 overflow-hidden p-5 transition-[transform,box-shadow] duration-300 ease-out hover:shadow-[0_18px_36px_-20px_rgb(0_0_0/0.45)] motion-safe:hover:-translate-y-1 ${president ? "bg-brand-ink text-white" : "bg-muted/60"}`}
-                                >
-                                  {president && (
-                                    <svg aria-hidden viewBox="0 0 200 300" preserveAspectRatio="xMaxYMid slice" className="absolute inset-y-0 right-0 -z-10 h-full w-[22%] transition-transform duration-500 ease-out motion-safe:group-hover:translate-x-1.5">
-                                      <polygon points="70,0 200,0 200,300 70,300 150,150" fill="var(--flag-yellow)" />
-                                    </svg>
-                                  )}
-                                  <Avatar name={m.fullName} size="lg" />
-                                  <span className="min-w-0 pr-8">
-                                    <span className={`block text-xs font-semibold tracking-[0.14em] uppercase ${president ? "text-[var(--flag-yellow)]" : "text-[var(--flag-green)]"}`}>{m.position}</span>
-                                    <span className="block font-display text-xl leading-tight font-bold">{m.fullName}</span>
-                                  </span>
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                      {others.length > 0 && (
-                        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {others.map((m, i) => (
-                            <li key={m.id} data-reveal="up" style={{ ["--rd" as string]: `${200 + Math.min(i, 8) * 70}ms` }}>
-                              <div className="flex h-full items-center gap-3 bg-muted/60 p-4 transition-[background-color,transform] duration-300 ease-out hover:bg-muted motion-safe:hover:-translate-y-0.5">
-                                <Avatar name={m.fullName} />
-                                <span className="min-w-0">
-                                  <span className="block text-[0.7rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">{m.position}</span>
-                                  <span className="block font-semibold">{m.fullName}</span>
-                                </span>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+                    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                      {b.members.map((m, i) => (
+                        <MemberCard key={m.id} m={m} index={i} />
+                      ))}
+                    </ul>
                   )}
                 </section>
               );

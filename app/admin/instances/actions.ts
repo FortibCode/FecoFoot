@@ -12,6 +12,8 @@ import { governanceBodies, governanceMembers } from "@/lib/db/schema";
 import { slugify } from "@/lib/format";
 import { GOVERNANCE_BODY_KINDS } from "@/lib/governance";
 import { isUniqueViolation } from "@/lib/queries/players";
+import { savePortrait } from "@/lib/portraits";
+import { deleteFile } from "@/lib/storage";
 
 const done = (bodyId?: number) => {
   revalidatePath("/admin/instances");
@@ -122,7 +124,39 @@ export async function deleteMember(bodyId: number, memberId: number): Promise<Ac
     .where(and(eq(governanceMembers.id, memberId), eq(governanceMembers.bodyId, bodyId)))
     .returning();
   if (!m) return { error: "Membre introuvable." };
+  if (m.photoKey) await deleteFile(m.photoKey).catch(() => undefined);
   await logAudit({ userId: user.id, action: "GOVERNANCE_MEMBER_DELETE", entity: "governance_member", entityId: memberId, details: { fullName: m.fullName, position: m.position } });
   done(bodyId);
   return { success: "Saisie supprimée." };
+}
+
+/** Portrait officiel d'un membre (page « La Fédération ») : image et crédit obligatoire. */
+export async function setMemberPhoto(bodyId: number, memberId: number, _state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requirePermission("governance.manage");
+  const [m] = await db.select().from(governanceMembers).where(and(eq(governanceMembers.id, memberId), eq(governanceMembers.bodyId, bodyId))).limit(1);
+  if (!m) return { error: "Membre introuvable." };
+  const credit = String(formData.get("credit") ?? "").trim();
+  if (credit.length < 2 || credit.length > 240) return { error: "Crédit requis.", fieldErrors: { credit: ["Auteur ou source de la photo (240 caractères au plus)."] } };
+  const saved = await savePortrait(formData.get("photo"), "membres", memberId);
+  if (saved && "error" in saved) return { error: saved.error, fieldErrors: { photo: [saved.error] } };
+  // Sans nouveau fichier : mise à jour du crédit seul.
+  if (!saved && !m.photoKey) return { error: "Choisissez une photo.", fieldErrors: { photo: ["Photo requise."] } };
+  await db
+    .update(governanceMembers)
+    .set({ photoCredit: credit, ...(saved ? { photoKey: saved.key } : {}) })
+    .where(eq(governanceMembers.id, memberId));
+  if (saved && m.photoKey) await deleteFile(m.photoKey).catch(() => undefined);
+  await logAudit({ userId: user.id, action: "UPDATE", entity: "governance_member", entityId: memberId, details: { photo: true } });
+  done(bodyId);
+  return { success: "Photo enregistrée." };
+}
+
+export async function removeMemberPhoto(bodyId: number, memberId: number): Promise<void> {
+  const user = await requirePermission("governance.manage");
+  const [m] = await db.select().from(governanceMembers).where(and(eq(governanceMembers.id, memberId), eq(governanceMembers.bodyId, bodyId))).limit(1);
+  if (!m?.photoKey) return;
+  await db.update(governanceMembers).set({ photoKey: null, photoCredit: null }).where(eq(governanceMembers.id, memberId));
+  await deleteFile(m.photoKey).catch(() => undefined);
+  await logAudit({ userId: user.id, action: "UPDATE", entity: "governance_member", entityId: memberId, details: { photo: false } });
+  done(bodyId);
 }

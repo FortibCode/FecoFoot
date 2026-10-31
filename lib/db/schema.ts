@@ -1599,6 +1599,9 @@ export const governanceMembers = pgTable(
     endDate: date("end_date"),
     status: officialStatusEnum("status").notNull().default("ACTIVE"),
     source: varchar("source", { length: 200 }),
+    // Portrait officiel (page « La Fédération ») et son crédit.
+    photoKey: varchar("photo_key", { length: 200 }),
+    photoCredit: varchar("photo_credit", { length: 240 }),
     createdBy: integer("created_by").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
