@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { connection } from "next/server";
 import { ClubLogo } from "@/components/public/club-logo";
 import { ArrowIcon, CalendarIcon, GroupIcon, SearchIcon, ShieldIcon, TrophyIcon } from "@/components/public/icons";
 import { PublicShell } from "@/components/public/public-shell";
+import { SectionTitle } from "@/components/public/section-title";
 import { clubLogos } from "@/lib/club-logos";
 import { publicStatusLabel } from "@/lib/competitions";
 import { championshipLogoUrl, leagueLogoUrl } from "@/lib/league-logo";
@@ -23,23 +23,6 @@ const DIVISION_THEMES = [
   { bg: "var(--brand-ink)", accent: "var(--flag-red)" },
   { bg: "var(--flag-red)", accent: "var(--flag-yellow)" },
 ];
-
-/** Titre de rubrique : pictogramme dans une pastille, titre, phrase d'explication. */
-function SectionTitle({ id, icon, title, text }: { id: string; icon: ReactNode; title: string; text: string }) {
-  return (
-    <div className="flex items-start gap-4">
-      <span data-reveal="zoom" aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] text-[var(--flag-green)]">
-        {icon}
-      </span>
-      <div data-reveal="left" style={{ ["--rd" as string]: "100ms" }} className="flex flex-col gap-1">
-        <h2 id={id} className="text-2xl leading-tight font-bold uppercase sm:text-3xl">
-          {title}
-        </h2>
-        <p className="text-sm text-muted-foreground">{text}</p>
-      </div>
-    </div>
-  );
-}
 
 /** Ligues départementales et divisions nationales (portail). */
 export default async function PublicLeaguesPage({ searchParams }: PageProps<"/ligues">) {
@@ -113,8 +96,8 @@ export default async function PublicLeaguesPage({ searchParams }: PageProps<"/li
                           <span className="flex flex-wrap gap-1.5" aria-label={`Clubs engagés : ${clubs.map((k) => k.name).join(", ")}`}>
                             {clubs.slice(0, 12).map((k, j) => (
                               <span key={k.id} data-reveal="zoom" style={at(620 + j * 45)}>
-                                <span title={k.name} className="grid size-9 place-items-center rounded-full bg-white p-1 transition-transform duration-200 ease-out motion-safe:hover:scale-125">
-                                  <ClubLogo src={logos.get(k.id)} name={k.name} className="size-full text-[0.55rem]" />
+                                <span title={k.name} className="relative block size-9 rounded-full bg-white transition-transform duration-200 ease-out motion-safe:hover:scale-125">
+                                  <ClubLogo src={logos.get(k.id)} name={k.name} className="absolute inset-0 m-auto size-[76%] text-[0.55rem]" />
                                 </span>
                               </span>
                             ))}

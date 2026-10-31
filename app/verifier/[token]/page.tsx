@@ -17,8 +17,8 @@ export default async function VerifyTokenPage({ params }: PageProps<"/verifier/[
   return (
     <PublicShell eyebrow="Licences" title="Vérification de licence">
       {rl.allowed ? <LicenseResult license={license} /> : <p role="alert">{retryMessage(rl.retryAfterSec)}</p>}
-      <Link href="/verifier" className="mt-6 inline-block text-sm underline">
-        Vérifier une autre licence
+      <Link href="/verifier" className="mt-6 inline-block text-sm font-semibold text-[var(--flag-green)] underline-offset-4 hover:underline">
+        ← Vérifier une autre licence
       </Link>
     </PublicShell>
   );

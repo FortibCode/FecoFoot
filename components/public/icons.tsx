@@ -166,3 +166,18 @@ export const QrIcon = (p: IconProps) => (
     <path d="M14.5 14.5h2.5v2.5M20.5 14.5v6h-3.5M14.5 20.5v-1" />
   </Svg>
 );
+
+export const TicketIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h14a1.5 1.5 0 0 1 1.5 1.5V10a2 2 0 0 0 0 4v2.5A1.5 1.5 0 0 1 19 18H5a1.5 1.5 0 0 1-1.5-1.5V14a2 2 0 0 0 0-4z" />
+    <path d="M14.5 6v2M14.5 11v2M14.5 16v2" />
+  </Svg>
+);
+
+export const WalletIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3" />
+    <rect x="3.5" y="7.5" width="17" height="11.5" rx="2" />
+    <path d="M16 13.2h.01" />
+  </Svg>
+);

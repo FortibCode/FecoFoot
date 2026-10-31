@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { and, asc, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { PublicShell } from "@/components/public/public-shell";
+import { SectionTitle } from "@/components/public/section-title";
+import { BallIcon, CalendarIcon, CheckCircleIcon, TrophyIcon } from "@/components/public/icons";
 import { ArrowCircle } from "@/components/public/ui";
 import {
   COMPETITION_CATEGORIES,
@@ -207,15 +209,17 @@ async function CompetitionList({
           <li key={c.id}>
             <Link
               href={link}
-              className="group flex h-full flex-col rounded-2xl bg-muted/60 transition-[border-color,box-shadow,transform] duration-200 hover:border-flag-green/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-0.5 hover:bg-muted"
+              className="group relative flex h-full flex-col overflow-hidden bg-muted/60 transition-[background-color,box-shadow,transform] duration-300 ease-out hover:bg-muted hover:shadow-[0_18px_36px_-22px_rgb(0_0_0/0.4)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-flag-green motion-safe:hover:-translate-y-1"
             >
+              {/* Filet tricolore qui se déploie au survol. */}
+              <span aria-hidden className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-[linear-gradient(90deg,var(--flag-green)_0_33.33%,var(--flag-yellow)_33.33%_66.66%,var(--flag-red)_66.66%)] transition-transform duration-500 ease-out group-hover:scale-x-100" />
               <div className="flex items-start gap-4 p-5">
                 {logo ? (
                   // eslint-disable-next-line @next/next/no-img-element -- logo servi par la route des médias
                   <img
                     src={logo}
                     alt=""
-                    className="size-14 shrink-0 rounded-xl bg-white object-contain p-1 shadow-sm"
+                    className="size-16 shrink-0 bg-white object-contain p-1.5 transition-transform duration-500 ease-out motion-safe:group-hover:scale-105"
                   />
                 ) : (
                   <span
@@ -232,7 +236,7 @@ async function CompetitionList({
                   </h3>
                 </div>
               </div>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t px-5 py-4 text-sm">
+              <dl className="grid grid-cols-2 gap-2 px-5 pb-4 text-sm">
                 {(
                   [
                     ["Saison", seasonLabel(c.season)],
@@ -249,13 +253,13 @@ async function CompetitionList({
                     ],
                   ] as const
                 ).map(([k, v]) => (
-                  <div key={k} className="flex min-w-0 flex-col gap-0.5">
+                  <div key={k} className="flex min-w-0 flex-col gap-0.5 bg-card px-3 py-2">
                     <dt className="text-xs text-muted-foreground">{k}</dt>
                     <dd className="font-medium">{v}</dd>
                   </div>
                 ))}
               </dl>
-              <div className="mt-auto flex items-center justify-between gap-3 border-t px-5 py-3">
+              <div className="mt-auto flex items-center justify-between gap-3 px-5 pt-1 pb-4">
                 <span className="inline-flex items-center gap-2 text-sm font-semibold">
                   <span
                     aria-hidden
@@ -278,7 +282,7 @@ async function CompetitionList({
     <div className="flex flex-col gap-6">
       <form
         action="/competitions"
-        className="grid grid-cols-2 gap-3 rounded-xl bg-muted/60 p-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
+        className="grid grid-cols-2 gap-3 bg-muted/60 p-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
         aria-label="Filtrer les compétitions"
       >
         {status && <input type="hidden" name="statut" value={status} />}
@@ -394,8 +398,9 @@ async function CompetitionList({
       </p>
 
       {shown.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">
+        <div className="flex flex-col items-center gap-3 bg-muted/60 px-6 py-12 text-center">
+          <TrophyIcon className="size-9 text-[var(--flag-green)]" />
+          <p className="font-semibold">
             {filtered
               ? "Aucune compétition publiée ne correspond à ces critères."
               : "Aucune compétition n'est encore publiée. Les calendriers apparaîtront ici dès leur publication."}
@@ -403,7 +408,7 @@ async function CompetitionList({
           {filtered && (
             <Link
               href="/competitions"
-              className="rounded-md border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted"
+              className="text-sm font-semibold text-[var(--flag-green)] underline-offset-4 hover:underline"
             >
               Voir toutes les compétitions
             </Link>
@@ -422,12 +427,13 @@ async function CompetitionList({
                 className="flex flex-col gap-4"
                 aria-labelledby={`groupe-${g.key}`}
               >
-                <h2
+                <SectionTitle
+                  reveal={false}
                   id={`groupe-${g.key}`}
-                  className="border-b-2 border-foreground pb-2 text-2xl font-bold uppercase"
-                >
-                  {g.title}
-                </h2>
+                  icon={g.key === "ONGOING" ? <BallIcon className="size-5" /> : g.key === "UPCOMING" ? <CalendarIcon className="size-5" /> : <CheckCircleIcon className="size-5" />}
+                  title={g.title}
+                  text={`${items.length} compétition${items.length > 1 ? "s" : ""}`}
+                />
                 {grid(items)}
               </section>
             );

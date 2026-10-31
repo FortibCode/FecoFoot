@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { ArrowIcon, CalendarIcon, ClockIcon, PinIcon, TicketIcon, WalletIcon } from "@/components/public/icons";
 import { PublicShell } from "@/components/public/public-shell";
+import { SectionTitle } from "@/components/public/section-title";
 import { getCurrentSupporter } from "@/lib/auth/fan-session";
 import { db } from "@/lib/db";
 import { ticketCategories, ticketEvents } from "@/lib/db/schema";
@@ -52,46 +54,55 @@ export default async function TicketEventPage({ params }: PageProps<"/billetteri
           <dl className="grid gap-3 sm:grid-cols-3">
             {(
               [
-                ["Date", day.charAt(0).toUpperCase() + day.slice(1)],
-                ["Coup d'envoi", timeFmt.format(event.kickoffAt)],
-                ["Stade", event.venue],
+                ["Date", day.charAt(0).toUpperCase() + day.slice(1), <CalendarIcon key="d" className="size-5" />],
+                ["Coup d'envoi", timeFmt.format(event.kickoffAt), <ClockIcon key="h" className="size-5" />],
+                ["Stade", event.venue, <PinIcon key="s" className="size-5" />],
               ] as const
-            ).map(([k, v]) => (
-              <div key={k} className="rounded-xl border bg-card p-4">
-                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{k}</dt>
-                <dd className="mt-1 font-heading text-lg leading-tight font-bold">{v}</dd>
+            ).map(([k, v, icon], i) => (
+              <div key={k} data-reveal="left" style={{ ["--rd" as string]: `${i * 110}ms` }} className="flex items-start gap-3 bg-muted/60 p-4">
+                <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] text-[var(--flag-green)]">
+                  {icon}
+                </span>
+                <div className="min-w-0">
+                  <dt className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{k}</dt>
+                  <dd className="mt-0.5 font-heading text-lg leading-tight font-bold">{v}</dd>
+                </div>
               </div>
             ))}
           </dl>
 
-          <section aria-labelledby="tribunes" className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="tribunes" className="font-heading text-xl font-bold uppercase">
-                Tribunes et tarifs
-              </h2>
-              <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">{SALES_STATUS_LABELS[event.salesStatus]}</span>
-            </div>
+          <section aria-labelledby="tribunes" className="flex flex-col gap-4">
+            <SectionTitle
+              id="tribunes"
+              icon={<TicketIcon className="size-5" />}
+              title="Tribunes et tarifs"
+              text="Places restantes en temps réel ; tarif réduit pour les membres du club des supporters."
+              aside={<span className={`px-3 py-1 text-xs font-bold ${event.salesStatus === "PRESALE" ? "bg-[var(--flag-yellow)] text-brand-ink" : "bg-[var(--flag-green)] text-white"}`}>{SALES_STATUS_LABELS[event.salesStatus]}</span>}
+            />
             <ul className="flex flex-col gap-3">
               {categories.map((c) => {
                 const left = remaining(c.capacity, taken.get(c.id) ?? 0);
                 const filled = Math.min(100, Math.round(((c.capacity - left) / Math.max(1, c.capacity)) * 100));
                 return (
-                  <li key={c.id} className="rounded-xl border bg-card p-4">
+                  <li key={c.id} data-reveal="up" style={{ ["--rd" as string]: `${categories.indexOf(c) * 100}ms` }} className="bg-muted/60 p-4 sm:p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold">{c.name}</p>
-                        <p className="text-sm text-muted-foreground">{c.gate}</p>
+                        <p className="font-heading text-lg font-bold">{c.name}</p>
+                        <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <PinIcon className="size-3.5" />
+                          {c.gate}
+                        </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-heading text-xl font-bold">{formatFcfa(c.publicPrice)}</p>
-                        {c.memberPrice < c.publicPrice && <p className="text-xs font-semibold text-[var(--flag-green)]">membre : {formatFcfa(c.memberPrice)}</p>}
+                        <p className="font-display text-2xl font-bold">{formatFcfa(c.publicPrice)}</p>
+                        {c.memberPrice < c.publicPrice && <p className="mt-1 inline-block bg-[color-mix(in_srgb,var(--flag-green)_12%,transparent)] px-2 py-0.5 text-xs font-semibold text-[var(--flag-green)]">membre : {formatFcfa(c.memberPrice)}</p>}
                       </div>
                     </div>
                     <div className="mt-3 flex items-center gap-3">
-                      <div aria-hidden className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-[var(--flag-green)]" style={{ width: `${filled}%` }} />
+                      <div aria-hidden className="h-2 flex-1 overflow-hidden rounded-full bg-card">
+                        <div className={`h-full rounded-full ${filled >= 90 ? "bg-[var(--flag-red)]" : filled >= 60 ? "bg-[var(--flag-yellow)]" : "bg-[var(--flag-green)]"}`} style={{ width: `${Math.max(filled, 2)}%` }} />
                       </div>
-                      <span className="shrink-0 text-xs text-muted-foreground">{left > 0 ? `${left.toLocaleString("fr-FR")} place(s) disponible(s)` : "Complet"}</span>
+                      <span className={`shrink-0 text-xs font-semibold ${left > 0 ? "text-muted-foreground" : "text-[var(--flag-red)]"}`}>{left > 0 ? `${left.toLocaleString("fr-FR")} place(s) disponible(s)` : "Complet"}</span>
                     </div>
                   </li>
                 );
@@ -105,25 +116,32 @@ export default async function TicketEventPage({ params }: PageProps<"/billetteri
 
         <aside className="order-first flex flex-col gap-4 lg:sticky lg:top-24 lg:order-none">
           {mine.length > 0 && (
-            <div className="rounded-xl border-2 border-[var(--flag-green)] bg-[color-mix(in_oklch,var(--flag-green)_8%,transparent)] p-5">
-              <p className="font-semibold">
+            <div data-reveal="right" className="bg-[var(--flag-green)] p-5 text-white">
+              <p className="flex items-center gap-2 font-semibold">
+                <TicketIcon className="size-5" />
                 Vous avez {mine.length} billet{mine.length > 1 ? "s" : ""} pour ce match
               </p>
-              <ul className="mt-2 text-sm text-muted-foreground">
+              <ul className="mt-2 text-sm text-white/85">
                 {mine.map((t) => (
                   <li key={t.id}>
                     {t.holderName} · {t.category} · {t.number}
                   </li>
                 ))}
               </ul>
-              <Link href="/supporters/espace#billets" className="mt-4 inline-block rounded-md bg-brand-ink px-4 py-2 text-sm font-semibold text-white">
-                Voir mes billets →
+              <Link href="/supporters/espace#billets" className="mt-4 inline-flex items-center gap-2 bg-brand-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-brand-ink">
+                Voir mes billets
+                <ArrowIcon className="size-4" />
               </Link>
             </div>
           )}
 
-          <div className="rounded-xl border bg-card p-5">
-            <h2 className="mb-3 font-heading text-xl font-bold uppercase">{mine.length > 0 ? "Acheter d'autres billets" : "Acheter des billets"}</h2>
+          <div data-reveal="right" style={{ ["--rd" as string]: "120ms" }} className="bg-muted/60 p-5">
+            <h2 className="mb-4 flex items-center gap-2.5 font-heading text-xl font-bold uppercase">
+              <span aria-hidden className="grid size-9 place-items-center rounded-full bg-[var(--flag-green)] text-white">
+                <WalletIcon className="size-4" />
+              </span>
+              {mine.length > 0 ? "Acheter d'autres billets" : "Acheter des billets"}
+            </h2>
             {!fan ? (
               <div className="flex flex-col gap-3 text-sm">
                 <p>Un Fan ID est nécessaire pour acheter : chaque billet est nominatif.</p>
@@ -138,7 +156,7 @@ export default async function TicketEventPage({ params }: PageProps<"/billetteri
               </div>
             ) : refusal ? (
               <div className="flex flex-col gap-3 text-sm">
-                <p role="alert" className="rounded-lg border border-destructive bg-destructive/10 p-3">
+                <p role="alert" className="border-l-4 border-[var(--flag-red)] bg-[color-mix(in_srgb,var(--flag-red)_8%,transparent)] p-3">
                   {refusal}
                 </p>
                 {event.salesStatus === "PRESALE" && !member && !fan.banned && (

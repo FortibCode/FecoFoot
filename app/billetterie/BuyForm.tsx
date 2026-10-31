@@ -47,8 +47,8 @@ export function BuyForm({
           </option>
         ))}
       </SelectField>
-      <fieldset className="flex flex-col gap-3 rounded-lg border p-3">
-        <legend className="px-1 text-sm font-semibold">Billets nominatifs</legend>
+      <fieldset className="flex flex-col gap-3 bg-card p-4">
+        <legend className="float-left mb-1 w-full text-sm font-semibold">Billets nominatifs</legend>
         <p className="text-sm">
           Billet 1 : <strong>{buyerName}</strong> (vous)
         </p>
@@ -63,9 +63,15 @@ export function BuyForm({
           </option>
         ))}
       </SelectField>
-      <p className="text-lg font-bold">Total : {formatFcfa((category?.price ?? 0) * quantity)}</p>
+      <p className="flex items-baseline justify-between bg-brand-ink px-4 py-3 text-white">
+        <span aria-hidden className="text-sm text-white/75">Total</span>
+        <span className="font-display text-2xl font-bold">
+          <span className="sr-only">Total : </span>
+          {formatFcfa((category?.price ?? 0) * quantity)}
+        </span>
+      </p>
       <FormMessage state={state} />
-      <Button type="submit" size="lg" disabled={pending} className="h-11">
+      <Button type="submit" size="lg" disabled={pending} className="h-11 bg-[var(--flag-green)] text-white hover:bg-brand-ink">
         {pending ? "Réservation…" : "Réserver et payer"}
       </Button>
       <p className="text-xs text-muted-foreground">Les places sont réservées 15 minutes, le temps de valider le paiement sur votre téléphone.</p>

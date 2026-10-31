@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { CalendarIcon, CheckCircleIcon, SearchIcon, ShieldIcon, TrophyIcon } from "@/components/public/icons";
 import { PublicShell } from "@/components/public/public-shell";
+import { SectionTitle } from "@/components/public/section-title";
 import { AUTO_REASON_LABELS, DEFAULT_YELLOW_THRESHOLD, SANCTION_LABELS, SANCTION_TYPES, type SanctionType } from "@/lib/discipline";
 import { formatDate, formatFcfa } from "@/lib/format";
 import { currentSuspensions, publishedDecisions } from "@/lib/queries/discipline";
@@ -40,26 +41,6 @@ function sanctionText(c: { sanctionType: SanctionType | null; suspensionMatches:
     default:
       return "Décision";
   }
-}
-
-/** Titre de rubrique : pictogramme dans une pastille, titre, phrase d'explication. */
-function SectionTitle({ id, icon, title, text, aside }: { id: string; icon: ReactNode; title: string; text: string; aside?: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="flex items-start gap-4">
-        <span data-reveal="zoom" aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--flag-green)_14%,transparent)] text-[var(--flag-green)]">
-          {icon}
-        </span>
-        <div data-reveal="left" style={{ ["--rd" as string]: "100ms" }} className="flex flex-col gap-1">
-          <h2 id={id} className="text-2xl leading-tight font-bold uppercase sm:text-3xl">
-            {title}
-          </h2>
-          <p className="text-sm text-muted-foreground">{text}</p>
-        </div>
-      </div>
-      {aside}
-    </div>
-  );
 }
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
