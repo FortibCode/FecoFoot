@@ -68,3 +68,6 @@ export function badgeValidity(ctx: { status: AccreditationStatus; kickoffAt: Dat
   if (ctx.kickoffAt.getTime() + 4 * 3_600_000 < ctx.now.getTime()) return { ok: false, reason: "Le match est terminé : le badge n'est valable que pour ce match." };
   return { ok: true, reason: "Badge authentique, valable pour ce match." };
 }
+
+/** Jours entiers restants avant la clôture des demandes (0 le dernier jour). */
+export const requestDaysLeft = (kickoffAt: Date, now = Date.now()) => Math.max(0, Math.ceil((requestDeadline(kickoffAt).getTime() - now) / 86_400_000));
